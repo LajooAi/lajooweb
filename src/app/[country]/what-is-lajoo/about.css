@@ -1,5 +1,5 @@
 :root{
-  --brand:#1e4fff;
+  --brand:#0062ff;
   --ink:#111;
   --muted:#6b7280;
   --card:#fff;
@@ -47,6 +47,17 @@
   .logos{ grid-template-columns:repeat(3,minmax(0,1fr)); }
   .about-wrap{ padding-left:12px; padding-right:12px; }
 }
+
+.inline-logo{
+  height: 22px;          /* tweak until it looks perfect */
+  width: auto;
+  display: inline-block;
+  vertical-align: -3px;  /* nudges baseline so it sits like text */
+}
+@media (min-width: 768px){
+  .inline-logo{ height: 24px; }
+}
+
 
 .reviews-block{ text-align:center; margin-top:14px; }
 .brand-word{ color:var(--brand); font-weight:900; letter-spacing:.6px; font-size:22px; }

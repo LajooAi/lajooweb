@@ -6,9 +6,14 @@ export default function WhatIsLajooPage() {
       {/* top title */}
       <div className="about-title">
         <span className="muted">What is</span>{" "}
-        <strong className="brand">LAJOO</strong>{" "}
+        <img
+          src="/logo/lajoo-logo.png"      // or /logo/lajoo-logo.svg if you have SVG
+          alt="LAJOO"
+          className="inline-logo"
+        />{" "}
         <span className="muted">?</span>
       </div>
+
 
       {/* hero */}
       <section className="about-hero">
