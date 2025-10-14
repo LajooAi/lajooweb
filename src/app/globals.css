@@ -318,4 +318,6 @@
 
       .picker-row:focus{ outline:none; box-shadow:inset 0 0 0 2px #1e4fff33; }
 
-      /* keep he*
+      /* keep header button tidy */
+      .country-language-button{ white-space:nowrap; }
+
