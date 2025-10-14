@@ -1,42 +1,297 @@
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
+      :host,html {
+        font-family: ui-sans-serif,-apple-system,system-ui,Segoe UI,Helvetica,Apple Color Emoji,Arial,sans-serif,Segoe UI Emoji,Segoe UI Symbol;
+        font-feature-settings: normal;
+        font-variation-settings: normal;
+        -webkit-text-size-adjust: 100%;
+        -webkit-tap-highlight-color: transparent;        
+        line-height: 1.5;
+        tab-size: 4;
+       }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
+      body {
+        display: flex;
+        flex-direction: column;
+        min-height: 100vh;
+        margin: 0;
+      } 
 
-html,
-body {
-  max-width: 100vw;
-  overflow-x: hidden;
-}
+      header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 0 16px;
+        border-bottom: 1px solid #eee;
+        height: 60px;
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        z-index: 10;
+        background: #fff;
+        flex-shrink: 0;
+      } 
 
-body {
-  color: var(--foreground);
-  background: var(--background);
-  font-family: Arial, Helvetica, sans-serif;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-}
+      .burger-icon {
+        background: none;
+        border: none;
+        cursor: pointer;
+      }
 
-* {
-  box-sizing: border-box;
-  padding: 0;
-  margin: 0;
-}
+      .burger-icon svg {
+        width: auto;
+        height: clamp(24px,1vw,30px);        
+      }
 
-a {
-  color: inherit;
-  text-decoration: none;
-}
+      .lajoo-logo img {
+        display: block;
+        width: auto;
+        height: clamp(30px,5vw,40px);
+      }
 
-@media (prefers-color-scheme: dark) {
-  html {
-    color-scheme: dark;
-  }
-}
+      .country-language-button {
+        display: flex;
+        align-items: center;
+        gap: clamp(2px,0.8vw,6px);
+        border: 1px solid #111;
+        border-radius: clamp(12px, 2vw, 20px);
+        padding: clamp(2px, 0.6vw, 6px) clamp(6px, 1.5vw, 12px);
+        font-size: clamp(12px, 1.2vw, 14px);
+        background: none;
+        color: #000;
+        cursor: pointer;
+      }
+
+      .country-language-button img {
+        display: block;
+        width: 15px;
+      }
+
+      main {
+        text-align: center;
+        padding: 40px 16px;
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        padding-top: 60px;
+        padding-bottom: 60px;
+        min-height: calc(100vh - 300px);
+      }
+
+      h1 {
+        font-size: clamp(34px,5vw,45px);
+        margin-bottom: 16px;
+        font-weight: 600;
+      }
+
+      h2 {
+        font-size: clamp(20px,2vw,25px);
+        font-weight: 400;
+        margin-bottom: 32px;
+      }
+
+      .recommended-actions {
+        display: grid;
+        grid-template-columns: repeat(2,1fr);
+        gap: 12px;
+        max-width: 400px;
+        margin: 0 auto;
+      }
+
+      .recommended-actions button {
+        padding: 12px;
+        border-radius: 30px;
+        border: 1px solid #aaa;
+        color: #aaa;
+        background: #fff;
+        font-size: clamp(13px,2vw,15px);
+        font-weight: 400;
+        cursor: pointer;
+      }
+
+      .recommended-actions button:hover {
+        border-color: #0062ff;
+        color: #0062ff;
+      }
+
+      .chat-box {
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        background: #fff;
+        padding: 12px 16px;
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        z-index: 10;
+        align-items: center;
+      }
+
+      .chat-column {
+        width: 100%;
+        max-width: 700px;     
+      }
+
+      .bubble {
+        display: grid;
+        grid-template-columns: auto 1fr auto;
+        align-items: center;
+        border: 1px solid rgba(13,13,13,0.15);
+        border-radius: 30px;
+        background: #fff;
+        padding: 0 6px;
+        min-height: 56px;
+        position: relative;
+      }
+
+      .bubble .add-button,
+      .bubble .send-button {
+        width: 42px;
+        height: 42px;
+        border-radius: 50%;
+        border: none;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+      }
+
+      .bubble .add-button {
+       background-color: rgb(248,248,248);  
+      }
+
+      .bubble .send-button {
+        background-color: rgb(216,216,216);  
+        color: #fff;
+      }
+
+      .input-area {
+        width: 100%;
+        min-height: 24px;
+        padding: 16px 12px;
+        outline: none;
+        font-size: 16px;
+        line-height: 1.4;
+        white-space: pre-wrap;
+        word-break: break-word;
+      }
+
+      .placeholder {
+        position: absolute;
+        left: 60px;
+        top: 50%;
+        transform: translateY(-50%);
+        color: #888;
+        font-size: 16px;
+        pointer-events: none;
+        margin: 0;
+      }
+
+
+      .terms-privacy p {
+        font-size: 11px;
+        color: #777;
+        text-align: center;
+        margin: 0;
+        line-height: 1.4;
+      }
+
+      /* FRAME */
+      .app-frame { display: flex; min-height: 100vh; }
+
+      /* Desktop sidebar */
+      .sidebar-desktop { display: none; }
+      @media (min-width: 1024px) {
+        .sidebar-desktop { display: block; width: 280px; border-right: 1px solid #eee; background: #fff; position: sticky; top: 0; height: 100vh; }
+        .sidebar-inner { padding: 16px; }
+        .sidebar-brand { padding: 6px 0 16px; }
+        .sidebar-logo { height: 36px; width: auto; display: block; }
+        .sidebar-nav { display: flex; flex-direction: column; gap: 10px; }
+        .sidebar-link { display: block; padding: 12px 14px; border-radius: 12px; text-decoration: none; color: #111; }
+        .sidebar-link:hover { background: #f3f4f6; }
+        .sidebar-link.active { background: #e8efff; color: #1e4fff; font-weight: 600; }
+      }
+
+      /* Content column */
+      .content-col { flex: 1; display: flex; flex-direction: column; }
+
+      /* Mobile header */
+      .mobile-header { display: flex; justify-content: space-between; align-items: center; padding: 0 16px; border-bottom: 1px solid #eee; height: 60px; position: sticky; top: 0; background: #fff; z-index: 10; }
+      @media (min-width: 1024px) { .mobile-header { display: none; } }
+
+      /* Drawer */
+      .drawer-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0); pointer-events: none; transition: background 200ms ease; z-index: 90; }
+
+      .drawer-overlay.open { background: rgba(0,0,0,0.35); pointer-events: auto; }
+
+      .drawer-panel { position: fixed; top: 0; left: 0; width: min(88vw, 360px); height: 100vh; background: #fff; transform: translateX(-100%); transition: transform 220ms ease; z-index: 99; box-shadow: 0 8px 24px rgba(0,0,0,0.12); display: flex; flex-direction: column; padding: 16px; }
+
+      .drawer-panel.open { transform: translateX(0); }
+
+      .drawer-header { display: flex; align-items: center; justify-content: space-between; padding: 6px 4px 14px; }
+
+      .brand { font-weight: 900; font-size: 26px; color: #1e4fff; }
+
+      .drawer-close { background: none; border: none; font-size: 28px; cursor: pointer; }
+
+      .drawer-nav { display: flex; flex-direction: column; gap: 18px; margin-top: 8px; }
+
+      .drawer-link { display: block; padding: 12px 14px; border-radius: 14px; text-decoration: none; color: #111; }
+
+      .drawer-link:hover { background: #f3f4f6; }
+
+      .drawer-link.active { background: #e8efff; color: #1e4fff; font-weight: 600; }
+
+            /* Hero positioning */
+      .hero {
+        /* keep the centering horizontally, but anchor a bit below the header */
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: flex-start;
+
+        /* tune how high the block sits */
+        padding-top: clamp(80px, 18vh, 220px);
+        padding-bottom: 120px;
+
+        /* keep space accounting for the fixed chat box & header */
+        min-height: calc(100vh - 300px);
+      }
+
+      /* Desktop: place a bit lower than mobile so it looks balanced on large screens */
+      @media (min-width: 1024px) {
+        .hero {
+          padding-top: clamp(60px, 14vh, 180px);
+        }
+      }
+
+      /* Picker (country + language) */
+      .picker-overlay {
+        position: fixed; inset: 0; background: rgba(0,0,0,0.35);
+        display: flex; justify-content: flex-start; align-items: stretch; z-index: 120;
+      }
+      .picker-panel {
+        width: min(88vw, 360px); height: 100vh; background:#fff;
+        box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+        padding: 12px 0; display: flex; flex-direction: column;
+      }
+      .picker-header {
+        display: flex; justify-content: space-between; align-items: center;
+        padding: 8px 16px 12px; font-size: 18px;
+      }
+      .picker-subtitle { padding: 10px 16px 6px; font-weight: 700; }
+      .picker-section { display: flex; flex-direction: column; }
+      .picker-row {
+        display:flex; align-items:center; justify-content:space-between;
+        padding: 12px 16px; background: #fff; border:0; border-bottom:1px solid #f2f2f2;
+        text-align:left; cursor:pointer; font-size:16px;
+      }
+      .picker-row:hover { background:#f8f8f8; }
+      .picker-row.active { background:#eef3ff; }
+      .picker-row.checked .row-right { color:#1e4fff; }
+      .row-left { display:flex; align-items:center; gap:10px; }
+      .row-right { opacity:.8; }
+      .flag { width:18px; height:auto; display:block; }
+
