@@ -267,57 +267,72 @@
         }
       }
 
-      /* ===== Country/Language Picker — RIGHT SHEET (final) ===== */
-      .picker-overlay{
-        position:fixed;
-        inset:0;
-        background:rgba(0,0,0,.35);
-        z-index:150;            /* higher than drawer */
+      /* ===== Country/Language Picker — RIGHT DRAWER ===== */
+
+      /* Overlay (same behavior as left drawer, just higher z) */
+      .picker-overlay {
+        position: fixed;
+        inset: 0;
+        background: rgba(0,0,0,0);
+        pointer-events: none;
+        transition: background 200ms ease;
+        z-index: 120; /* > .drawer-overlay (z-index: 90) */
+      }
+      .picker-overlay.open {
+        background: rgba(0,0,0,0.35);
+        pointer-events: auto;
       }
 
-      /* --- Force picker sheet to right; defeat any old left:0 rules --- */
+      /* Panel slides in from RIGHT (mirror of your drawer-panel) */
       .picker-panel {
-        left: auto !important;
-        right: 0 !important;
-        transform: translateX(100%) !important; /* start hidden off-screen to the right */
+        position: fixed;
+        top: 0;
+        right: 0;
+        width: min(88vw, 380px);
+        height: 100vh;
+        background: #fff;
+        transform: translateX(100%);              /* hidden off-screen to the right */
+        transition: transform 220ms ease;
+        z-index: 121;                             /* above overlay click layer */
+        box-shadow: -8px 0 24px rgba(0,0,0,0.12);
+        display: flex;
+        flex-direction: column;
       }
-      .picker-panel.open {
-        transform: translateX(0) !important;    /* slide in */
-      }
+      .picker-panel.open { transform: translateX(0); }
 
-      .picker-head{
-        display:flex; align-items:center; justify-content:space-between;
-        padding:14px 16px; border-bottom:1px solid #f0f0f0;
+      /* Header */
+      .picker-head {
+        display: flex; align-items: center; justify-content: space-between;
+        padding: 14px 16px; border-bottom: 1px solid #f0f0f0;
       }
-      .picker-title{ font-weight:700; font-size:18px; }
-      .picker-close{ background:none; border:0; font-size:22px; line-height:1; cursor:pointer; }
+      .picker-title { font-weight: 700; font-size: 18px; }
+      .picker-close { background: none; border: 0; font-size: 22px; line-height: 1; cursor: pointer; }
 
-      .picker-subtitle{ padding:14px 16px 8px; font-weight:700; font-size:18px; }
-      .picker-section{ display:flex; flex-direction:column; }
+      /* Sections */
+      .picker-subtitle { padding: 14px 16px 8px; font-weight: 700; font-size: 18px; }
+      .picker-section { display: flex; flex-direction: column; }
 
       /* Rows */
-      .picker-row{
-        display:flex; align-items:center; justify-content:space-between;
-        padding:14px 16px; border:0; border-bottom:1px solid #f5f5f5;
-        background:#fff; cursor:pointer; text-align:left; font-size:16px;
-        transition:background 160ms ease, color 160ms ease;
+      .picker-row {
+        display: flex; align-items: center; justify-content: space-between;
+        padding: 14px 16px; border: 0; border-bottom: 1px solid #f5f5f5;
+        background: #fff; cursor: pointer; text-align: left; font-size: 16px;
+        transition: background 160ms ease, color 160ms ease;
       }
-      .picker-row:hover{ background:#f5f8ff; }
-      .picker-row.active{ background:#eef3ff; }   /* selected Country */
-      .picker-row.checked{ background:#eef3ff; }  /* selected Language */
+      .picker-row:hover { background: #f5f8ff; }
+      .picker-row.active, .picker-row.checked { background: #eef3ff; }
 
-      .row-left{ display:flex; align-items:center; gap:10px; }
-      .flag{ width:18px; height:auto; display:block; }
-      .row-text{ display:flex; gap:6px; }
-      .row-code{ color:#1e4fff; font-weight:600; }
-      .row-name{ color:#111; opacity:.85; }
+      .row-left { display: flex; align-items: center; gap: 10px; }
+      .flag { width: 18px; height: auto; display: block; }
+      .row-text { display: flex; gap: 6px; }
+      .row-code { color: #1e4fff; font-weight: 600; }
+      .row-name { color: #111; opacity: .85; }
 
-      .row-right{ min-width:18px; text-align:right; }
-      .row-right.chevron{ color:#1e4fff; font-weight:600; }
-      .row-right.tick{ color:#1e4fff; font-weight:700; }
+      .row-right { min-width: 18px; text-align: right; }
+      .row-right.chevron { color: #1e4fff; font-weight: 600; }
+      .row-right.tick { color: #1e4fff; font-weight: 700; }
 
-      .picker-row:focus{ outline:none; box-shadow:inset 0 0 0 2px #1e4fff33; }
+      .picker-row:focus { outline: none; box-shadow: inset 0 0 0 2px #1e4fff33; }
 
-      /* keep header button tidy */
-      .country-language-button{ white-space:nowrap; }
-
+      /* Keep header button tidy */
+      .country-language-button { white-space: nowrap; }

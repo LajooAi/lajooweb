@@ -42,13 +42,16 @@ export default function CountryLangPicker({ currentCountry }) {
 
       {/* Right-side sheet */}
       {open && (
-        <div className="picker-overlay" onClick={() => setOpen(false)}>
+        <div
+          className={`picker-overlay ${open ? "open" : ""}`}
+          onClick={() => setOpen(false)}
+          >
           <aside
             className={`picker-panel ${open ? "open" : ""}`}
             role="dialog"
             aria-modal="true"
             onClick={(e) => e.stopPropagation()}
-          >
+            >
             <div className="picker-head">
               <span className="picker-title">Country</span>
               <button className="picker-close" aria-label="Close" onClick={() => setOpen(false)}>×</button>
