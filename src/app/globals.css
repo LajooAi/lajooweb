@@ -276,7 +276,7 @@
         background: rgba(0,0,0,0);
         pointer-events: none;
         transition: background 200ms ease;
-        z-index: 120; /* > .drawer-overlay (z-index: 90) */
+        z-index: 9998; /* > .drawer-overlay (z-index: 90) */
       }
       .picker-overlay.open {
         background: rgba(0,0,0,0.35);
@@ -293,7 +293,7 @@
         background: #fff;
         transform: translateX(100%);              /* hidden off-screen to the right */
         transition: transform 220ms ease;
-        z-index: 121;                             /* above overlay click layer */
+        z-index: 9999;                             /* above overlay click layer */
         box-shadow: -8px 0 24px rgba(0,0,0,0.12);
         display: flex;
         flex-direction: column;

@@ -1,15 +1,18 @@
 "use client";
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { useRouter, useParams } from "next/navigation";
 import { COUNTRIES, DEFAULT_LANGUAGE_BY_COUNTRY } from "@/lib/localeConfig";
 
 export default function CountryLangPicker({ currentCountry }) {
   const [open, setOpen] = useState(false);
+  const [mounted, setMounted] = useState(false); // for portals (SSR-safe)
   const router = useRouter();
   const params = useParams();
   const country = (currentCountry || params?.country || "my").toLowerCase();
 
-  // language cookie (per your original logic)
+  useEffect(() => setMounted(true), []);
+
   const [lang, setLang] = useState(() => {
     if (typeof document === "undefined") return DEFAULT_LANGUAGE_BY_COUNTRY[country] || "en";
     const m = document.cookie.match(/lajoo_lang=([^;]+)/);
@@ -40,18 +43,15 @@ export default function CountryLangPicker({ currentCountry }) {
         <span>{country.toUpperCase()}|{lang.toUpperCase()}</span>
       </button>
 
-      {/* Right-side sheet */}
-      {open && (
-        <div
-          className={`picker-overlay ${open ? "open" : ""}`}
-          onClick={() => setOpen(false)}
-          >
+      {/* Right-side sheet rendered to <body> so it isn't trapped by header z-index */}
+      {mounted && open && createPortal(
+        <div className={`picker-overlay open`} onClick={() => setOpen(false)}>
           <aside
-            className={`picker-panel ${open ? "open" : ""}`}
+            className={`picker-panel open`}
             role="dialog"
             aria-modal="true"
             onClick={(e) => e.stopPropagation()}
-            >
+          >
             <div className="picker-head">
               <span className="picker-title">Country</span>
               <button className="picker-close" aria-label="Close" onClick={() => setOpen(false)}>×</button>
@@ -98,7 +98,8 @@ export default function CountryLangPicker({ currentCountry }) {
               ))}
             </div>
           </aside>
-        </div>
+        </div>,
+        document.body
       )}
     </>
   );
