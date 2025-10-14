@@ -72,7 +72,7 @@ export default function AppLayout({ children }) {
       <div className={`drawer-overlay ${open ? "open" : ""}`} onClick={() => setOpen(false)} />
       <aside className={`drawer-panel ${open ? "open" : ""}`} role="dialog" aria-modal="true">
         <div className="drawer-header">
-          <span className="brand">LAJOO</span>
+          <img src="/logo/lajoo-logo.png" alt="LAJOO" className="brand-logo" />
           <button className="drawer-close" aria-label="Close" onClick={() => setOpen(false)}>×</button>
         </div>
         <nav className="drawer-nav">

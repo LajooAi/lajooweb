@@ -242,7 +242,14 @@
 
       .drawer-link:hover { background: #f3f4f6; }
 
-      .drawer-link.active { background: #e8efff; color: #1e4fff; font-weight: 600; }
+      .drawer-link.active { background: #e8efff; color: #0062ff; font-weight: 600; }
+
+      .brand-logo{
+          height: 28px;               /* adjust to taste */
+          width: auto;
+          display: block;
+        }
+
 
             /* Hero positioning */
       .hero {
@@ -276,7 +283,7 @@
         background: rgba(0,0,0,0);
         pointer-events: none;
         transition: background 200ms ease;
-        z-index: 9998; /* > .drawer-overlay (z-index: 90) */
+        z-index: 120; /* > .drawer-overlay (z-index: 90) */
       }
       .picker-overlay.open {
         background: rgba(0,0,0,0.35);
@@ -291,7 +298,7 @@
         width: min(88vw, 380px);
         height: 100vh;
         background: #fff;
-        transform: translateX(100%);              /* hidden off-screen to the right */
+        transform: translateX(100%);             /* hidden off-screen to the right */
         transition: transform 220ms ease;
         z-index: 9999;                             /* above overlay click layer */
         box-shadow: -8px 0 24px rgba(0,0,0,0.12);
