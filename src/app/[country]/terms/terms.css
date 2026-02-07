@@ -1,0 +1,34 @@
+.legal-wrap{
+  display: block !important;           /* override global flex */
+  justify-content: flex-start !important;
+  align-items: flex-start !important;
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 84px 16px 120px;
+  text-align: left !important;
+}
+
+.legal-wrap *{
+  text-align: left !important;
+  margin-left: 0 !important;
+  padding-left: 0 !important;
+  text-indent: 0 !important;
+}
+
+/* Headings */
+.legal-h1{ font-size:clamp(26px,3.2vw,34px); font-weight:800; letter-spacing:-.01em; line-height:1.2; margin:0 0 10px; }
+.legal-meta{ color:#6b7280; font-size:14px; margin:0 0 18px; }
+section{ margin:22px 0 6px; }
+h2{ font-size:clamp(18px,2.2vw,22px); font-weight:600; letter-spacing:-.005em; margin:0 0 8px; }
+
+/* Lists */
+.legal-wrap ul,
+.legal-wrap ol{
+  list-style-position: outside;
+  padding-left: 18px !important;
+  margin: 0 0 10px !important;
+}
+.legal-wrap li{ line-height:1.7; }
+.legal-wrap li + li{ margin-top:6px; }
+
+.legal-divider{ border:0; height:1px; background:#e5e7eb; margin:28px 0 12px; }

@@ -1,0 +1,354 @@
+[
+  {
+    "name": "Start renewal direct",
+    "message": "i want renew insurance",
+    "step": "start",
+    "expectedIntent": "start_renewal"
+  },
+  {
+    "name": "General question from start",
+    "message": "what is ncd?",
+    "step": "start",
+    "expectedIntent": "ask_question"
+  },
+  {
+    "name": "Playful start",
+    "message": "haha idk",
+    "step": "start",
+    "expectedIntent": "unclear_or_playful"
+  },
+  {
+    "name": "Provide plate only",
+    "message": "JRT9289",
+    "step": "start",
+    "expectedIntent": "provide_info"
+  },
+  {
+    "name": "Provide owner id only",
+    "message": "951018145405",
+    "step": "start",
+    "expectedIntent": "provide_info"
+  },
+  {
+    "name": "Provide plate plus passport",
+    "message": "WXY1234 passport A1234567",
+    "step": "start",
+    "expectedIntent": "provide_info"
+  },
+  {
+    "name": "Provide plate plus company id",
+    "message": "VEV8899 company reg SSM 202301234567",
+    "step": "start",
+    "expectedIntent": "provide_info"
+  },
+  {
+    "name": "Quotes bare ok",
+    "message": "ok",
+    "step": "quotes",
+    "expectedIntent": "confirm"
+  },
+  {
+    "name": "Quotes bare yes",
+    "message": "yes",
+    "step": "quotes",
+    "expectedIntent": "confirm"
+  },
+  {
+    "name": "Quotes explicit dilemma",
+    "message": "i cant choose between etiqa and allianz",
+    "step": "quotes",
+    "expectedIntent": "ask_question"
+  },
+  {
+    "name": "Quotes ask recommendation",
+    "message": "recommend for me",
+    "step": "quotes",
+    "expectedIntent": "ask_question"
+  },
+  {
+    "name": "Quotes ask which is better",
+    "message": "which is better",
+    "step": "quotes",
+    "expectedIntent": "ask_question"
+  },
+  {
+    "name": "Quotes ask insurer details",
+    "message": "tell me about etiqa",
+    "step": "quotes",
+    "expectedIntent": "ask_question"
+  },
+  {
+    "name": "Quotes playful delegation",
+    "message": "up to you lah",
+    "step": "quotes",
+    "expectedIntent": "unclear_or_playful"
+  },
+  {
+    "name": "Quotes select soft",
+    "message": "ok maybe takaful",
+    "step": "quotes",
+    "expectedIntent": "select_quote",
+    "expectedDataContains": { "insurer": "takaful" }
+  },
+  {
+    "name": "Quotes select with verb",
+    "message": "go with allianz",
+    "step": "quotes",
+    "expectedIntent": "select_quote",
+    "expectedDataContains": { "insurer": "allianz" }
+  },
+  {
+    "name": "Quotes select bare insurer",
+    "message": "takaful",
+    "step": "quotes",
+    "expectedIntent": "select_quote",
+    "expectedDataContains": { "insurer": "takaful" }
+  },
+  {
+    "name": "Quotes select bare insurer with polite suffix",
+    "message": "etiqa please",
+    "step": "quotes",
+    "expectedIntent": "select_quote",
+    "expectedDataContains": { "insurer": "etiqa" }
+  },
+  {
+    "name": "Quotes ask about insurer should remain question",
+    "message": "about etiqa",
+    "step": "quotes",
+    "expectedIntent": "ask_question"
+  },
+  {
+    "name": "Quotes select typo",
+    "message": "i choose etiqqa",
+    "step": "quotes",
+    "expectedIntent": "select_quote",
+    "expectedDataContains": { "insurer": "etiqa" }
+  },
+  {
+    "name": "Quotes no answer",
+    "message": "no",
+    "step": "quotes",
+    "expectedIntent": "other"
+  },
+  {
+    "name": "Change quote request from addons",
+    "message": "can i switch to etiqa?",
+    "step": "addons",
+    "selectedQuote": true,
+    "currentInsurer": "Takaful Ikhlas",
+    "expectedIntent": "change_quote",
+    "expectedDataContains": { "newInsurer": "etiqa" }
+  },
+  {
+    "name": "Change quote request from roadtax",
+    "message": "change to allianz",
+    "step": "roadtax",
+    "selectedQuote": true,
+    "currentInsurer": "Etiqa Insurance",
+    "addOnsConfirmed": true,
+    "expectedIntent": "change_quote",
+    "expectedDataContains": { "newInsurer": "allianz" }
+  },
+  {
+    "name": "Pending change confirm",
+    "message": "yes please",
+    "step": "payment",
+    "selectedQuote": true,
+    "pendingAction": "confirm_quote_change",
+    "expectedIntent": "confirm_change",
+    "minConfidence": 0.9
+  },
+  {
+    "name": "Pending change cancel",
+    "message": "no",
+    "step": "payment",
+    "selectedQuote": true,
+    "pendingAction": "confirm_quote_change",
+    "expectedIntent": "other",
+    "expectedDataContains": { "cancelPendingAction": true }
+  },
+  {
+    "name": "Addons skip",
+    "message": "skip",
+    "step": "addons",
+    "selectedQuote": true,
+    "expectedIntent": "select_addon"
+  },
+  {
+    "name": "Addons no thanks",
+    "message": "no thanks",
+    "step": "addons",
+    "selectedQuote": true,
+    "expectedIntent": "select_addon"
+  },
+  {
+    "name": "Addons explicit selection",
+    "message": "add windscreen",
+    "step": "addons",
+    "selectedQuote": true,
+    "expectedIntent": "select_addon",
+    "expectedDataContains": { "confirmed": true }
+  },
+  {
+    "name": "Addons multi direct selection",
+    "message": "windscreen and flood",
+    "step": "addons",
+    "selectedQuote": true,
+    "expectedIntent": "select_addon"
+  },
+  {
+    "name": "Addons question",
+    "message": "do i need flood?",
+    "step": "addons",
+    "selectedQuote": true,
+    "expectedIntent": "ask_question"
+  },
+  {
+    "name": "Addons indecision",
+    "message": "not sure which addon",
+    "step": "addons",
+    "selectedQuote": true,
+    "expectedIntent": "ask_question"
+  },
+  {
+    "name": "Addons playful",
+    "message": "you pick for me",
+    "step": "addons",
+    "selectedQuote": true,
+    "expectedIntent": "unclear_or_playful"
+  },
+  {
+    "name": "Addons unclear ack",
+    "message": "ok",
+    "step": "addons",
+    "selectedQuote": true,
+    "expectedIntent": "other"
+  },
+  {
+    "name": "Roadtax 6m digital",
+    "message": "6 month digital",
+    "step": "roadtax",
+    "selectedQuote": true,
+    "addOnsConfirmed": true,
+    "expectedIntent": "select_roadtax",
+    "expectedDataContains": { "option": "6month-digital" }
+  },
+  {
+    "name": "Roadtax 12m delivered",
+    "message": "12 month deliver",
+    "step": "roadtax",
+    "selectedQuote": true,
+    "addOnsConfirmed": true,
+    "expectedIntent": "select_roadtax",
+    "expectedDataContains": { "option": "12month-deliver" }
+  },
+  {
+    "name": "Roadtax none",
+    "message": "insurance only",
+    "step": "roadtax",
+    "selectedQuote": true,
+    "addOnsConfirmed": true,
+    "expectedIntent": "select_roadtax",
+    "expectedDataContains": { "option": "none" }
+  },
+  {
+    "name": "Roadtax plain 12 months",
+    "message": "12 months",
+    "step": "roadtax",
+    "selectedQuote": true,
+    "addOnsConfirmed": true,
+    "expectedIntent": "select_roadtax",
+    "expectedDataContains": { "option": "12month-digital" }
+  },
+  {
+    "name": "Roadtax playful",
+    "message": "up to you",
+    "step": "roadtax",
+    "selectedQuote": true,
+    "addOnsConfirmed": true,
+    "expectedIntent": "unclear_or_playful"
+  },
+  {
+    "name": "Roadtax ambiguous confirm",
+    "message": "ok",
+    "step": "roadtax",
+    "selectedQuote": true,
+    "addOnsConfirmed": true,
+    "expectedIntent": "other"
+  },
+  {
+    "name": "Personal details via email",
+    "message": "my email is test@example.com",
+    "step": "personal_details",
+    "selectedQuote": true,
+    "expectedIntent": "submit_details"
+  },
+  {
+    "name": "Personal details via phone and address",
+    "message": "0123456789, jalan setia prima 4, shah alam",
+    "step": "personal_details",
+    "selectedQuote": true,
+    "expectedIntent": "submit_details"
+  },
+  {
+    "name": "Personal details question",
+    "message": "why need my address?",
+    "step": "personal_details",
+    "selectedQuote": true,
+    "expectedIntent": "ask_question"
+  },
+  {
+    "name": "Personal details should not treat plate as vehicle info",
+    "message": "my plate is wxy1234",
+    "step": "personal_details",
+    "selectedQuote": true,
+    "expectedIntent": "other"
+  },
+  {
+    "name": "OTP 4-digit verify",
+    "message": "1470",
+    "step": "otp",
+    "selectedQuote": true,
+    "expectedIntent": "verify_otp",
+    "expectedDataContains": { "valid": true }
+  },
+  {
+    "name": "OTP question",
+    "message": "what otp?",
+    "step": "otp",
+    "selectedQuote": true,
+    "expectedIntent": "ask_question"
+  },
+  {
+    "name": "Payment proceed confirm",
+    "message": "yes please",
+    "step": "payment",
+    "selectedQuote": true,
+    "addOnsConfirmed": true,
+    "expectedIntent": "select_payment",
+    "expectedDataContains": { "method": "any" }
+  },
+  {
+    "name": "Payment by FPX",
+    "message": "can i use fpx?",
+    "step": "payment",
+    "selectedQuote": true,
+    "expectedIntent": "select_payment",
+    "expectedDataContains": { "method": "fpx" }
+  },
+  {
+    "name": "Payment by card",
+    "message": "i want to pay by card",
+    "step": "payment",
+    "selectedQuote": true,
+    "expectedIntent": "select_payment",
+    "expectedDataContains": { "method": "card" }
+  },
+  {
+    "name": "Payment no should not auto select",
+    "message": "no",
+    "step": "payment",
+    "selectedQuote": true,
+    "expectedIntent": "other"
+  }
+]

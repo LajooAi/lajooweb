@@ -1,0 +1,79 @@
+{
+  "insurers": [
+    {
+      "id": "takaful-ikhlas",
+      "name": "Takaful Ikhlas",
+      "logo": "/partners/takaful.svg",
+      "priceBefore": 995,
+      "priceAfter": 796,
+      "ncdPercent": 20,
+      "sumInsured": 34000,
+      "features": [
+        "Easy and Fast Claims Approval",
+        "1st Takaful Operator in Malaysia",
+        "Shariah-Compliant"
+      ]
+    },
+    {
+      "id": "etiqa",
+      "name": "Etiqa",
+      "logo": "/partners/etiqa.svg",
+      "priceBefore": 1090,
+      "priceAfter": 872,
+      "ncdPercent": 20,
+      "sumInsured": 35000,
+      "features": [
+        "FREE 24-hour Claim Assistance"
+      ]
+    },
+    {
+      "id": "allianz",
+      "name": "Allianz",
+      "logo": "/partners/allianz.svg",
+      "priceBefore": 1150,
+      "priceAfter": 920,
+      "ncdPercent": 20,
+      "sumInsured": 36000,
+      "features": [
+        "FREE 24-hour Claim Assistance",
+        "Best Car Insurer 2018"
+      ]
+    }
+  ],
+  "addOns": [
+    {
+      "id": "windscreen",
+      "name": "Windscreen",
+      "price": 100,
+      "description": "covers glass damage"
+    },
+    {
+      "id": "special-perils",
+      "name": "Special Perils",
+      "price": 50,
+      "description": "covers floods & natural disasters (landslides, storms)"
+    },
+    {
+      "id": "e-hailing",
+      "name": "E-hailing",
+      "price": 500,
+      "description": "required for Grab drivers"
+    }
+  ],
+  "roadTax": {
+    "6months": {
+      "digital": 45,
+      "delivered": 65
+    },
+    "12months": {
+      "digital": 90,
+      "delivered": 110
+    }
+  },
+  "deliveryTimes": {
+    "klangValley": "2 working days",
+    "peninsularTown": "2 working days",
+    "peninsularRural": "5 working days",
+    "sarawak": "5 working days"
+  }
+}
