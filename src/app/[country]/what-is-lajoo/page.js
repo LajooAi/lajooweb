@@ -1,4 +1,5 @@
 import "./about.css";
+import Link from "next/link";
 
 const insurerLogos = [
   "/partners/etiqa.svg",
@@ -129,9 +130,9 @@ export default function WhatIsLajooPage() {
             <br />No agents, no forms, 24/7 AI-powered.
           </p>
           <div className="cta-row">
-          <a className="cta-primary" href="/" rel="noreferrer">
+          <Link className="cta-primary" href="/">
             Chat with LAJOO
-          </a>
+          </Link>
           </div>
 
 <section className="steps-panel" id="steps">

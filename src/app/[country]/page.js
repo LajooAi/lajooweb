@@ -450,7 +450,16 @@ Your coverage starts immediately. Drive safe! 🚗`
               )
             );
           } else if (data.type === "error") {
-            throw new Error(data.message || "Something went wrong.");
+            const rawError = data.message || "Something went wrong.";
+            const userMessage = /OPENAI_API_KEY/i.test(rawError)
+              ? "LAJOO is not configured yet. Please set a valid OPENAI API key and restart your app."
+              : rawError;
+            setError(rawError);
+            setMessages((prev) =>
+              prev.map((msg) => (msg.id === assistantId ? { ...msg, content: userMessage } : msg))
+            );
+            setIsStreaming(false);
+            return;
           } else if (data.type === "done" && data.reply) {
             // Clean any remaining markers from the response
             const cleanedReply = data.reply
@@ -477,11 +486,15 @@ Your coverage starts immediately. Drive safe! 🚗`
       }
     } catch (err) {
       console.error(err);
-      setError(err.message || "Unable to reach LAJOO.");
+      const rawError = err.message || "Unable to reach LAJOO.";
+      const userMessage = /OPENAI_API_KEY/i.test(rawError)
+        ? "LAJOO is not configured yet. Please set a valid OPENAI API key and restart your app."
+        : "Sorry, I could not reach our insurer partner. Please try again.";
+      setError(rawError);
       setMessages((prev) =>
         prev.map((msg) =>
           msg.id === assistantId
-            ? { ...msg, content: "Sorry, I could not reach our insurer partner. Please try again." }
+            ? { ...msg, content: userMessage }
             : msg
         )
       );

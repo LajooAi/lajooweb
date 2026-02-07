@@ -481,9 +481,17 @@ export async function POST(request) {
       return NextResponse.json({ error: "Missing messages array" }, { status: 400 });
     }
 
-    const apiKey = process.env.OPENAI_API_KEY;
-    if (!apiKey) {
-      return NextResponse.json({ error: "OPENAI_API_KEY not configured" }, { status: 500 });
+    const apiKey = (process.env.OPENAI_API_KEY || "").trim();
+    const looksLikePlaceholderKey =
+      !apiKey ||
+      apiKey === "sk-..." ||
+      apiKey.includes("...") ||
+      apiKey.length < 20;
+    if (looksLikePlaceholderKey) {
+      return NextResponse.json(
+        { error: "OPENAI_API_KEY is missing or invalid. Set a real key in .env.local (localhost) or Vercel Environment Variables, then restart." },
+        { status: 500 }
+      );
     }
 
     // ========================================================================
@@ -1297,8 +1305,11 @@ This summary box must appear in EVERY response from now on until payment is comp
       });
 
       if (!completion.ok) {
-        const error = await completion.text();
-        throw new Error(`OpenAI API error: ${error}`);
+        const errorText = await completion.text();
+        if (errorText.includes("invalid_api_key")) {
+          throw new Error("OPENAI_API_KEY is invalid. Update your key and restart the app.");
+        }
+        throw new Error(`OpenAI API error: ${errorText}`);
       }
 
       const data = await completion.json();

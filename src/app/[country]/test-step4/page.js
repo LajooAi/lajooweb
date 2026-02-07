@@ -94,7 +94,7 @@ export default function TestStep4() {
               Test Hybrid Approach: Type your details here
             </h3>
             <p style={{ fontSize: "14px", color: "#6b7280", marginBottom: "16px" }}>
-              Try typing: "My email is john@example.com, phone 0123456789, and address is 123 Jalan Bukit, Kuala Lumpur"
+              Try typing: &quot;My email is john@example.com, phone 0123456789, and address is 123 Jalan Bukit, Kuala Lumpur&quot;
             </p>
             <form onSubmit={handleChatSubmit} style={{ display: "flex", gap: "12px" }}>
               <input
