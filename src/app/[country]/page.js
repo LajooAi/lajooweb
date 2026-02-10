@@ -45,6 +45,14 @@ const flattenNodeText = (node) => {
 };
 
 const isStepIndicator = (text) => /^step\s*\d+\s*of\s*\d+\s*[—-]/i.test(text.trim());
+const parseStepIndicator = (text) => {
+  const match = text.trim().match(/^step\s*(\d+)\s*of\s*(\d+)\s*[—-]\s*(.+)$/i);
+  if (!match) return null;
+  return { current: match[1], total: match[2], title: match[3] };
+};
+const isSummaryTitleLine = (text) => /^summary$/i.test(text.trim()) || /^✓\s*renewal summary\b/i.test(text.trim());
+const isSummaryDividerLine = (text) => /^[─-]{8,}$/.test(text.trim());
+const isSummaryTotalLine = (text) => /^(?:💰\s*)?total:\s*rm\s*\d[\d,]*/i.test(text.trim());
 
 export default function Home() {
   const [inputText, setInputText] = useState("");
@@ -596,12 +604,29 @@ Your coverage starts immediately. Drive safe! 🚗`
                               </a>
                             );
                           },
-                          p: ({ children }) => {
+                          p: ({ children, className }) => {
                             const text = flattenNodeText(children).trim();
                             if (isStepIndicator(text)) {
-                              return <p className="chat-step-indicator">{text}</p>;
+                              const parsed = parseStepIndicator(text);
+                              if (parsed) {
+                                return (
+                                  <p className="chat-step-indicator">
+                                    Step <strong>{parsed.current}</strong> of <strong>{parsed.total}</strong> — {parsed.title}
+                                  </p>
+                                );
+                              }
+                              return <p className="chat-step-indicator">{children}</p>;
                             }
-                            return <p>{children}</p>;
+                            if (isSummaryTitleLine(text)) {
+                              return <p className="summary-title">{children}</p>;
+                            }
+                            if (isSummaryDividerLine(text)) {
+                              return <p className="summary-divider">{children}</p>;
+                            }
+                            if (isSummaryTotalLine(text)) {
+                              return <p className="summary-total">{children}</p>;
+                            }
+                            return <p className={className}>{children}</p>;
                           },
                         }}
                       >

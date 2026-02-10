@@ -14,6 +14,11 @@ test('should only parse a single explicit recommendation', () => {
   );
 
   assert.equal(
+    parseRecommendedInsurerFromAssistantMessage("I'd recommend Takaful Ikhlas at RM 796 - best value. Want to proceed with this?"),
+    'takaful'
+  );
+
+  assert.equal(
     parseRecommendedInsurerFromAssistantMessage('Pick Takaful, Etiqa, Allianz, or say recommend for me.'),
     null
   );

@@ -227,26 +227,6 @@ export function calculateAddOnsTotal(selectedIds) {
 // ============================================================================
 
 export const ROAD_TAX_OPTIONS = {
-  '6MONTH_DIGITAL': {
-    id: '6month-digital',
-    name: '6-Month (Digital Only)',
-    duration: 6,
-    delivery: 'digital',
-    features: ['Digital road tax MYJPJ (Instant)'],
-    basePrice: 45,
-    deliveryFee: 0,
-    totalPrice: 45,
-  },
-  '6MONTH_DELIVER': {
-    id: '6month-deliver',
-    name: '6-Month (Deliver to Me)',
-    duration: 6,
-    delivery: 'physical',
-    features: ['Digital road tax MYJPJ (Instant)', 'Physical road tax sticker (3-5 business days)'],
-    basePrice: 45,
-    deliveryFee: 10,
-    totalPrice: 55,
-  },
   '12MONTH_DIGITAL': {
     id: '12month-digital',
     name: '12-Month (Digital Only)',
@@ -256,16 +236,6 @@ export const ROAD_TAX_OPTIONS = {
     basePrice: 90,
     deliveryFee: 0,
     totalPrice: 90,
-  },
-  '12MONTH_DELIVER': {
-    id: '12month-deliver',
-    name: '12-Month (Deliver to Me)',
-    duration: 12,
-    delivery: 'physical',
-    features: ['Digital road tax MYJPJ (Instant)', 'Physical road tax sticker (3-5 business days)'],
-    basePrice: 90,
-    deliveryFee: 10,
-    totalPrice: 100,
   },
   NONE: {
     id: 'none',

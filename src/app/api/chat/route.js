@@ -24,10 +24,35 @@ import {
 // DETERMINISTIC BLOCK BUILDERS — code-generated markdown the AI must include
 // ============================================================================
 
-/** Build the "Your Selection" summary box from current state */
+function formatPlateNumberForDisplay(plate) {
+  if (!plate) return '-';
+  const compact = String(plate).replace(/\s+/g, '').toUpperCase();
+  const match = compact.match(/^([A-Z]{1,3})(\d{1,4})([A-Z]{0,3})$/);
+  if (!match) return compact;
+  const [, prefix, number, suffix] = match;
+  return suffix ? `${prefix} ${number} ${suffix}` : `${prefix} ${number}`;
+}
+
+function getPolicyEffectiveRangeDisplay() {
+  const today = new Date();
+  const start = new Date(today);
+  start.setDate(start.getDate() + 30); // roughly next renewal
+  const end = new Date(start);
+  end.setFullYear(end.getFullYear() + 1);
+  end.setDate(end.getDate() - 1); // inclusive 12-month coverage window
+  const fmt = (d) => d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+  return `${fmt(start)} - ${fmt(end)}`;
+}
+
+/** Build the quote summary box from current state */
 function buildSummaryBox(state) {
   const insurer = state.selectedQuote?.insurer || 'Not selected';
   const insurerPrice = state.selectedQuote?.priceAfter || 0;
+  const plateDisplay = formatPlateNumberForDisplay(state?.vehicleInfo?.plateNumber || state?.plateNumber);
+  const policyEffectiveDisplay = getPolicyEffectiveRangeDisplay();
+  const insurerQuote = getQuotes().find((q) => q.insurer.displayName === insurer);
+  const coverType = state?.vehicleInfo?.coverType || state?.selectedQuote?.coverType || 'Comprehensive';
+  const sumInsured = state?.selectedQuote?.sumInsured || insurerQuote?.sumInsured || null;
 
   // Resolve logo from insurer name
   const logoMap = {
@@ -40,9 +65,9 @@ function buildSummaryBox(state) {
     ? `![${insurer}](${logo}) ${insurer} — RM ${insurerPrice.toLocaleString()}`
     : 'Not selected';
 
-  const addOnsLine = state.selectedAddOns.length > 0
-    ? state.selectedAddOns.map(a => `${a.name} - RM ${a.price}`).join(', ')
-    : 'Not selected';
+  const addOnsBlock = state.selectedAddOns.length > 0
+    ? `**Add-ons:** ${state.selectedAddOns.map(a => `${a.name} — RM ${a.price}`).join(', ')}`
+    : '**Add-ons:** Not selected';
   const addOnsTotal = state.selectedAddOns.reduce((sum, a) => sum + (a.price || 0), 0);
 
   const roadTaxLine = state.selectedRoadTax && state.selectedRoadTax.price > 0
@@ -52,38 +77,44 @@ function buildSummaryBox(state) {
 
   const total = insurerPrice + addOnsTotal + roadTaxTotal;
 
-  return `---
-**Your Selection**
-**Insurance:** ${insurerLine}
-**Add-ons:** ${addOnsLine}
-**Road tax:** ${roadTaxLine}
+return `**✓ Renewal Summary** (${plateDisplay})
 
-💰 <u>**Total: RM ${total.toLocaleString()}**</u>
----`;
+─────────────────────
+
+**Policy Effective:** ${policyEffectiveDisplay}  
+**Sum Insured:** ${sumInsured ? `RM ${sumInsured.toLocaleString()}` : 'N/A'}  
+**Cover Type:** ${coverType}
+
+**Insurer:** ${insurerLine}  
+${addOnsBlock}  
+**Road Tax:** ${roadTaxLine}
+
+**Total:** &nbsp;<u>RM ${total.toLocaleString()}</u>`;
 }
 
 /** Build the 3-quote cards block */
 function buildQuotesBlock() {
   const quotes = getQuotes();
-  return quotes.map(q => {
+  return quotes.map((q) => {
     const logo = q.insurer.logoUrl;
     const name = q.insurer.displayName;
     const final = q.pricing.finalPremium;
     const base = q.pricing.basePremium;
     const si = q.sumInsured.toLocaleString();
-    const features = q.insurer.features.map(f => `✓ ${f}`).join(' ');
-    return `![${name}](${logo}) **${name}** — **RM ${final}**
+    const features = q.insurer.features.map(f => `✓ ${f}`).join('\n');
+    const block = `![${name}](${logo}) **${name}** — **RM ${final}**
 Sum Insured: RM ${si}
 ${features}
 ~~RM ${base.toLocaleString()}~~ → RM ${final} (${q.pricing.ncdPercent}% NCD)`;
-  }).join('\n\n');
+    return `${block}\n─────────────────────`;
+  }).join('\n');
 }
 
 /** Build the add-ons menu */
 function buildAddOnsMenu() {
-  return `- **Windscreen** — RM ${ADDONS.WINDSCREEN.price}
-- **Special Perils (Flood & Natural Disaster)** — RM ${ADDONS.FLOOD.price}
-- **E-hailing** — RM ${ADDONS.EHAILING.price}`;
+  return `• Windscreen — RM ${ADDONS.WINDSCREEN.price}
+• Special Perils (Flood & Natural Disaster) — RM ${ADDONS.FLOOD.price}
+• E-hailing — RM ${ADDONS.EHAILING.price}`;
 }
 
 function canUseDeliveredRoadTax(state) {
@@ -93,16 +124,16 @@ function canUseDeliveredRoadTax(state) {
 /** Build the road tax menu */
 function buildRoadTaxMenu(state) {
   if (canUseDeliveredRoadTax(state)) {
-    return `- **6 months**: RM 45 (digital) | RM 55 (delivered)
-- **12 months**: RM 90 (digital) | RM 100 (delivered)
+    return `**12 months (Digital)** — RM 90
+
+Note: printed delivery is available for vehicles registered under a Foreign ID or Company Registration.
 
 Or continue without road tax.`;
   }
 
-  return `- **6 months**: RM 45 (digital only)
-- **12 months**: RM 90 (digital only)
+  return `**12 months (Digital)** — RM 90
 
-Printed + delivered road tax is available only for **Foreign ID** or **Company Registration** vehicle ownership.
+Note: printed delivery is available for vehicles registered under a Foreign ID or Company Registration.
 
 Or continue without road tax.`;
 }
@@ -110,13 +141,6 @@ Or continue without road tax.`;
 /** Build the vehicle info block from a profile */
 function buildVehicleBlock(profile) {
   if (!profile) return '';
-  // Policy dates: next year from today
-  const today = new Date();
-  const start = new Date(today);
-  start.setDate(start.getDate() + 30); // roughly next renewal
-  const end = new Date(start);
-  end.setFullYear(end.getFullYear() + 1);
-  const fmt = d => d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
 
   return `**Vehicle Reg.Num**: ${profile.plateNumber}
 **Vehicle**: ${profile.year} ${profile.make} ${profile.model}
@@ -124,7 +148,7 @@ function buildVehicleBlock(profile) {
 **Postcode**: ${profile.address.postcode}
 **NCD**: ${profile.ncdPercent}%
 **Cover Type**: ${profile.coverType}
-**Policy Effective**: ${fmt(start)} - ${fmt(end)}`;
+**Policy Effective**: ${getPolicyEffectiveRangeDisplay()}`;
 }
 
 /** Build the payment link */
@@ -139,8 +163,13 @@ function buildPaymentLink(state) {
   return `[**Pay RM ${total.toLocaleString()} →**](/my/payment/${payId}?total=${total}&insurer=${insurer}&plate=${plate}&insurance=${insurerPrice}&addons=${addOnsTotal}&roadtax=${roadTaxTotal})`;
 }
 
-const STEP_LINE_REGEX = /^\s*(?:\*{1,2})?\s*step\s+\d+\s+of\s+5\s*[—-]/im;
-const STEP_LINE_CAPTURE_REGEX = /^\s*(?:\*{1,2})?\s*(step\s+\d+\s+of\s+5\s*[—-]\s*[^\n*]+)\s*(?:\*{1,2})?/im;
+const STEP_LINE_REGEX = /^\s*(?:\*{1,2})?\s*step\s+(?:\*{1,2})?\d+(?:\*{1,2})?\s+of\s+(?:\*{1,2})?5(?:\*{1,2})?\s*[—-]/im;
+const STEP_LINE_CAPTURE_REGEX = /^\s*(?:\*{1,2})?\s*(step\s+(?:\*{1,2})?\d+(?:\*{1,2})?\s+of\s+(?:\*{1,2})?5(?:\*{1,2})?\s*[—-]\s*[^\n*]+)\s*(?:\*{1,2})?/im;
+const STEP_LINE_ONLY_REGEX = /^\s*(?:\*{1,2})?\s*step\s+(?:\*{1,2})?\d+(?:\*{1,2})?\s+of\s+(?:\*{1,2})?5(?:\*{1,2})?\s*[—-]\s*[^\n]*$/i;
+
+function formatStepLine(step, title) {
+  return `Step **${step}** of **5** — ${title}`;
+}
 
 function normalizeStepLine(stepLine) {
   if (!stepLine || typeof stepLine !== 'string') return null;
@@ -158,21 +187,119 @@ function extractStepLineFromText(text) {
   return match ? match[1].trim() : null;
 }
 
+function normalizeStepLineFromSingleLine(line) {
+  if (!line || typeof line !== 'string') return null;
+  if (!STEP_LINE_ONLY_REGEX.test(line.trim())) return null;
+  return normalizeStepLine(line);
+}
+
+function dedupeConsecutiveStepLines(response) {
+  if (!response || typeof response !== 'string') return response;
+
+  const lines = response.split('\n');
+  const out = [];
+
+  for (const line of lines) {
+    const currentNorm = normalizeStepLineFromSingleLine(line);
+    if (!currentNorm) {
+      out.push(line);
+      continue;
+    }
+
+    // Compare with the previous non-empty rendered line.
+    let prev = out.length - 1;
+    while (prev >= 0 && out[prev].trim() === '') prev -= 1;
+    const prevNorm = prev >= 0 ? normalizeStepLineFromSingleLine(out[prev]) : null;
+
+    if (prevNorm && prevNorm === currentNorm) {
+      // Skip duplicate step line (same step/title) regardless of blank lines in between.
+      continue;
+    }
+
+    out.push(line);
+  }
+
+  return out.join('\n').trim();
+}
+
 function ensureStepLineIfMissing(response, stepLine) {
   if (!stepLine || !response) return response;
   if (STEP_LINE_REGEX.test(response)) return response;
-  return `${stepLine}\n\n${response}`;
+  const text = String(response).trim();
+  const lowerStep = String(stepLine).toLowerCase();
+
+  const insertBeforePattern = (pattern) => {
+    const idx = text.search(pattern);
+    if (idx < 0) return null;
+    const before = text.slice(0, idx).trimEnd();
+    const after = text.slice(idx).trimStart();
+    return `${before}\n\n${stepLine}\n\n${after}`.trim();
+  };
+
+  // Prefer placing step labels right above the action prompt section.
+  if (lowerStep.includes('add-ons')) {
+    const placed = insertBeforePattern(/optional protection \(add-ons\):|optional protection you may want:|would you like to add any of these\?|want add-ons\?/i);
+    if (placed) return placed;
+  }
+  if (lowerStep.includes('road tax')) {
+    const placed = insertBeforePattern(/want to renew your .*road tax|reply \*\*ok\*\*|or continue without road tax/i);
+    if (placed) return placed;
+  }
+  if (lowerStep.includes('your details')) {
+    const placed = insertBeforePattern(/almost done! i need:|now,\s*please provide your:/i);
+    if (placed) return placed;
+  }
+  if (lowerStep.includes('choose insurer')) {
+    const placed = insertBeforePattern(/here are your options:|which option would you like to go with|which insurer would you like to go with/i);
+    if (placed) return placed;
+  }
+
+  // If summary exists, place step after summary block as fallback.
+  const totalLineMatch = text.match(/(?:^|\n)\s*(?:💰\s*)?(?:\*\*)?Total:?(?:\*\*)?\s*(?:&nbsp;)?\s*(?:<u>)?\s*RM[^\n]*/i);
+  if (totalLineMatch) {
+    const insertPos = totalLineMatch.index + totalLineMatch[0].length;
+    const before = text.slice(0, insertPos).trimEnd();
+    const after = text.slice(insertPos).trimStart();
+    return `${before}\n\n${stepLine}\n\n${after}`.trim();
+  }
+
+  // Last resort.
+  return `${stepLine}\n\n${text}`;
+}
+
+const PAYMENT_LINK_REGEX = /\/my\/payment\/[a-z0-9-]+/i;
+const SUMMARY_BLOCK_REGEX = /(?:^✓\s*(?:\*\*)?renewal summary(?:\*\*)?\s*[—-]\s*[^\n]+|(?:^|\n)\*\*Policy Effective:\*\*|(?:^|\n)(?:💰\s*)?(?:\*\*)?Total:?(?:\*\*)?\s*(?:&nbsp;)?\s*(?:<u>)?\s*RM\s*\d[\d,]*)/im;
+
+function ensurePaymentLinkIfMissing(response, paymentLink, shouldInject) {
+  if (!shouldInject || !paymentLink) return response;
+  if (!response || typeof response !== 'string') return paymentLink;
+  if (PAYMENT_LINK_REGEX.test(response)) return response;
+  return `${response.trim()}\n\n${paymentLink}`;
+}
+
+function ensureSummaryIfMissing(response, summaryBox, shouldInject) {
+  if (!shouldInject || !summaryBox) return response;
+  if (!response || typeof response !== 'string') return summaryBox;
+  if (SUMMARY_BLOCK_REGEX.test(response)) return response;
+
+  const stepIndex = response.search(STEP_LINE_REGEX);
+  if (stepIndex > 0) {
+    const before = response.slice(0, stepIndex).trimEnd();
+    const after = response.slice(stepIndex).trimStart();
+    return `${before}\n\n${summaryBox}\n\n${after}`.trim();
+  }
+
+  return `${response.trim()}\n\n${summaryBox}`;
 }
 
 function getCurrentStageStepLine(state) {
   if (!state.hasCompleteVehicleIdentification()) {
-    return '*Step 1 of 5 — Vehicle Info*';
+    return formatStepLine(1, 'Vehicle Info');
   }
 
-  if (state.step === FLOW_STEPS.QUOTES && !state.selectedQuote) return '*Step 2 of 5 — Choose Insurer*';
-  if (state.step === FLOW_STEPS.ADDONS) return '*Step 3 of 5 — Add-ons*';
-  if (state.step === FLOW_STEPS.ROADTAX) return '*Step 4 of 5 — Road Tax*';
-  if (state.step === FLOW_STEPS.PERSONAL_DETAILS) return '*Step 5 of 5 — Your Details*';
+  if (state.step === FLOW_STEPS.ADDONS) return formatStepLine(3, 'Add-ons');
+  if (state.step === FLOW_STEPS.ROADTAX) return formatStepLine(4, 'Road Tax');
+  if (state.step === FLOW_STEPS.PERSONAL_DETAILS) return formatStepLine(5, 'Your Details');
 
   return null;
 }
@@ -187,11 +314,9 @@ function getExpectedStepLine(intent, state, messages) {
 
   // Prefer explicit transition triggers.
   let candidate = null;
-  if (intent.intent === USER_INTENTS.SELECT_QUOTE) candidate = '*Step 3 of 5 — Add-ons*';
-  else if (intent.intent === USER_INTENTS.SELECT_ADDON) candidate = '*Step 4 of 5 — Road Tax*';
-  else if (intent.intent === USER_INTENTS.SELECT_ROADTAX) candidate = '*Step 5 of 5 — Your Details*';
-  else if (intent.intent === USER_INTENTS.PROVIDE_INFO && state.hasCompleteVehicleIdentification()) candidate = '*Step 2 of 5 — Choose Insurer*';
-  else if (intent.intent === USER_INTENTS.CONFIRM && state.step === FLOW_STEPS.QUOTES && !state.selectedQuote) candidate = '*Step 2 of 5 — Choose Insurer*';
+  if (intent.intent === USER_INTENTS.SELECT_QUOTE) candidate = formatStepLine(3, 'Add-ons');
+  else if (intent.intent === USER_INTENTS.SELECT_ADDON) candidate = formatStepLine(4, 'Road Tax');
+  else if (intent.intent === USER_INTENTS.SELECT_ROADTAX) candidate = formatStepLine(5, 'Your Details');
 
   // Fallback: first render or stage changed from previous assistant message.
   if (!candidate) {
@@ -224,9 +349,7 @@ export const runtime = "nodejs";
 // ============================================================================
 
 function buildSystemPrompt(state, vehicleProfile) {
-  const roadTaxPricingLine = canUseDeliveredRoadTax(state)
-    ? '**Road Tax:** 6 months RM 45 (digital) / RM 55 (delivered) | 12 months RM 90 (digital) / RM 100 (delivered)'
-    : '**Road Tax:** 6 months RM 45 (digital only) | 12 months RM 90 (digital only). Delivered option is only for Foreign ID / Company Registration ownership.';
+  const roadTaxPricingLine = '**Road Tax:** 12 months (Digital) RM 90. Note: printed delivery is available for vehicles registered under a Foreign ID or Company Registration.';
 
   return `You are LAJOO, a smart car insurance assistant in Malaysia.
 
@@ -266,8 +389,8 @@ When user asks "which one?" / "help me decide" / "recommend":
 
 ## FORMATTING RULES
 - **Price format**: ALWAYS "RM xxx" with space (RM 796, not RM796)
-- **Step indicators**: Show *Step X of 5 — Title* at transitions only (italic)
-- **Summary box**: Use --- separators, bold labels only (not values), end with 💰 <u>**Total: RM xxx**</u>
+- **Step indicators**: Show Step **X** of **5** — Title at transitions only (bold the step numbers only). Do not show Step 2 label in the quote-list block.
+- **Summary box**: Keep a compact "Order Summary (plate)" block with 5 key lines (Policy Effective, Sum Insured, Insurer, Add-ons, Road tax), then bold "Total: RM xxx"
 - **Quote cards**: Each quote on separate lines with logo, features, strikethrough price
 - **Vehicle info**: Show all 7 fields on separate lines
 - One emoji per message max
@@ -369,8 +492,7 @@ async function executeFunction(functionName, args) {
     case "get_roadtax_options":
       return {
         options: [
-          { duration: '6 months', digital: 45, physical: 55 },
-          { duration: '12 months', digital: 90, physical: 100 },
+          { duration: '12 months', digital: 90 },
         ],
       };
 
@@ -502,6 +624,8 @@ export async function POST(request) {
     const intent = detectUserIntent(latestMessage, state);
     let roadTaxDeliveryBlocked = false;
     let blockedRoadTaxOption = null;
+    let shouldInjectPaymentLinkFallback = false;
+    let paymentLinkFallback = null;
 
     console.log('State source:', clientState ? 'round-tripped from client' : 'inferred from messages');
     console.log('[AI_INTENT_TRACE]', JSON.stringify({
@@ -543,10 +667,7 @@ export async function POST(request) {
 
     if (intent.intent === USER_INTENTS.SELECT_ROADTAX && intent.data?.option) {
       const roadTaxMap = {
-        '6month-digital': { name: '6 Months Digital', price: 45 },
-        '6month-deliver': { name: '6 Months Delivered', price: 55 },
         '12month-digital': { name: '12 Months Digital', price: 90 },
-        '12month-deliver': { name: '12 Months Delivered', price: 100 },
         'none': { name: 'No Road Tax', price: 0 },
       };
       const selectedOption = intent.data.option;
@@ -703,7 +824,7 @@ If they mention renewal, ask for plate + owner ID.`,
 
 Your response MUST include this exact format:
 
-*Step 1 of 5 — Vehicle Info*
+	${formatStepLine(1, 'Vehicle Info')}
 
 To get started with your insurance renewal, please provide your:
 
@@ -730,13 +851,16 @@ Ask for the missing item only. Keep it brief: "Please provide your **${missingIt
     }
 
     // --- VEHICLE CONFIRMED → show quotes deterministically ---
-    if (intent.intent === USER_INTENTS.CONFIRM && state.hasCompleteVehicleIdentification() && !state.selectedQuote) {
+    if (
+      intent.intent === USER_INTENTS.CONFIRM &&
+      state.hasCompleteVehicleIdentification() &&
+      !state.selectedQuote &&
+      wasLastAssistantVehicleConfirmation(messages)
+    ) {
       const quotesBlock = buildQuotesBlock();
       openAiMessages.push({
         role: "system",
         content: `Vehicle confirmed. Your response MUST include this exact quotes block:
-
-*Step 2 of 5 — Choose Insurer*
 
 Here are your options:
 
@@ -795,7 +919,12 @@ Do NOT alter or abbreviate any field. Show ALL fields exactly as above.`,
     }
 
     // --- CONFIRM at QUOTES step: user accepting AI recommendation ---
-    if (intent.intent === USER_INTENTS.CONFIRM && state.step === FLOW_STEPS.QUOTES && !state.selectedQuote) {
+    if (
+      intent.intent === USER_INTENTS.CONFIRM &&
+      state.step === FLOW_STEPS.QUOTES &&
+      !state.selectedQuote &&
+      !wasLastAssistantVehicleConfirmation(messages)
+    ) {
       // Find the last AI message to see which insurer was recommended
       const lastAIMessage = [...messages].reverse().find(m => m.role === 'assistant')?.content || '';
       const recommendedInsurerKey = parseRecommendedInsurerFromAssistantMessage(lastAIMessage);
@@ -815,27 +944,33 @@ Do NOT alter or abbreviate any field. Show ALL fields exactly as above.`,
           role: "system",
           content: `User confirmed your recommendation of ${recommendedInsurer.insurer}. Your response MUST include:
 
-*Step 3 of 5 — Add-ons*
-
 Great choice! ✅
 
 ${summaryBox}
 
-Want add-ons?
+${formatStepLine(3, 'Add-ons')}
+
+Optional protection (add-ons):
+
 ${addOnsMenu}
+
+Would you like to add any of these?
 
 Do NOT alter prices. You may add a brief line but MUST include the summary box and add-ons menu exactly.`,
         });
       } else {
-        // No clear recommendation found - ask user to specify
+        // No clear recommendation found - re-show full quotes deterministically
         const quotesBlock = buildQuotesBlock();
         openAiMessages.push({
           role: "system",
-          content: `User said "ok" but no specific insurer was recommended. Ask them to pick one:
+          content: `User confirmed but no specific recommended insurer was found in the previous assistant turn.
+Your response MUST include this exact quotes block:
+
+Here are your options:
 
 ${quotesBlock}
 
-Which insurer would you like to go with?`,
+Which option would you like to go with, or would you like my recommendation?`,
         });
       }
     }
@@ -958,14 +1093,17 @@ ${roadTaxMenu}`,
         role: "system",
         content: `User selected ${state.selectedQuote.insurer}. Your response MUST include:
 
-*Step 3 of 5 — Add-ons*
-
 Great choice! ✅
 
 ${summaryBox}
 
-Want add-ons?
+${formatStepLine(3, 'Add-ons')}
+
+Optional protection (add-ons):
+
 ${addOnsMenu}
+
+Would you like to add any of these?
 
 Do NOT alter prices. You may add a brief line but MUST include the summary box and add-ons menu exactly.`,
       });
@@ -998,15 +1136,17 @@ Which insurer would you like to go with?`,
           role: "system",
           content: `User confirmed ${addOnNames}. Your response MUST include:
 
-*Step 4 of 5 — Road Tax*
-
 ${state.selectedAddOns.length > 0 ? `Added ${addOnNames}!` : 'No add-ons selected.'} ✅
 
 ${summaryBox}
 
-Want to renew your **road tax** together? 🚗
+${formatStepLine(4, 'Road Tax')}
+
+Want to renew your 🪪 **Road Tax** together?
 
 ${roadTaxMenu}
+
+Reply **ok/yes** to proceed with 12-month digital, or reply **no road tax**.
 
 Do NOT alter prices. MUST include summary box and road tax menu exactly.`,
         });
@@ -1017,18 +1157,22 @@ Do NOT alter prices. MUST include summary box and road tax menu exactly.`,
     if (intent.intent === USER_INTENTS.SELECT_ROADTAX && roadTaxDeliveryBlocked) {
       const summaryBox = buildSummaryBox(state);
       const roadTaxMenu = buildRoadTaxMenu(state);
-      const attemptedLabel = blockedRoadTaxOption?.startsWith('12') ? '12 Months Delivered' : '6 Months Delivered';
+      const attemptedLabel = blockedRoadTaxOption?.includes('deliver')
+        ? 'printed + delivered road tax'
+        : 'road tax delivery';
       openAiMessages.push({
         role: "system",
-        content: `User selected ${attemptedLabel}, but delivered road tax is not eligible for this ownership type.
-Explain briefly: delivered/printed road tax is only available for **Foreign ID** or **Company Registration** vehicle ownership.
-Then ask them to choose a digital option or no road tax.
-
-*Step 4 of 5 — Road Tax*
+        content: `User asked for ${attemptedLabel}, but it is not eligible for this ownership type.
+Explain briefly and politely: printed delivery is available only for vehicles registered under a Foreign ID or Company Registration.
+Then ask them to choose the 12-month digital option or no road tax.
 
 ${summaryBox}
 
-${roadTaxMenu}`,
+${formatStepLine(4, 'Road Tax')}
+
+${roadTaxMenu}
+
+Ask clearly: "Reply **ok** for 12-month digital, or **no road tax**."`,
       });
     }
 
@@ -1040,11 +1184,11 @@ ${roadTaxMenu}`,
         role: "system",
         content: `User selected road tax: ${roadTaxName}. Your response MUST include:
 
-*Step 5 of 5 — Your Details*
-
 ${roadTaxName !== 'No Road Tax' ? `${roadTaxName} added!` : 'No road tax.'} ✅
 
 ${summaryBox}
+
+${formatStepLine(5, 'Your Details')}
 
 Almost done! I need:
 
@@ -1094,6 +1238,8 @@ Please key in the **OTP** sent to your phone to continue. 📱"`,
         state.refreshQuoteTimestamps();
       } else {
         const paymentLink = buildPaymentLink(state);
+        paymentLinkFallback = paymentLink;
+        shouldInjectPaymentLinkFallback = true;
         const summaryBox = buildSummaryBox(state);
         openAiMessages.push({
           role: "system",
@@ -1117,6 +1263,8 @@ Do NOT alter the payment link URL or amounts.`,
       if (state.isQuoteExpired()) {
         const summaryBox = buildSummaryBox(state);
         const paymentLink = buildPaymentLink(state);
+        paymentLinkFallback = paymentLink;
+        shouldInjectPaymentLinkFallback = true;
         openAiMessages.push({
           role: "system",
           content: `⚠️ Quote expired. Respond with:
@@ -1133,6 +1281,8 @@ ${paymentLink}"`,
       } else {
         // User confirmed payment - show the payment link
         const paymentLink = buildPaymentLink(state);
+        paymentLinkFallback = paymentLink;
+        shouldInjectPaymentLinkFallback = true;
         const summaryBox = buildSummaryBox(state);
         openAiMessages.push({
           role: "system",
@@ -1197,7 +1347,7 @@ Do NOT alter the payment link URL or amounts.`,
           content: `User reply is playful/unclear at road tax. Keep response simple:
 1) acknowledge briefly,
 2) recommend **12-month digital (RM 90)** as default convenience,
-3) ask confirmation: "Go with 12-month digital, or prefer another option?"`,
+3) ask confirmation: "Reply **ok** to proceed with 12-month digital, or reply **no road tax**."`,
         });
       } else if (state.step === FLOW_STEPS.PERSONAL_DETAILS) {
         openAiMessages.push({
@@ -1250,7 +1400,7 @@ Ask: "Which add-on would you like, or reply **skip**?"`,
 
 ${roadTaxMenu}
 
-Ask: "Which option do you want, or reply **no road tax**?"`,
+Ask: "Reply **ok** for 12-month digital, or reply **no road tax**."`,
         });
       }
     }
@@ -1264,18 +1414,20 @@ Ask: "Which option do you want, or reply **no road tax**?"`,
     const shouldInjectSummary =
       state.selectedQuote &&
       state.step !== FLOW_STEPS.QUOTES &&
+      state.step !== FLOW_STEPS.PERSONAL_DETAILS &&
       intent.intent !== USER_INTENTS.ASK_QUESTION &&
       intent.intent !== USER_INTENTS.UNCLEAR_OR_PLAYFUL &&
       intent.intent !== USER_INTENTS.OTHER &&
+      intent.intent !== USER_INTENTS.SUBMIT_DETAILS &&
       intent.intent !== USER_INTENTS.CHANGE_QUOTE;
+    const summaryBoxFallback = shouldInjectSummary ? buildSummaryBox(state) : null;
 
     if (shouldInjectSummary) {
-      const summaryBox = buildSummaryBox(state);
       openAiMessages.push({
         role: "system",
         content: `IMPORTANT: User has selected an insurer. Your response MUST ALWAYS include this summary box somewhere in your response:
 
-${summaryBox}
+${summaryBoxFallback}
 
 This summary box must appear in EVERY response from now on until payment is complete. Do not skip it regardless of what the user asks or says.`,
       });
@@ -1338,7 +1490,10 @@ This summary box must appear in EVERY response from now on until payment is comp
 
     // Enforce visible step indicator on all renewal stages if AI omits it.
     const expectedStepLine = getExpectedStepLine(intent, state, messages);
+    aiResponse = ensureSummaryIfMissing(aiResponse, summaryBoxFallback, shouldInjectSummary);
     aiResponse = ensureStepLineIfMissing(aiResponse, expectedStepLine);
+    aiResponse = dedupeConsecutiveStepLines(aiResponse);
+    aiResponse = ensurePaymentLinkIfMissing(aiResponse, paymentLinkFallback, shouldInjectPaymentLinkFallback);
 
     // ========================================================================
     // 5. STREAM RESPONSE

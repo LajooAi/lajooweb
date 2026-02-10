@@ -748,34 +748,35 @@ export function detectUserIntent(message, currentState) {
   }
 
   // Road tax selection - check if user is selecting a road tax option
-  const isRoadTaxStep = currentState.step === FLOW_STEPS.ROADTAX || currentState.addOnsConfirmed;
+  const isRoadTaxStep = currentState.step === FLOW_STEPS.ROADTAX;
   if (isRoadTaxStep) {
-    // If user just says "ok", "yes", etc. - AI will clarify which option they want
-    if (/^(ok|okay|yes|ya|sure|alright|proceed|continue)$/i.test(msg)) {
-      return { intent: USER_INTENTS.OTHER, confidence: 0.5 };
+    // Single-option flow: "ok/yes/proceed" means accept default 12-month digital.
+    if (/^(ok|okay|yes|ya|sure|alright|proceed|continue|go ahead|do it|yes please)$/i.test(msg)) {
+      return { intent: USER_INTENTS.SELECT_ROADTAX, confidence: 0.9, data: { option: '12month-digital' } };
     }
 
-    if (/6.*month.*digital|digital.*6/i.test(msg)) {
-      return { intent: USER_INTENTS.SELECT_ROADTAX, confidence: 0.9, data: { option: '6month-digital' } };
-    }
-    if (/6.*month.*deliver|deliver.*6/i.test(msg)) {
-      return { intent: USER_INTENTS.SELECT_ROADTAX, confidence: 0.9, data: { option: '6month-deliver' } };
-    }
     if (/12.*month.*digital|digital.*12|year.*digital/i.test(msg)) {
       return { intent: USER_INTENTS.SELECT_ROADTAX, confidence: 0.9, data: { option: '12month-digital' } };
     }
-    if (/12.*month.*deliver|deliver.*12|year.*deliver/i.test(msg)) {
-      return { intent: USER_INTENTS.SELECT_ROADTAX, confidence: 0.9, data: { option: '12month-deliver' } };
+    if (/\b(12\s*(month|months|mth|mths|year|yr)|1\s*year)\b/i.test(msg)) {
+      return { intent: USER_INTENTS.SELECT_ROADTAX, confidence: 0.88, data: { option: '12month-digital' } };
+    }
+
+    // Keep this as clarification instead of selecting a removed option.
+    if (/\b6\s*(month|months|mth|mths)\b/i.test(msg)) {
+      return { intent: USER_INTENTS.ASK_QUESTION, confidence: 0.8 };
+    }
+
+    // Delivery/printed requests are clarified in conversational response.
+    if (/deliver|delivery|printed|physical|sticker/i.test(msg)) {
+      return { intent: USER_INTENTS.ASK_QUESTION, confidence: 0.8 };
     }
 
     // Plain duration fallback:
-    // "12 months" or "6 months" (without digital/delivered) should still select road tax.
+    // "12 months" (without digital/delivered) should still select road tax.
     // Default to digital option when channel is not specified.
     if (/\b12\s*(month|months|mth|mths|year|yr)?\b/i.test(msg)) {
       return { intent: USER_INTENTS.SELECT_ROADTAX, confidence: 0.85, data: { option: '12month-digital' } };
-    }
-    if (/\b6\s*(month|months|mth|mths)?\b/i.test(msg)) {
-      return { intent: USER_INTENTS.SELECT_ROADTAX, confidence: 0.85, data: { option: '6month-digital' } };
     }
 
     if (/no road tax|just insurance|insurance only|skip/i.test(msg)) {

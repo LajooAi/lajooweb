@@ -21,7 +21,7 @@ export function parseRecommendedInsurerFromAssistantMessage(lastAIMessage) {
     return null;
   }
 
-  const hasRecommendationCue = /i recommend|my recommendation|i(?:'d| would) go with|best option|best pick|go with|suggest/i.test(text);
+  const hasRecommendationCue = /i recommend|i(?:'d| would)\s+recommend|my recommendation|i(?:'d| would) go with|best option|best pick|go with|suggest/i.test(text);
   if (!hasRecommendationCue) return null;
 
   return mentions[0];

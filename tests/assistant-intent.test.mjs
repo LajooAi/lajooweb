@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { detectUserIntent, FLOW_STEPS, ConversationState } from '../src/lib/conversationState.js';
-import { extractVehicleInfo } from '../src/utils/nlpExtractor.js';
+import { extractVehicleInfo, extractPersonalInfo } from '../src/utils/nlpExtractor.js';
 
 test('payment confirmation should not trigger quote-change reset', () => {
   const state = {
@@ -59,6 +59,47 @@ test('vehicle info extractor should support foreign/passport and company IDs', (
   assert.equal(company.registrationNumber, 'VEV8899');
   assert.equal(company.ownerId, '202301234567');
   assert.equal(company.ownerIdType, 'company_reg');
+});
+
+test('vehicle info extractor should detect NRIC when plate and NRIC are in one message', () => {
+  const withSpaces = extractVehicleInfo('jrt 9289 951018145405');
+  assert.equal(withSpaces.registrationNumber, 'JRT9289');
+  assert.equal(withSpaces.ownerId, '951018145405');
+  assert.equal(withSpaces.ownerIdType, 'nric');
+
+  const dashed = extractVehicleInfo('plate JRT9289, ic 951018-14-5405');
+  assert.equal(dashed.registrationNumber, 'JRT9289');
+  assert.equal(dashed.ownerId, '951018145405');
+  assert.equal(dashed.ownerIdType, 'nric');
+});
+
+test('vehicle info extractor should capture plain 12-digit owner ID even with imperfect NRIC date digits', () => {
+  const plain12 = extractVehicleInfo('951810145405');
+  assert.equal(plain12.registrationNumber, null);
+  assert.equal(plain12.ownerId, '951810145405');
+  assert.equal(plain12.ownerIdType, 'nric');
+});
+
+test('intent detector should treat standalone 12-digit owner ID as provide_info before personal details step', () => {
+  const state = {
+    step: FLOW_STEPS.VEHICLE_LOOKUP,
+    selectedQuote: null,
+    addOnsConfirmed: false,
+  };
+  const intent = detectUserIntent('951810145405', state);
+  assert.equal(intent.intent, 'provide_info');
+});
+
+test('personal info extractor should detect address with email + phone in same message', () => {
+  const info = extractPersonalInfo('jasonyapkarjuen@gmail.com 0126420803 3a, elitis maya, valencia, sungai buloh, 47000 selangor');
+  assert.equal(info.email, 'jasonyapkarjuen@gmail.com');
+  assert.equal(info.phone, '0126420803');
+  assert.equal(info.address, '3a, elitis maya, valencia, sungai buloh, 47000 selangor');
+});
+
+test('personal info extractor should still avoid false address detection on short non-address text', () => {
+  const info = extractPersonalInfo('deliver to me please');
+  assert.equal(info.address, null);
 });
 
 test('conversation state should stay at personal_details until all details are collected', () => {
@@ -132,4 +173,26 @@ test('road tax step should treat plain "12 months" as 12month-digital selection'
   const intent = detectUserIntent('12 months', state);
   assert.equal(intent.intent, 'select_roadtax');
   assert.equal(intent.data.option, '12month-digital');
+});
+
+test('road tax step should treat "ok" as default 12month-digital selection', () => {
+  const state = {
+    step: FLOW_STEPS.ROADTAX,
+    selectedQuote: { insurer: 'Takaful Ikhlas' },
+    addOnsConfirmed: true,
+  };
+  const intent = detectUserIntent('ok', state);
+  assert.equal(intent.intent, 'select_roadtax');
+  assert.equal(intent.data.option, '12month-digital');
+});
+
+test('otp step should not misclassify "ok" as road tax selection', () => {
+  const state = {
+    step: FLOW_STEPS.OTP,
+    selectedQuote: { insurer: 'Takaful Ikhlas' },
+    addOnsConfirmed: true,
+    selectedRoadTax: { name: '12 Months Digital', price: 90 },
+  };
+  const intent = detectUserIntent('ok', state);
+  assert.notEqual(intent.intent, 'select_roadtax');
 });

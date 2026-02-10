@@ -63,7 +63,16 @@ export function extractPhone(text) {
  * @returns {string|null} - Extracted address or null
  */
 export function extractAddress(text) {
+  if (!text || typeof text !== 'string') return null;
+
   const lowerText = text.toLowerCase();
+  // Remove obvious non-address tokens first (email/phone often come in same message).
+  const textWithoutEmail = text.replace(/\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b/g, ' ');
+  const textWithoutEmailPhone = textWithoutEmail
+    .replace(/\+?60[\s\-]?1[0-9][\s\-]?[0-9]{3,4}[\s\-]?[0-9]{4}\b/g, ' ')
+    .replace(/\b0?1[0-9][\s\-]?[0-9]{3,4}[\s\-]?[0-9]{4}\b/g, ' ');
+  const addressText = textWithoutEmailPhone.replace(/\s+/g, ' ').trim();
+  const lowerAddressText = addressText.toLowerCase();
 
   // Skip if text is clearly a question (not an address submission)
   if (/\?/.test(text) || /^(how|what|when|where|why|which|can|do|does|is|are|will)\b/i.test(text.trim())) {
@@ -72,18 +81,27 @@ export function extractAddress(text) {
 
   // Malaysian street/location indicators - these are strong signals of an actual address
   const streetIndicators = ['jalan', 'jln', 'lorong', 'taman', 'persiaran', 'lebuh', 'kampung', 'kg'];
-  const hasStreetIndicator = streetIndicators.some(indicator => lowerText.includes(indicator));
+  const hasStreetIndicator = streetIndicators.some(indicator => lowerAddressText.includes(indicator));
+  const hasPostcode = /\b\d{5}\b/.test(addressText);
+  const commaCount = (addressText.match(/,/g) || []).length;
+  const hasStructuredAddress = hasPostcode && commaCount >= 2;
+  const stateIndicators = [
+    'selangor', 'kuala lumpur', 'johor', 'penang', 'perak', 'kedah',
+    'kelantan', 'terengganu', 'pahang', 'negeri sembilan', 'melaka',
+    'sabah', 'sarawak', 'perlis', 'putrajaya', 'labuan'
+  ];
+  const hasStateIndicator = stateIndicators.some(state => lowerAddressText.includes(state));
+  const looksLikeAddress = hasStreetIndicator || hasStructuredAddress || (hasPostcode && hasStateIndicator);
 
-  // If no street indicator, don't try to extract address
-  // This prevents "deliver to me" from being matched as an address
-  if (!hasStreetIndicator) {
+  // If no strong address signals, avoid false positives like "deliver to me".
+  if (!looksLikeAddress) {
     return null;
   }
 
   // Try to extract address after common patterns
   // Pattern 1: Look for house number + street pattern (e.g., "3a, jalan..." or "no 12, jalan...")
   const houseStreetPattern = /\b(\d+[a-z]?\s*,?\s*(?:jalan|jln|lorong|taman|persiaran|lebuh)\s+[^@\n]+)/i;
-  const houseMatch = text.match(houseStreetPattern);
+  const houseMatch = addressText.match(houseStreetPattern);
   if (houseMatch) {
     let address = houseMatch[1].trim();
     // Clean trailing punctuation but keep commas within
@@ -95,7 +113,7 @@ export function extractAddress(text) {
 
   // Pattern 2: Look for "no." or "lot" prefix
   const noLotPattern = /\b((?:no\.?|lot)\s*\d+[a-z]?\s*,?\s*(?:jalan|jln|lorong|taman|persiaran|lebuh)\s+[^@\n]+)/i;
-  const noLotMatch = text.match(noLotPattern);
+  const noLotMatch = addressText.match(noLotPattern);
   if (noLotMatch) {
     let address = noLotMatch[1].trim();
     address = address.replace(/[.!?]+$/, '').trim();
@@ -106,12 +124,24 @@ export function extractAddress(text) {
 
   // Pattern 3: Direct street name pattern (e.g., "Jalan Setia Prima, 47000 Shah Alam")
   const streetPattern = /\b((?:jalan|jln|lorong|taman|persiaran|lebuh|kampung|kg)\s+[^@\n]+)/i;
-  const streetMatch = text.match(streetPattern);
+  const streetMatch = addressText.match(streetPattern);
   if (streetMatch) {
     let address = streetMatch[1].trim();
     // Clean trailing punctuation
     address = address.replace(/[.!?]+$/, '').trim();
     if (address.length > 10) {
+      return address;
+    }
+  }
+
+  // Pattern 4: Structured residential format without street keywords
+  // Example: "3A, Elitis Maya, Valencia, Sungai Buloh, 47000 Selangor"
+  const structuredPattern = /\b((?:no\.?\s*)?\d+[a-z]?\s*,\s*[^@\n]{5,}?\b\d{5}\b[^@\n]*)/i;
+  const structuredMatch = addressText.match(structuredPattern);
+  if (structuredMatch) {
+    let address = structuredMatch[1].trim();
+    address = address.replace(/[.!?]+$/, '').trim();
+    if (address.length > 12) {
       return address;
     }
   }
@@ -152,18 +182,37 @@ export function extractRegistrationNumber(text) {
  * @returns {string|null} - Extracted NRIC or null
  */
 export function extractNRIC(text) {
+  if (!text || typeof text !== 'string') return null;
+
   // Malaysian NRIC format: YYMMDD-PB-###G
   // Common formats: 951018145405, 951018-14-5405, etc.
+  const isPlausibleNRIC = (value) => {
+    if (!/^\d{12}$/.test(value)) return false;
+    const month = Number(value.slice(2, 4));
+    const day = Number(value.slice(4, 6));
+    return month >= 1 && month <= 12 && day >= 1 && day <= 31;
+  };
 
-  // Remove all non-digit characters for easier matching
-  const digitsOnly = text.replace(/\D/g, '');
+  // 1) Exact standalone 12-digit token
+  const directMatch = text.match(/(?:^|[^\d])(\d{12})(?!\d)/);
+  if (directMatch && isPlausibleNRIC(directMatch[1])) {
+    return directMatch[1];
+  }
 
-  // Match 12 consecutive digits
-  const nricRegex = /\b([0-9]{12})\b/;
-  const match = digitsOnly.match(nricRegex);
+  // 2) Common segmented format: YYMMDD-##-#### (or with spaces)
+  const segmentedMatch = text.match(/(?:^|[^\d])(\d{6})[\s-]?(\d{2})[\s-]?(\d{4})(?!\d)/);
+  if (segmentedMatch) {
+    const candidate = `${segmentedMatch[1]}${segmentedMatch[2]}${segmentedMatch[3]}`;
+    if (isPlausibleNRIC(candidate)) return candidate;
+  }
 
-  if (match) {
-    return match[1];
+  // 3) Fallback for merged numeric runs (e.g., plate digits + NRIC in one chunk)
+  const digitRuns = text.match(/\d{12,}/g) || [];
+  for (const run of digitRuns) {
+    const candidate = run.slice(-12); // prefer rightmost 12 digits
+    if (isPlausibleNRIC(candidate)) {
+      return candidate;
+    }
   }
 
   return null;
@@ -210,7 +259,23 @@ export function extractOwnerIdentification(text) {
     return { value, type: 'company_reg' };
   }
 
-  // 4) Conservative fallback: short message with clear alphanumeric ID token
+  // 4) Fallback for plain 12-digit owner IDs (common user input for NRIC without separators).
+  // Keep this conservative: accept only when message is short or clearly ID-related.
+  const plain12Digit = text.match(/(?:^|[^\d])(\d{12})(?!\d)/);
+  if (plain12Digit) {
+    const candidate = plain12Digit[1];
+    const tokenCount = text.trim().split(/\s+/).filter(Boolean).length;
+    const likelyIdContext =
+      /\b(ic|nric|id|owner|identification|passport|foreign|army|police|company)\b/i.test(lower) ||
+      tokenCount <= 4;
+    // Avoid misclassifying Malaysian mobile numbers as owner IDs.
+    const looksLikePhone = /^01\d{8,9}$/.test(candidate);
+    if (likelyIdContext && !looksLikePhone) {
+      return { value: candidate, type: 'nric' };
+    }
+  }
+
+  // 5) Conservative fallback: short message with clear alphanumeric ID token
   // Example: "A1234567", "P123456", "TNI-88421"
   const alphaNumToken = text.match(/\b([A-Z]{1,4}[0-9]{4,12}|[0-9]{3,12}[A-Z]{1,4}[0-9]{1,8}|[A-Z0-9]{6,18})\b/i);
   if (alphaNumToken) {
