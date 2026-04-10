@@ -1,0 +1,80 @@
+[
+  {
+    "name": "Happy path basic conversion",
+    "initialState": { "step": "start" },
+    "turns": [
+      { "user": "JRT9289", "expectedIntent": "provide_info", "expectedStepAfter": "quotes" },
+      { "user": "951018145405", "expectedIntent": "provide_info", "expectedStepAfter": "quotes" },
+      { "user": "go with takaful", "expectedIntent": "select_quote", "expectedStepAfter": "addons" },
+      { "user": "skip", "expectedIntent": "select_addon", "expectedStepAfter": "roadtax" },
+      { "user": "ok", "expectedIntent": "select_roadtax", "expectedStepAfter": "personal_details" },
+      { "user": "my email is user@example.com", "expectedIntent": "submit_details", "expectedStepAfter": "personal_details" },
+      { "user": "0123456789, jalan setia 1, shah alam", "expectedIntent": "submit_details", "expectedStepAfter": "otp" },
+      { "user": "1470", "expectedIntent": "verify_otp", "expectedStepAfter": "payment" }
+    ]
+  },
+  {
+    "name": "Quote indecision then selection",
+    "initialState": { "step": "quotes", "selectedQuote": false },
+    "turns": [
+      { "user": "which is better", "expectedIntent": "ask_question", "expectedStepAfter": "quotes" },
+      { "user": "ok maybe etiqa", "expectedIntent": "select_quote", "expectedStepAfter": "addons" },
+      { "user": "windscreen and flood", "expectedIntent": "select_addon", "expectedStepAfter": "roadtax" },
+      { "user": "no road tax", "expectedIntent": "select_roadtax", "expectedStepAfter": "personal_details" }
+    ]
+  },
+  {
+    "name": "Road tax question stays in step",
+    "initialState": {
+      "step": "roadtax",
+      "selectedQuote": { "insurer": "Takaful Ikhlas", "priceAfter": 796 },
+      "addOnsConfirmed": true
+    },
+    "turns": [
+      { "user": "whereelse can i renew roadtax", "expectedIntent": "ask_question", "expectedStepAfter": "roadtax" },
+      { "user": "i want physical printed roadtax", "expectedIntent": "ask_question", "expectedStepAfter": "roadtax" },
+      { "user": "12 months", "expectedIntent": "select_roadtax", "expectedStepAfter": "personal_details" }
+    ]
+  },
+  {
+    "name": "Change quote mid-flow",
+    "initialState": {
+      "step": "addons",
+      "selectedQuote": { "insurer": "Takaful Ikhlas", "priceAfter": 796 }
+    },
+    "turns": [
+      { "user": "can i switch to allianz", "expectedIntent": "change_quote", "expectedStepAfter": "addons" },
+      { "user": "yes", "expectedIntent": "confirm_change", "expectedStepAfter": "quotes" },
+      { "user": "allianz", "expectedIntent": "select_quote", "expectedStepAfter": "addons" }
+    ]
+  },
+  {
+    "name": "Add-ons ambiguity then resolve",
+    "initialState": {
+      "step": "addons",
+      "selectedQuote": { "insurer": "Etiqa Insurance", "priceAfter": 872 }
+    },
+    "turns": [
+      { "user": "ok", "expectedIntent": "other", "expectedStepAfter": "addons" },
+      { "user": "do i need ehailing", "expectedIntent": "ask_question", "expectedStepAfter": "addons" },
+      { "user": "add ehailing", "expectedIntent": "select_addon", "expectedStepAfter": "roadtax" }
+    ]
+  },
+  {
+    "name": "Personal details collection and OTP",
+    "initialState": {
+      "step": "personal_details",
+      "selectedQuote": { "insurer": "Allianz Insurance", "priceAfter": 920 },
+      "selectedAddOns": [{ "name": "Windscreen", "price": 100 }],
+      "addOnsConfirmed": true,
+      "selectedRoadTax": { "name": "12 Months Digital", "price": 90 }
+    },
+    "turns": [
+      { "user": "email me at me@demo.com", "expectedIntent": "submit_details", "expectedStepAfter": "personal_details" },
+      { "user": "jimlim.marketing 012 2277 809 17, jln u12/38f, seksyen", "expectedIntent": "submit_details", "expectedStepAfter": "personal_details" },
+      { "user": "my phone is 0171234567", "expectedIntent": "submit_details", "expectedStepAfter": "otp" },
+      { "user": "0171234567, jalan harmoni 9, rawang", "expectedIntent": "other", "expectedStepAfter": "otp" },
+      { "user": "1234", "expectedIntent": "verify_otp", "expectedStepAfter": "payment" }
+    ]
+  }
+]

@@ -1,0 +1,2696 @@
+{
+  "uuid": "76f68131-1400-430a-a615-ec9d1e1d7ddf",
+  "lastMigration": 33,
+  "name": "Lajoo Insurer Sandbox (Production-Style Mock)",
+  "endpointPrefix": "/v1",
+  "latency": 0,
+  "port": 4001,
+  "hostname": "",
+  "folders": [
+    {
+      "uuid": "867797b8-3a6c-453b-aabd-b3e8ab6e4d61",
+      "name": "01 Auth",
+      "children": [
+        {
+          "uuid": "47e87d73-a64c-4269-908d-9c12fac92693",
+          "type": "route"
+        },
+        {
+          "uuid": "be3dbce6-b3ad-4fe7-8afc-cc989047b982",
+          "type": "route"
+        }
+      ]
+    },
+    {
+      "uuid": "58d7de86-6e14-4dce-8d57-168d72bc1e44",
+      "name": "02 Reference",
+      "children": [
+        {
+          "uuid": "a2340b51-dd6e-4f6e-86e9-674e93e1dfb9",
+          "type": "route"
+        },
+        {
+          "uuid": "5ff858f9-6c72-4a29-a2f9-23ac8998ce70",
+          "type": "route"
+        },
+        {
+          "uuid": "db0665f3-664f-4339-ba94-a8f7c10da1bd",
+          "type": "route"
+        },
+        {
+          "uuid": "a87b26aa-5e73-4a79-9758-cf834c81fc0d",
+          "type": "route"
+        }
+      ]
+    },
+    {
+      "uuid": "498fbd42-efcb-46af-b4fc-014337f89571",
+      "name": "03 Vehicle",
+      "children": [
+        {
+          "uuid": "728f3717-a82d-4d90-a66c-82a77ad0e096",
+          "type": "route"
+        }
+      ]
+    },
+    {
+      "uuid": "074783ee-65a3-4f1e-ac78-e5ab7e0ef34f",
+      "name": "04 Quotes",
+      "children": [
+        {
+          "uuid": "f652bb98-7d24-4e99-ad67-89069c7524ed",
+          "type": "route"
+        },
+        {
+          "uuid": "26740ddc-01c6-4937-915c-e864fc6f349d",
+          "type": "route"
+        },
+        {
+          "uuid": "6442a5d4-0280-4ed2-9d98-72d053152683",
+          "type": "route"
+        },
+        {
+          "uuid": "06f25771-6a6b-4dbc-83ad-d2cd6faacaa6",
+          "type": "route"
+        }
+      ]
+    },
+    {
+      "uuid": "fbd95779-1ae7-49a7-b78f-7374dd348060",
+      "name": "05 Proposal",
+      "children": [
+        {
+          "uuid": "e446da70-81e8-4a0a-a466-e42653931034",
+          "type": "route"
+        },
+        {
+          "uuid": "75138239-bacd-4362-b2c3-2d6112e1a308",
+          "type": "route"
+        }
+      ]
+    },
+    {
+      "uuid": "53eb12a4-8bc0-466d-a386-e2824b0c97df",
+      "name": "06 Payment",
+      "children": [
+        {
+          "uuid": "56d84b06-989a-4195-89b6-1006b33d352f",
+          "type": "route"
+        },
+        {
+          "uuid": "4eb83e1c-fc78-4f6f-ab00-bb80d6b4b5ec",
+          "type": "route"
+        }
+      ]
+    },
+    {
+      "uuid": "501493c4-fbad-4c26-95ae-76e8925a992b",
+      "name": "07 Policy",
+      "children": [
+        {
+          "uuid": "0c4810ea-6334-4791-88f7-0215d07cf344",
+          "type": "route"
+        }
+      ]
+    },
+    {
+      "uuid": "d52bc8bd-97df-45ad-86d0-5b7d11243d60",
+      "name": "08 Simulation",
+      "children": [
+        {
+          "uuid": "dcbba8d8-90fc-44e4-84fb-4034d201a7be",
+          "type": "route"
+        },
+        {
+          "uuid": "c0d24c0a-ef75-4ef9-abd7-720a59fb16cc",
+          "type": "route"
+        },
+        {
+          "uuid": "5c7ad171-c68c-482d-92ab-5a8b40bb1fc1",
+          "type": "route"
+        },
+        {
+          "uuid": "4c4bfe20-61d8-43a0-aab0-d2828280923b",
+          "type": "route"
+        }
+      ]
+    }
+  ],
+  "routes": [
+    {
+      "uuid": "47e87d73-a64c-4269-908d-9c12fac92693",
+      "type": "http",
+      "documentation": "OAuth2-style token issue endpoint for sandbox authentication.",
+      "method": "post",
+      "endpoint": "/oauth/token",
+      "responses": [
+        {
+          "uuid": "0d68d2e3-c1c6-4a7d-945a-e5abd73d9a9e",
+          "body": "{\n  \"meta\": {\n    \"request_id\": \"req-auth-001\",\n    \"correlation_id\": \"corr-static-001\",\n    \"timestamp\": \"2026-03-06T10:00:00Z\",\n    \"version\": \"v1\"\n  },\n  \"data\": {\n    \"access_token\": \"mock-access-token\",\n    \"token_type\": \"Bearer\",\n    \"expires_in\": 3600,\n    \"scope\": \"vehicle quotes proposals payments policies\"\n  },\n  \"errors\": []\n}",
+          "latency": 120,
+          "statusCode": 200,
+          "label": "TOKEN_SUCCESS",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "body",
+              "modifier": "client_id",
+              "value": "lajoo-client",
+              "operator": "equals",
+              "invert": false
+            },
+            {
+              "target": "body",
+              "modifier": "client_secret",
+              "value": "lajoo-secret",
+              "operator": "equals",
+              "invert": false
+            },
+            {
+              "target": "body",
+              "modifier": "grant_type",
+              "value": "client_credentials",
+              "operator": "equals",
+              "invert": false
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "b6a5e613-c287-46e6-8843-d7eb63e3cd52",
+          "body": "{\n  \"meta\": {\n    \"request_id\": \"req-auth-401\",\n    \"correlation_id\": \"corr-static-001\",\n    \"timestamp\": \"2026-03-06T10:00:00Z\",\n    \"version\": \"v1\"\n  },\n  \"data\": null,\n  \"errors\": [\n    {\n      \"code\": \"INVALID_CLIENT\",\n      \"message\": \"Invalid client credentials.\",\n      \"field\": \"client_id/client_secret\",\n      \"retriable\": false\n    }\n  ]\n}",
+          "latency": 0,
+          "statusCode": 401,
+          "label": "INVALID_CLIENT",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [],
+          "rulesOperator": "OR",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": true,
+          "crudKey": "id",
+          "callbacks": []
+        }
+      ],
+      "responseMode": null,
+      "streamingMode": null,
+      "streamingInterval": 0
+    },
+    {
+      "uuid": "be3dbce6-b3ad-4fe7-8afc-cc989047b982",
+      "type": "http",
+      "documentation": "Health probe endpoint.",
+      "method": "get",
+      "endpoint": "/health",
+      "responses": [
+        {
+          "uuid": "15cbb3f7-4e68-4406-9778-e9334548224b",
+          "body": "{\n  \"meta\": {\n    \"request_id\": \"req-health-001\",\n    \"correlation_id\": \"corr-static-001\",\n    \"timestamp\": \"2026-03-06T10:00:00Z\",\n    \"version\": \"v1\"\n  },\n  \"data\": {\n    \"status\": \"UP\",\n    \"service\": \"lajoo-insurer-sandbox\"\n  },\n  \"errors\": []\n}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "HEALTH_OK",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [],
+          "rulesOperator": "OR",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": true,
+          "crudKey": "id",
+          "callbacks": []
+        }
+      ],
+      "responseMode": null,
+      "streamingMode": null,
+      "streamingInterval": 0
+    },
+    {
+      "uuid": "a2340b51-dd6e-4f6e-86e9-674e93e1dfb9",
+      "type": "http",
+      "documentation": "",
+      "method": "get",
+      "endpoint": "/reference/insurers",
+      "responses": [
+        {
+          "uuid": "26ca0feb-3f22-4e56-8c04-cd18d5f1f8b1",
+          "body": "{\n  \"meta\": {\n    \"request_id\": \"req-ref-ins-001\",\n    \"correlation_id\": \"corr-static-001\",\n    \"timestamp\": \"2026-03-06T10:00:00Z\",\n    \"version\": \"v1\"\n  },\n  \"data\": {\n    \"insurers\": [\n      {\n        \"code\": \"TAKAFUL\",\n        \"name\": \"Takaful Ikhlas\",\n        \"type\": \"takaful\"\n      },\n      {\n        \"code\": \"ETIQA\",\n        \"name\": \"Etiqa Insurance\",\n        \"type\": \"conventional\"\n      },\n      {\n        \"code\": \"ALLIANZ\",\n        \"name\": \"Allianz Insurance\",\n        \"type\": \"conventional\"\n      }\n    ]\n  },\n  \"errors\": []\n}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "INSURER_REFERENCE",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [],
+          "rulesOperator": "OR",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": true,
+          "crudKey": "id",
+          "callbacks": []
+        }
+      ],
+      "responseMode": null,
+      "streamingMode": null,
+      "streamingInterval": 0
+    },
+    {
+      "uuid": "5ff858f9-6c72-4a29-a2f9-23ac8998ce70",
+      "type": "http",
+      "documentation": "",
+      "method": "get",
+      "endpoint": "/reference/addons",
+      "responses": [
+        {
+          "uuid": "98715efd-a8c5-450d-99d9-91a5a29e16c4",
+          "body": "{\n  \"meta\": {\n    \"request_id\": \"req-ref-addon-001\",\n    \"correlation_id\": \"corr-static-001\",\n    \"timestamp\": \"2026-03-06T10:00:00Z\",\n    \"version\": \"v1\"\n  },\n  \"data\": {\n    \"addons\": [\n      {\n        \"id\": \"windscreen\",\n        \"name\": \"Windscreen Protection\",\n        \"price\": 100,\n        \"description\": \"Covers windscreen damage without affecting NCD.\"\n      },\n      {\n        \"id\": \"flood\",\n        \"name\": \"Special Perils (Flood)\",\n        \"price\": 50,\n        \"description\": \"Covers flood and natural disaster losses.\"\n      },\n      {\n        \"id\": \"ehailing\",\n        \"name\": \"E-hailing Cover\",\n        \"price\": 500,\n        \"description\": \"Required for commercial e-hailing usage.\"\n      }\n    ]\n  },\n  \"errors\": []\n}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "ADDON_REFERENCE",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [],
+          "rulesOperator": "OR",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": true,
+          "crudKey": "id",
+          "callbacks": []
+        }
+      ],
+      "responseMode": null,
+      "streamingMode": null,
+      "streamingInterval": 0
+    },
+    {
+      "uuid": "db0665f3-664f-4339-ba94-a8f7c10da1bd",
+      "type": "http",
+      "documentation": "",
+      "method": "get",
+      "endpoint": "/reference/roadtax-rules",
+      "responses": [
+        {
+          "uuid": "773a3b6d-dc29-42c8-af0f-0c78748bff41",
+          "body": "{\n  \"meta\": {\n    \"request_id\": \"req-ref-roadtax-001\",\n    \"correlation_id\": \"corr-static-001\",\n    \"timestamp\": \"2026-03-06T10:00:00Z\",\n    \"version\": \"v1\"\n  },\n  \"data\": {\n    \"effective_date\": \"2026-02-01\",\n    \"options\": [\n      {\n        \"id\": \"digital_12m\",\n        \"total_price\": 90,\n        \"eligible_owner_id_types\": [\n          \"nric\",\n          \"foreign_id\",\n          \"company_reg\"\n        ]\n      },\n      {\n        \"id\": \"printed_12m\",\n        \"total_price\": 100,\n        \"eligible_owner_id_types\": [\n          \"foreign_id\",\n          \"company_reg\"\n        ]\n      },\n      {\n        \"id\": \"none\",\n        \"total_price\": 0,\n        \"eligible_owner_id_types\": [\n          \"nric\",\n          \"foreign_id\",\n          \"company_reg\"\n        ]\n      }\n    ]\n  },\n  \"errors\": []\n}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "ROADTAX_RULES",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [],
+          "rulesOperator": "OR",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": true,
+          "crudKey": "id",
+          "callbacks": []
+        }
+      ],
+      "responseMode": null,
+      "streamingMode": null,
+      "streamingInterval": 0
+    },
+    {
+      "uuid": "a87b26aa-5e73-4a79-9758-cf834c81fc0d",
+      "type": "http",
+      "documentation": "",
+      "method": "get",
+      "endpoint": "/reference/error-codes",
+      "responses": [
+        {
+          "uuid": "c7e20d91-2a02-4938-b037-dcf86d97ef89",
+          "body": "{\n  \"meta\": {\n    \"request_id\": \"req-ref-errors-001\",\n    \"correlation_id\": \"corr-static-001\",\n    \"timestamp\": \"2026-03-06T10:00:00Z\",\n    \"version\": \"v1\"\n  },\n  \"data\": {\n    \"errors\": [\n      \"UNAUTHORIZED\",\n      \"VALIDATION_ERROR\",\n      \"VEHICLE_NOT_FOUND\",\n      \"IDEMPOTENCY_KEY_REQUIRED\",\n      \"QUOTE_JOB_NOT_READY\",\n      \"ROADTAX_PRINTED_NOT_ELIGIBLE\",\n      \"UW_DECLINED\",\n      \"RATE_LIMITED\",\n      \"INTERNAL_ERROR\"\n    ]\n  },\n  \"errors\": []\n}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "ERROR_CATALOG",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [],
+          "rulesOperator": "OR",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": true,
+          "crudKey": "id",
+          "callbacks": []
+        }
+      ],
+      "responseMode": null,
+      "streamingMode": null,
+      "streamingInterval": 0
+    },
+    {
+      "uuid": "728f3717-a82d-4d90-a66c-82a77ad0e096",
+      "type": "http",
+      "documentation": "Strict sample lookup by plate + owner ID pair.",
+      "method": "post",
+      "endpoint": "/vehicle/lookup",
+      "responses": [
+        {
+          "uuid": "5b9fd861-bba6-4297-990e-3e3936fc1e40",
+          "body": "{\n  \"meta\": {\n    \"request_id\": \"req-veh-401\",\n    \"correlation_id\": \"corr-static-001\",\n    \"timestamp\": \"2026-03-06T10:00:00Z\",\n    \"version\": \"v1\"\n  },\n  \"data\": null,\n  \"errors\": [\n    {\n      \"code\": \"UNAUTHORIZED\",\n      \"message\": \"Missing or invalid bearer token.\",\n      \"field\": \"Authorization\",\n      \"retriable\": false\n    }\n  ]\n}",
+          "latency": 0,
+          "statusCode": 401,
+          "label": "UNAUTHORIZED",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "header",
+              "modifier": "authorization",
+              "value": "Bearer mock-access-token",
+              "operator": "equals",
+              "invert": true
+            }
+          ],
+          "rulesOperator": "OR",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "43d92246-5a2a-4dfc-80b1-236edb945e22",
+          "body": "{\n  \"meta\": {\n    \"request_id\": \"req-veh-422a\",\n    \"correlation_id\": \"corr-static-001\",\n    \"timestamp\": \"2026-03-06T10:00:00Z\",\n    \"version\": \"v1\"\n  },\n  \"data\": null,\n  \"errors\": [\n    {\n      \"code\": \"VALIDATION_ERROR\",\n      \"message\": \"plate_number is required.\",\n      \"field\": \"plate_number\",\n      \"retriable\": false\n    }\n  ]\n}",
+          "latency": 0,
+          "statusCode": 422,
+          "label": "VALIDATION_ERROR_MISSING_PLATE",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "body",
+              "modifier": "plate_number",
+              "value": ".+",
+              "operator": "regex",
+              "invert": true
+            }
+          ],
+          "rulesOperator": "OR",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "237a027e-778e-4cad-ac6a-915258755910",
+          "body": "{\n  \"meta\": {\n    \"request_id\": \"req-veh-422b\",\n    \"correlation_id\": \"corr-static-001\",\n    \"timestamp\": \"2026-03-06T10:00:00Z\",\n    \"version\": \"v1\"\n  },\n  \"data\": null,\n  \"errors\": [\n    {\n      \"code\": \"VALIDATION_ERROR\",\n      \"message\": \"owner_id is required.\",\n      \"field\": \"owner_id\",\n      \"retriable\": false\n    }\n  ]\n}",
+          "latency": 0,
+          "statusCode": 422,
+          "label": "VALIDATION_ERROR_MISSING_OWNER_ID",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "body",
+              "modifier": "owner_id",
+              "value": ".+",
+              "operator": "regex",
+              "invert": true
+            }
+          ],
+          "rulesOperator": "OR",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "8c0c82db-fe77-4b4b-83b6-e29ebbd847d2",
+          "body": "{\n  \"meta\": {\n    \"request_id\": \"req-veh-car01\",\n    \"correlation_id\": \"corr-static-001\",\n    \"timestamp\": \"2026-03-06T10:00:00Z\",\n    \"version\": \"v1\"\n  },\n  \"data\": {\n    \"sample_id\": \"CAR01\",\n    \"vehicle_ref_id\": \"veh-car01\",\n    \"plate_number\": \"JRT9289\",\n    \"owner_id_type\": \"nric\",\n    \"owner_id_masked\": \"951018******\",\n    \"usage_type\": \"private\",\n    \"vehicle\": {\n      \"make\": \"Perodua\",\n      \"model\": \"Myvi\",\n      \"year\": 2019,\n      \"engine_cc\": 1496\n    },\n    \"address\": {\n      \"postcode\": \"47000\",\n      \"city\": \"Shah Alam\",\n      \"state\": \"Selangor\"\n    },\n    \"ncd_percent\": 20,\n    \"eligibility\": {\n      \"renewal_allowed\": true,\n      \"printed_roadtax_allowed\": false,\n      \"underwriting_referral\": false\n    }\n  },\n  \"errors\": []\n}",
+          "latency": 320,
+          "statusCode": 200,
+          "label": "CAR01_FOUND",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "body",
+              "modifier": "plate_number",
+              "value": "JRT9289",
+              "operator": "equals",
+              "invert": false
+            },
+            {
+              "target": "body",
+              "modifier": "owner_id",
+              "value": "951018145405",
+              "operator": "equals",
+              "invert": false
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "1fb6ef28-00c5-42e5-9c50-e2a0657042dd",
+          "body": "{\n  \"meta\": {\n    \"request_id\": \"req-veh-car02\",\n    \"correlation_id\": \"corr-static-001\",\n    \"timestamp\": \"2026-03-06T10:00:00Z\",\n    \"version\": \"v1\"\n  },\n  \"data\": {\n    \"sample_id\": \"CAR02\",\n    \"vehicle_ref_id\": \"veh-car02\",\n    \"plate_number\": \"WXY1234\",\n    \"owner_id_type\": \"nric\",\n    \"owner_id_masked\": \"900101******\",\n    \"usage_type\": \"private\",\n    \"vehicle\": {\n      \"make\": \"Honda\",\n      \"model\": \"City\",\n      \"year\": 2018,\n      \"engine_cc\": 1500\n    },\n    \"address\": {\n      \"postcode\": \"50450\",\n      \"city\": \"Kuala Lumpur\",\n      \"state\": \"WP Kuala Lumpur\"\n    },\n    \"ncd_percent\": 25,\n    \"eligibility\": {\n      \"renewal_allowed\": true,\n      \"printed_roadtax_allowed\": false,\n      \"underwriting_referral\": false\n    }\n  },\n  \"errors\": []\n}",
+          "latency": 320,
+          "statusCode": 200,
+          "label": "CAR02_FOUND",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "body",
+              "modifier": "plate_number",
+              "value": "WXY1234",
+              "operator": "equals",
+              "invert": false
+            },
+            {
+              "target": "body",
+              "modifier": "owner_id",
+              "value": "900101105544",
+              "operator": "equals",
+              "invert": false
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "4e54a2d3-2bfb-4cbc-b569-12b2649d9736",
+          "body": "{\n  \"meta\": {\n    \"request_id\": \"req-veh-car03\",\n    \"correlation_id\": \"corr-static-001\",\n    \"timestamp\": \"2026-03-06T10:00:00Z\",\n    \"version\": \"v1\"\n  },\n  \"data\": {\n    \"sample_id\": \"CAR03\",\n    \"vehicle_ref_id\": \"veh-car03\",\n    \"plate_number\": \"ABC5678\",\n    \"owner_id_type\": \"nric\",\n    \"owner_id_masked\": \"880303******\",\n    \"usage_type\": \"private\",\n    \"vehicle\": {\n      \"make\": \"Toyota\",\n      \"model\": \"Vios\",\n      \"year\": 2017,\n      \"engine_cc\": 1500\n    },\n    \"address\": {\n      \"postcode\": \"12000\",\n      \"city\": \"Butterworth\",\n      \"state\": \"Penang\"\n    },\n    \"ncd_percent\": 38.33,\n    \"eligibility\": {\n      \"renewal_allowed\": true,\n      \"printed_roadtax_allowed\": false,\n      \"underwriting_referral\": false\n    }\n  },\n  \"errors\": []\n}",
+          "latency": 320,
+          "statusCode": 200,
+          "label": "CAR03_FOUND",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "body",
+              "modifier": "plate_number",
+              "value": "ABC5678",
+              "operator": "equals",
+              "invert": false
+            },
+            {
+              "target": "body",
+              "modifier": "owner_id",
+              "value": "880303106677",
+              "operator": "equals",
+              "invert": false
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "4046034f-7794-4e1d-bc49-a4dc20928be6",
+          "body": "{\n  \"meta\": {\n    \"request_id\": \"req-veh-car04\",\n    \"correlation_id\": \"corr-static-001\",\n    \"timestamp\": \"2026-03-06T10:00:00Z\",\n    \"version\": \"v1\"\n  },\n  \"data\": {\n    \"sample_id\": \"CAR04\",\n    \"vehicle_ref_id\": \"veh-car04\",\n    \"plate_number\": \"BND2020\",\n    \"owner_id_type\": \"nric\",\n    \"owner_id_masked\": \"920909******\",\n    \"usage_type\": \"private\",\n    \"vehicle\": {\n      \"make\": \"Proton\",\n      \"model\": \"X70\",\n      \"year\": 2020,\n      \"engine_cc\": 1800\n    },\n    \"address\": {\n      \"postcode\": \"70000\",\n      \"city\": \"Seremban\",\n      \"state\": \"Negeri Sembilan\"\n    },\n    \"ncd_percent\": 15,\n    \"eligibility\": {\n      \"renewal_allowed\": true,\n      \"printed_roadtax_allowed\": false,\n      \"underwriting_referral\": false\n    }\n  },\n  \"errors\": []\n}",
+          "latency": 320,
+          "statusCode": 200,
+          "label": "CAR04_FOUND",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "body",
+              "modifier": "plate_number",
+              "value": "BND2020",
+              "operator": "equals",
+              "invert": false
+            },
+            {
+              "target": "body",
+              "modifier": "owner_id",
+              "value": "920909106688",
+              "operator": "equals",
+              "invert": false
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "9ab78928-4204-4c69-85ea-2393e72af6f4",
+          "body": "{\n  \"meta\": {\n    \"request_id\": \"req-veh-car05\",\n    \"correlation_id\": \"corr-static-001\",\n    \"timestamp\": \"2026-03-06T10:00:00Z\",\n    \"version\": \"v1\"\n  },\n  \"data\": {\n    \"sample_id\": \"CAR05\",\n    \"vehicle_ref_id\": \"veh-car05\",\n    \"plate_number\": \"VHX7721\",\n    \"owner_id_type\": \"nric\",\n    \"owner_id_masked\": \"950505******\",\n    \"usage_type\": \"private\",\n    \"vehicle\": {\n      \"make\": \"Nissan\",\n      \"model\": \"Almera\",\n      \"year\": 2016,\n      \"engine_cc\": 1498\n    },\n    \"address\": {\n      \"postcode\": \"80000\",\n      \"city\": \"Johor Bahru\",\n      \"state\": \"Johor\"\n    },\n    \"ncd_percent\": 0,\n    \"eligibility\": {\n      \"renewal_allowed\": true,\n      \"printed_roadtax_allowed\": false,\n      \"underwriting_referral\": false\n    }\n  },\n  \"errors\": []\n}",
+          "latency": 320,
+          "statusCode": 200,
+          "label": "CAR05_FOUND",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "body",
+              "modifier": "plate_number",
+              "value": "VHX7721",
+              "operator": "equals",
+              "invert": false
+            },
+            {
+              "target": "body",
+              "modifier": "owner_id",
+              "value": "950505141212",
+              "operator": "equals",
+              "invert": false
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "4ba8ce19-1a6c-4efc-8745-6170c4569243",
+          "body": "{\n  \"meta\": {\n    \"request_id\": \"req-veh-car06\",\n    \"correlation_id\": \"corr-static-001\",\n    \"timestamp\": \"2026-03-06T10:00:00Z\",\n    \"version\": \"v1\"\n  },\n  \"data\": {\n    \"sample_id\": \"CAR06\",\n    \"vehicle_ref_id\": \"veh-car06\",\n    \"plate_number\": \"QQA8810\",\n    \"owner_id_type\": \"company_reg\",\n    \"owner_id_masked\": \"202001******\",\n    \"usage_type\": \"private\",\n    \"vehicle\": {\n      \"make\": \"Toyota\",\n      \"model\": \"Hilux\",\n      \"year\": 2021,\n      \"engine_cc\": 2400\n    },\n    \"address\": {\n      \"postcode\": \"40150\",\n      \"city\": \"Shah Alam\",\n      \"state\": \"Selangor\"\n    },\n    \"ncd_percent\": 30,\n    \"eligibility\": {\n      \"renewal_allowed\": true,\n      \"printed_roadtax_allowed\": true,\n      \"underwriting_referral\": false\n    }\n  },\n  \"errors\": []\n}",
+          "latency": 320,
+          "statusCode": 200,
+          "label": "CAR06_FOUND",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "body",
+              "modifier": "plate_number",
+              "value": "QQA8810",
+              "operator": "equals",
+              "invert": false
+            },
+            {
+              "target": "body",
+              "modifier": "owner_id",
+              "value": "202001234567",
+              "operator": "equals",
+              "invert": false
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "f722aab9-5eb8-4ed7-a8d1-245b5314a1cd",
+          "body": "{\n  \"meta\": {\n    \"request_id\": \"req-veh-car07\",\n    \"correlation_id\": \"corr-static-001\",\n    \"timestamp\": \"2026-03-06T10:00:00Z\",\n    \"version\": \"v1\"\n  },\n  \"data\": {\n    \"sample_id\": \"CAR07\",\n    \"vehicle_ref_id\": \"veh-car07\",\n    \"plate_number\": \"FID5566\",\n    \"owner_id_type\": \"foreign_id\",\n    \"owner_id_masked\": \"A12345******\",\n    \"usage_type\": \"private\",\n    \"vehicle\": {\n      \"make\": \"Mazda\",\n      \"model\": \"CX-5\",\n      \"year\": 2019,\n      \"engine_cc\": 2000\n    },\n    \"address\": {\n      \"postcode\": \"10200\",\n      \"city\": \"George Town\",\n      \"state\": \"Penang\"\n    },\n    \"ncd_percent\": 20,\n    \"eligibility\": {\n      \"renewal_allowed\": true,\n      \"printed_roadtax_allowed\": true,\n      \"underwriting_referral\": false\n    }\n  },\n  \"errors\": []\n}",
+          "latency": 320,
+          "statusCode": 200,
+          "label": "CAR07_FOUND",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "body",
+              "modifier": "plate_number",
+              "value": "FID5566",
+              "operator": "equals",
+              "invert": false
+            },
+            {
+              "target": "body",
+              "modifier": "owner_id",
+              "value": "A12345678",
+              "operator": "equals",
+              "invert": false
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "885f89cb-f557-4f95-ad77-d3fbdbe60f12",
+          "body": "{\n  \"meta\": {\n    \"request_id\": \"req-veh-car08\",\n    \"correlation_id\": \"corr-static-001\",\n    \"timestamp\": \"2026-03-06T10:00:00Z\",\n    \"version\": \"v1\"\n  },\n  \"data\": {\n    \"sample_id\": \"CAR08\",\n    \"vehicle_ref_id\": \"veh-car08\",\n    \"plate_number\": \"EHL3344\",\n    \"owner_id_type\": \"nric\",\n    \"owner_id_masked\": \"930707******\",\n    \"usage_type\": \"ehailing\",\n    \"vehicle\": {\n      \"make\": \"Perodua\",\n      \"model\": \"Bezza\",\n      \"year\": 2022,\n      \"engine_cc\": 1300\n    },\n    \"address\": {\n      \"postcode\": \"46000\",\n      \"city\": \"Petaling Jaya\",\n      \"state\": \"Selangor\"\n    },\n    \"ncd_percent\": 20,\n    \"eligibility\": {\n      \"renewal_allowed\": true,\n      \"printed_roadtax_allowed\": false,\n      \"underwriting_referral\": false\n    }\n  },\n  \"errors\": []\n}",
+          "latency": 320,
+          "statusCode": 200,
+          "label": "CAR08_FOUND",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "body",
+              "modifier": "plate_number",
+              "value": "EHL3344",
+              "operator": "equals",
+              "invert": false
+            },
+            {
+              "target": "body",
+              "modifier": "owner_id",
+              "value": "930707107799",
+              "operator": "equals",
+              "invert": false
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "ec351f97-b2c2-469c-86af-484fdecc626b",
+          "body": "{\n  \"meta\": {\n    \"request_id\": \"req-veh-car09\",\n    \"correlation_id\": \"corr-static-001\",\n    \"timestamp\": \"2026-03-06T10:00:00Z\",\n    \"version\": \"v1\"\n  },\n  \"data\": {\n    \"sample_id\": \"CAR09\",\n    \"vehicle_ref_id\": \"veh-car09\",\n    \"plate_number\": \"REF9090\",\n    \"owner_id_type\": \"nric\",\n    \"owner_id_masked\": \"870202******\",\n    \"usage_type\": \"private\",\n    \"vehicle\": {\n      \"make\": \"BMW\",\n      \"model\": \"320i\",\n      \"year\": 2014,\n      \"engine_cc\": 2000\n    },\n    \"address\": {\n      \"postcode\": \"50480\",\n      \"city\": \"Kuala Lumpur\",\n      \"state\": \"WP Kuala Lumpur\"\n    },\n    \"ncd_percent\": 55,\n    \"eligibility\": {\n      \"renewal_allowed\": true,\n      \"printed_roadtax_allowed\": false,\n      \"underwriting_referral\": true\n    }\n  },\n  \"errors\": []\n}",
+          "latency": 320,
+          "statusCode": 200,
+          "label": "CAR09_FOUND",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "body",
+              "modifier": "plate_number",
+              "value": "REF9090",
+              "operator": "equals",
+              "invert": false
+            },
+            {
+              "target": "body",
+              "modifier": "owner_id",
+              "value": "870202108811",
+              "operator": "equals",
+              "invert": false
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "b1f3b1cc-663d-4b5d-89ae-814642912ca4",
+          "body": "{\n  \"meta\": {\n    \"request_id\": \"req-veh-car10\",\n    \"correlation_id\": \"corr-static-001\",\n    \"timestamp\": \"2026-03-06T10:00:00Z\",\n    \"version\": \"v1\"\n  },\n  \"data\": {\n    \"sample_id\": \"CAR10\",\n    \"vehicle_ref_id\": \"veh-car10\",\n    \"plate_number\": \"DCL4040\",\n    \"owner_id_type\": \"nric\",\n    \"owner_id_masked\": \"810101******\",\n    \"usage_type\": \"private\",\n    \"vehicle\": {\n      \"make\": \"Mitsubishi\",\n      \"model\": \"Lancer\",\n      \"year\": 2009,\n      \"engine_cc\": 2000\n    },\n    \"address\": {\n      \"postcode\": \"30000\",\n      \"city\": \"Ipoh\",\n      \"state\": \"Perak\"\n    },\n    \"ncd_percent\": 0,\n    \"eligibility\": {\n      \"renewal_allowed\": false,\n      \"printed_roadtax_allowed\": false,\n      \"underwriting_referral\": false\n    }\n  },\n  \"errors\": []\n}",
+          "latency": 320,
+          "statusCode": 200,
+          "label": "CAR10_FOUND",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "body",
+              "modifier": "plate_number",
+              "value": "DCL4040",
+              "operator": "equals",
+              "invert": false
+            },
+            {
+              "target": "body",
+              "modifier": "owner_id",
+              "value": "810101109922",
+              "operator": "equals",
+              "invert": false
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "dfd1ca55-5f1a-4504-b980-9f47a1b4d887",
+          "body": "{\n  \"meta\": {\n    \"request_id\": \"req-veh-404\",\n    \"correlation_id\": \"corr-static-001\",\n    \"timestamp\": \"2026-03-06T10:00:00Z\",\n    \"version\": \"v1\"\n  },\n  \"data\": null,\n  \"errors\": [\n    {\n      \"code\": \"VEHICLE_NOT_FOUND\",\n      \"message\": \"No record found for provided plate and owner ID.\",\n      \"field\": \"plate_number/owner_id\",\n      \"retriable\": false\n    }\n  ]\n}",
+          "latency": 0,
+          "statusCode": 404,
+          "label": "VEHICLE_NOT_FOUND",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [],
+          "rulesOperator": "OR",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": true,
+          "crudKey": "id",
+          "callbacks": []
+        }
+      ],
+      "responseMode": null,
+      "streamingMode": null,
+      "streamingInterval": 0
+    },
+    {
+      "uuid": "f652bb98-7d24-4e99-ad67-89069c7524ed",
+      "type": "http",
+      "documentation": "Creates async quote job for a known vehicle reference.",
+      "method": "post",
+      "endpoint": "/quotes/jobs",
+      "responses": [
+        {
+          "uuid": "90104f1e-28f4-4cce-bc03-a276f7d71668",
+          "body": "{\n  \"meta\": {\n    \"request_id\": \"req-qjob-401\",\n    \"correlation_id\": \"corr-static-001\",\n    \"timestamp\": \"2026-03-06T10:00:00Z\",\n    \"version\": \"v1\"\n  },\n  \"data\": null,\n  \"errors\": [\n    {\n      \"code\": \"UNAUTHORIZED\",\n      \"message\": \"Missing or invalid bearer token.\",\n      \"field\": \"Authorization\",\n      \"retriable\": false\n    }\n  ]\n}",
+          "latency": 0,
+          "statusCode": 401,
+          "label": "UNAUTHORIZED",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "header",
+              "modifier": "authorization",
+              "value": "Bearer mock-access-token",
+              "operator": "equals",
+              "invert": true
+            }
+          ],
+          "rulesOperator": "OR",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "c59390ad-0825-479d-9f5d-6fc5dd24e164",
+          "body": "{\n  \"meta\": {\n    \"request_id\": \"req-qjob-400\",\n    \"correlation_id\": \"corr-static-001\",\n    \"timestamp\": \"2026-03-06T10:00:00Z\",\n    \"version\": \"v1\"\n  },\n  \"data\": null,\n  \"errors\": [\n    {\n      \"code\": \"IDEMPOTENCY_KEY_REQUIRED\",\n      \"message\": \"Idempotency-Key header is required for quote job creation.\",\n      \"field\": \"Idempotency-Key\",\n      \"retriable\": false\n    }\n  ]\n}",
+          "latency": 0,
+          "statusCode": 400,
+          "label": "IDEMPOTENCY_KEY_REQUIRED",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "header",
+              "modifier": "idempotency-key",
+              "value": ".+",
+              "operator": "regex",
+              "invert": true
+            }
+          ],
+          "rulesOperator": "OR",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "04423474-0126-443e-9fb8-732d63516015",
+          "body": "{\n  \"meta\": {\n    \"request_id\": \"req-qjob-422\",\n    \"correlation_id\": \"corr-static-001\",\n    \"timestamp\": \"2026-03-06T10:00:00Z\",\n    \"version\": \"v1\"\n  },\n  \"data\": null,\n  \"errors\": [\n    {\n      \"code\": \"VALIDATION_ERROR\",\n      \"message\": \"vehicle_ref_id is required.\",\n      \"field\": \"vehicle_ref_id\",\n      \"retriable\": false\n    }\n  ]\n}",
+          "latency": 0,
+          "statusCode": 422,
+          "label": "VALIDATION_ERROR_MISSING_VEHICLE_REF",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "body",
+              "modifier": "vehicle_ref_id",
+              "value": ".+",
+              "operator": "regex",
+              "invert": true
+            }
+          ],
+          "rulesOperator": "OR",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "c4a802c5-a8cc-4bd7-8d0e-1d399cc4d529",
+          "body": "{\n  \"meta\": {\n    \"request_id\": \"req-qjob-car01\",\n    \"correlation_id\": \"corr-static-001\",\n    \"timestamp\": \"2026-03-06T10:00:00Z\",\n    \"version\": \"v1\"\n  },\n  \"data\": {\n    \"job_id\": \"JOB-CAR01-0001\",\n    \"status\": \"PENDING\",\n    \"poll_url\": \"/v1/quotes/jobs/JOB-CAR01-0001\",\n    \"result_url\": \"/v1/quotes/jobs/JOB-CAR01-0001/result\",\n    \"expires_in_seconds\": 1800\n  },\n  \"errors\": []\n}",
+          "latency": 650,
+          "statusCode": 202,
+          "label": "CAR01_JOB_CREATED",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "body",
+              "modifier": "sample_id",
+              "value": "CAR01",
+              "operator": "equals",
+              "invert": false
+            },
+            {
+              "target": "body",
+              "modifier": "vehicle_ref_id",
+              "value": "veh-car01",
+              "operator": "equals",
+              "invert": false
+            }
+          ],
+          "rulesOperator": "OR",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "f611637b-dce3-4890-b492-7e6d8998eb41",
+          "body": "{\n  \"meta\": {\n    \"request_id\": \"req-qjob-car02\",\n    \"correlation_id\": \"corr-static-001\",\n    \"timestamp\": \"2026-03-06T10:00:00Z\",\n    \"version\": \"v1\"\n  },\n  \"data\": {\n    \"job_id\": \"JOB-CAR02-0001\",\n    \"status\": \"PENDING\",\n    \"poll_url\": \"/v1/quotes/jobs/JOB-CAR02-0001\",\n    \"result_url\": \"/v1/quotes/jobs/JOB-CAR02-0001/result\",\n    \"expires_in_seconds\": 1800\n  },\n  \"errors\": []\n}",
+          "latency": 650,
+          "statusCode": 202,
+          "label": "CAR02_JOB_CREATED",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "body",
+              "modifier": "sample_id",
+              "value": "CAR02",
+              "operator": "equals",
+              "invert": false
+            },
+            {
+              "target": "body",
+              "modifier": "vehicle_ref_id",
+              "value": "veh-car02",
+              "operator": "equals",
+              "invert": false
+            }
+          ],
+          "rulesOperator": "OR",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "9c73e1c3-3ba1-4020-b03f-49dbe81163f5",
+          "body": "{\n  \"meta\": {\n    \"request_id\": \"req-qjob-car03\",\n    \"correlation_id\": \"corr-static-001\",\n    \"timestamp\": \"2026-03-06T10:00:00Z\",\n    \"version\": \"v1\"\n  },\n  \"data\": {\n    \"job_id\": \"JOB-CAR03-0001\",\n    \"status\": \"PENDING\",\n    \"poll_url\": \"/v1/quotes/jobs/JOB-CAR03-0001\",\n    \"result_url\": \"/v1/quotes/jobs/JOB-CAR03-0001/result\",\n    \"expires_in_seconds\": 1800\n  },\n  \"errors\": []\n}",
+          "latency": 650,
+          "statusCode": 202,
+          "label": "CAR03_JOB_CREATED",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "body",
+              "modifier": "sample_id",
+              "value": "CAR03",
+              "operator": "equals",
+              "invert": false
+            },
+            {
+              "target": "body",
+              "modifier": "vehicle_ref_id",
+              "value": "veh-car03",
+              "operator": "equals",
+              "invert": false
+            }
+          ],
+          "rulesOperator": "OR",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "aa81dbfe-db54-451c-b7cb-7552055c477f",
+          "body": "{\n  \"meta\": {\n    \"request_id\": \"req-qjob-car04\",\n    \"correlation_id\": \"corr-static-001\",\n    \"timestamp\": \"2026-03-06T10:00:00Z\",\n    \"version\": \"v1\"\n  },\n  \"data\": {\n    \"job_id\": \"JOB-CAR04-0001\",\n    \"status\": \"PENDING\",\n    \"poll_url\": \"/v1/quotes/jobs/JOB-CAR04-0001\",\n    \"result_url\": \"/v1/quotes/jobs/JOB-CAR04-0001/result\",\n    \"expires_in_seconds\": 1800\n  },\n  \"errors\": []\n}",
+          "latency": 650,
+          "statusCode": 202,
+          "label": "CAR04_JOB_CREATED",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "body",
+              "modifier": "sample_id",
+              "value": "CAR04",
+              "operator": "equals",
+              "invert": false
+            },
+            {
+              "target": "body",
+              "modifier": "vehicle_ref_id",
+              "value": "veh-car04",
+              "operator": "equals",
+              "invert": false
+            }
+          ],
+          "rulesOperator": "OR",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "9ba1b385-014e-4e25-b5ca-44d84492a112",
+          "body": "{\n  \"meta\": {\n    \"request_id\": \"req-qjob-car05\",\n    \"correlation_id\": \"corr-static-001\",\n    \"timestamp\": \"2026-03-06T10:00:00Z\",\n    \"version\": \"v1\"\n  },\n  \"data\": {\n    \"job_id\": \"JOB-CAR05-0001\",\n    \"status\": \"PENDING\",\n    \"poll_url\": \"/v1/quotes/jobs/JOB-CAR05-0001\",\n    \"result_url\": \"/v1/quotes/jobs/JOB-CAR05-0001/result\",\n    \"expires_in_seconds\": 1800\n  },\n  \"errors\": []\n}",
+          "latency": 650,
+          "statusCode": 202,
+          "label": "CAR05_JOB_CREATED",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "body",
+              "modifier": "sample_id",
+              "value": "CAR05",
+              "operator": "equals",
+              "invert": false
+            },
+            {
+              "target": "body",
+              "modifier": "vehicle_ref_id",
+              "value": "veh-car05",
+              "operator": "equals",
+              "invert": false
+            }
+          ],
+          "rulesOperator": "OR",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "e19bffc5-2092-4aa5-b393-b309b5d55cd3",
+          "body": "{\n  \"meta\": {\n    \"request_id\": \"req-qjob-car06\",\n    \"correlation_id\": \"corr-static-001\",\n    \"timestamp\": \"2026-03-06T10:00:00Z\",\n    \"version\": \"v1\"\n  },\n  \"data\": {\n    \"job_id\": \"JOB-CAR06-0001\",\n    \"status\": \"PENDING\",\n    \"poll_url\": \"/v1/quotes/jobs/JOB-CAR06-0001\",\n    \"result_url\": \"/v1/quotes/jobs/JOB-CAR06-0001/result\",\n    \"expires_in_seconds\": 1800\n  },\n  \"errors\": []\n}",
+          "latency": 650,
+          "statusCode": 202,
+          "label": "CAR06_JOB_CREATED",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "body",
+              "modifier": "sample_id",
+              "value": "CAR06",
+              "operator": "equals",
+              "invert": false
+            },
+            {
+              "target": "body",
+              "modifier": "vehicle_ref_id",
+              "value": "veh-car06",
+              "operator": "equals",
+              "invert": false
+            }
+          ],
+          "rulesOperator": "OR",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "6e806913-fae4-424e-98ff-c36298ba5b08",
+          "body": "{\n  \"meta\": {\n    \"request_id\": \"req-qjob-car07\",\n    \"correlation_id\": \"corr-static-001\",\n    \"timestamp\": \"2026-03-06T10:00:00Z\",\n    \"version\": \"v1\"\n  },\n  \"data\": {\n    \"job_id\": \"JOB-CAR07-0001\",\n    \"status\": \"PENDING\",\n    \"poll_url\": \"/v1/quotes/jobs/JOB-CAR07-0001\",\n    \"result_url\": \"/v1/quotes/jobs/JOB-CAR07-0001/result\",\n    \"expires_in_seconds\": 1800\n  },\n  \"errors\": []\n}",
+          "latency": 650,
+          "statusCode": 202,
+          "label": "CAR07_JOB_CREATED",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "body",
+              "modifier": "sample_id",
+              "value": "CAR07",
+              "operator": "equals",
+              "invert": false
+            },
+            {
+              "target": "body",
+              "modifier": "vehicle_ref_id",
+              "value": "veh-car07",
+              "operator": "equals",
+              "invert": false
+            }
+          ],
+          "rulesOperator": "OR",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "d5aca052-69ae-401b-8c11-0ef0af09111c",
+          "body": "{\n  \"meta\": {\n    \"request_id\": \"req-qjob-car08\",\n    \"correlation_id\": \"corr-static-001\",\n    \"timestamp\": \"2026-03-06T10:00:00Z\",\n    \"version\": \"v1\"\n  },\n  \"data\": {\n    \"job_id\": \"JOB-CAR08-0001\",\n    \"status\": \"PENDING\",\n    \"poll_url\": \"/v1/quotes/jobs/JOB-CAR08-0001\",\n    \"result_url\": \"/v1/quotes/jobs/JOB-CAR08-0001/result\",\n    \"expires_in_seconds\": 1800\n  },\n  \"errors\": []\n}",
+          "latency": 650,
+          "statusCode": 202,
+          "label": "CAR08_JOB_CREATED",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "body",
+              "modifier": "sample_id",
+              "value": "CAR08",
+              "operator": "equals",
+              "invert": false
+            },
+            {
+              "target": "body",
+              "modifier": "vehicle_ref_id",
+              "value": "veh-car08",
+              "operator": "equals",
+              "invert": false
+            }
+          ],
+          "rulesOperator": "OR",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "a623cc63-370c-402b-a49b-62a5e3deaa6a",
+          "body": "{\n  \"meta\": {\n    \"request_id\": \"req-qjob-car09\",\n    \"correlation_id\": \"corr-static-001\",\n    \"timestamp\": \"2026-03-06T10:00:00Z\",\n    \"version\": \"v1\"\n  },\n  \"data\": {\n    \"job_id\": \"JOB-CAR09-0001\",\n    \"status\": \"PENDING\",\n    \"poll_url\": \"/v1/quotes/jobs/JOB-CAR09-0001\",\n    \"result_url\": \"/v1/quotes/jobs/JOB-CAR09-0001/result\",\n    \"expires_in_seconds\": 1800\n  },\n  \"errors\": []\n}",
+          "latency": 650,
+          "statusCode": 202,
+          "label": "CAR09_JOB_CREATED",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "body",
+              "modifier": "sample_id",
+              "value": "CAR09",
+              "operator": "equals",
+              "invert": false
+            },
+            {
+              "target": "body",
+              "modifier": "vehicle_ref_id",
+              "value": "veh-car09",
+              "operator": "equals",
+              "invert": false
+            }
+          ],
+          "rulesOperator": "OR",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "5bf38433-476b-4498-aaad-84e52b69aa5c",
+          "body": "{\n  \"meta\": {\n    \"request_id\": \"req-qjob-car10\",\n    \"correlation_id\": \"corr-static-001\",\n    \"timestamp\": \"2026-03-06T10:00:00Z\",\n    \"version\": \"v1\"\n  },\n  \"data\": {\n    \"job_id\": \"JOB-CAR10-0001\",\n    \"status\": \"PENDING\",\n    \"poll_url\": \"/v1/quotes/jobs/JOB-CAR10-0001\",\n    \"result_url\": \"/v1/quotes/jobs/JOB-CAR10-0001/result\",\n    \"expires_in_seconds\": 1800\n  },\n  \"errors\": []\n}",
+          "latency": 650,
+          "statusCode": 202,
+          "label": "CAR10_JOB_CREATED",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "body",
+              "modifier": "sample_id",
+              "value": "CAR10",
+              "operator": "equals",
+              "invert": false
+            },
+            {
+              "target": "body",
+              "modifier": "vehicle_ref_id",
+              "value": "veh-car10",
+              "operator": "equals",
+              "invert": false
+            }
+          ],
+          "rulesOperator": "OR",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "745d9070-c4f6-4047-8e54-41ebc042ae81",
+          "body": "{\n  \"meta\": {\n    \"request_id\": \"req-qjob-404\",\n    \"correlation_id\": \"corr-static-001\",\n    \"timestamp\": \"2026-03-06T10:00:00Z\",\n    \"version\": \"v1\"\n  },\n  \"data\": null,\n  \"errors\": [\n    {\n      \"code\": \"VEHICLE_NOT_FOUND\",\n      \"message\": \"vehicle_ref_id is not recognized in sandbox records.\",\n      \"field\": \"vehicle_ref_id\",\n      \"retriable\": false\n    }\n  ]\n}",
+          "latency": 0,
+          "statusCode": 404,
+          "label": "UNKNOWN_VEHICLE_REF",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [],
+          "rulesOperator": "OR",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": true,
+          "crudKey": "id",
+          "callbacks": []
+        }
+      ],
+      "responseMode": null,
+      "streamingMode": null,
+      "streamingInterval": 0
+    },
+    {
+      "uuid": "26740ddc-01c6-4937-915c-e864fc6f349d",
+      "type": "http",
+      "documentation": "Query quote-job lifecycle state; add ?stage=done for deterministic completion.",
+      "method": "get",
+      "endpoint": "/quotes/jobs/:jobId",
+      "responses": [
+        {
+          "uuid": "3b0d6704-7148-42b7-8188-e88ebbd9a160",
+          "body": "{\n  \"meta\": {\n    \"request_id\": \"req-qstatus-401\",\n    \"correlation_id\": \"corr-static-001\",\n    \"timestamp\": \"2026-03-06T10:00:00Z\",\n    \"version\": \"v1\"\n  },\n  \"data\": null,\n  \"errors\": [\n    {\n      \"code\": \"UNAUTHORIZED\",\n      \"message\": \"Missing or invalid bearer token.\",\n      \"field\": \"Authorization\",\n      \"retriable\": false\n    }\n  ]\n}",
+          "latency": 0,
+          "statusCode": 401,
+          "label": "UNAUTHORIZED",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "header",
+              "modifier": "authorization",
+              "value": "Bearer mock-access-token",
+              "operator": "equals",
+              "invert": true
+            }
+          ],
+          "rulesOperator": "OR",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "df798cdc-5dfb-41ef-ab8a-c584cad5cf32",
+          "body": "{\n  \"meta\": {\n    \"request_id\": \"req-qstatus-404\",\n    \"correlation_id\": \"corr-static-001\",\n    \"timestamp\": \"2026-03-06T10:00:00Z\",\n    \"version\": \"v1\"\n  },\n  \"data\": null,\n  \"errors\": [\n    {\n      \"code\": \"QUOTE_JOB_NOT_FOUND\",\n      \"message\": \"Quote job ID not found.\",\n      \"field\": \"jobId\",\n      \"retriable\": false\n    }\n  ]\n}",
+          "latency": 0,
+          "statusCode": 404,
+          "label": "JOB_NOT_FOUND",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "params",
+              "modifier": "jobId",
+              "value": "^JOB-CAR(0[1-9]|10)-0001$",
+              "operator": "regex",
+              "invert": true
+            }
+          ],
+          "rulesOperator": "OR",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "77e0e195-3a14-44db-916d-d8ef5b7e68c4",
+          "body": "{\n  \"meta\": {\n    \"request_id\": \"req-qstatus-200b\",\n    \"correlation_id\": \"corr-static-001\",\n    \"timestamp\": \"2026-03-06T10:00:00Z\",\n    \"version\": \"v1\"\n  },\n  \"data\": {\n    \"job_id\": \"JOB-CAR01-0001\",\n    \"status\": \"COMPLETED\",\n    \"progress_percent\": 100\n  },\n  \"errors\": []\n}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "JOB_COMPLETED",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "query",
+              "modifier": "stage",
+              "value": "done",
+              "operator": "equals",
+              "invert": false
+            }
+          ],
+          "rulesOperator": "OR",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "bc96a6e3-f3fa-458d-bf76-baa6d0d7aac1",
+          "body": "{\n  \"meta\": {\n    \"request_id\": \"req-qstatus-200a\",\n    \"correlation_id\": \"corr-static-001\",\n    \"timestamp\": \"2026-03-06T10:00:00Z\",\n    \"version\": \"v1\"\n  },\n  \"data\": {\n    \"job_id\": \"JOB-CAR01-0001\",\n    \"status\": \"PROCESSING\",\n    \"progress_percent\": 60\n  },\n  \"errors\": []\n}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "JOB_PROCESSING",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [],
+          "rulesOperator": "OR",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": true,
+          "crudKey": "id",
+          "callbacks": []
+        }
+      ],
+      "responseMode": null,
+      "streamingMode": null,
+      "streamingInterval": 0
+    },
+    {
+      "uuid": "6442a5d4-0280-4ed2-9d98-72d053152683",
+      "type": "http",
+      "documentation": "Returns insurer quote cards. Use ?ready=0 to force not-ready error.",
+      "method": "get",
+      "endpoint": "/quotes/jobs/:jobId/result",
+      "responses": [
+        {
+          "uuid": "59fd4776-0bbf-40e8-a19f-93e9d9cf18db",
+          "body": "{\n  \"meta\": {\n    \"request_id\": \"req-qresult-401\",\n    \"correlation_id\": \"corr-static-001\",\n    \"timestamp\": \"2026-03-06T10:00:00Z\",\n    \"version\": \"v1\"\n  },\n  \"data\": null,\n  \"errors\": [\n    {\n      \"code\": \"UNAUTHORIZED\",\n      \"message\": \"Missing or invalid bearer token.\",\n      \"field\": \"Authorization\",\n      \"retriable\": false\n    }\n  ]\n}",
+          "latency": 0,
+          "statusCode": 401,
+          "label": "UNAUTHORIZED",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "header",
+              "modifier": "authorization",
+              "value": "Bearer mock-access-token",
+              "operator": "equals",
+              "invert": true
+            }
+          ],
+          "rulesOperator": "OR",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "39c2e7e9-5720-41f7-9356-3e1bdc7cb28b",
+          "body": "{\n  \"meta\": {\n    \"request_id\": \"req-qresult-404\",\n    \"correlation_id\": \"corr-static-001\",\n    \"timestamp\": \"2026-03-06T10:00:00Z\",\n    \"version\": \"v1\"\n  },\n  \"data\": null,\n  \"errors\": [\n    {\n      \"code\": \"QUOTE_JOB_NOT_FOUND\",\n      \"message\": \"Quote job ID not found.\",\n      \"field\": \"jobId\",\n      \"retriable\": false\n    }\n  ]\n}",
+          "latency": 0,
+          "statusCode": 404,
+          "label": "JOB_NOT_FOUND",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "params",
+              "modifier": "jobId",
+              "value": "^JOB-CAR(0[1-9]|10)-0001$",
+              "operator": "regex",
+              "invert": true
+            }
+          ],
+          "rulesOperator": "OR",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "6e9c83f4-6490-4c6e-aa00-2fca9ea3f0ea",
+          "body": "{\n  \"meta\": {\n    \"request_id\": \"req-qresult-409\",\n    \"correlation_id\": \"corr-static-001\",\n    \"timestamp\": \"2026-03-06T10:00:00Z\",\n    \"version\": \"v1\"\n  },\n  \"data\": null,\n  \"errors\": [\n    {\n      \"code\": \"QUOTE_JOB_NOT_READY\",\n      \"message\": \"Quote job is not completed yet.\",\n      \"field\": \"jobId\",\n      \"retriable\": true\n    }\n  ]\n}",
+          "latency": 0,
+          "statusCode": 409,
+          "label": "JOB_NOT_READY",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "query",
+              "modifier": "ready",
+              "value": "0",
+              "operator": "equals",
+              "invert": false
+            }
+          ],
+          "rulesOperator": "OR",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "d64c2aa6-10eb-4994-9ede-1dfddf5f6cc5",
+          "body": "{\n  \"meta\": {\n    \"request_id\": \"req-qresult-car01\",\n    \"correlation_id\": \"corr-static-001\",\n    \"timestamp\": \"2026-03-06T10:00:00Z\",\n    \"version\": \"v1\"\n  },\n  \"data\": {\n    \"job_id\": \"JOB-CAR01-0001\",\n    \"sample_id\": \"CAR01\",\n    \"quote_valid_until\": \"2026-03-06T10:30:00Z\",\n    \"roadtax_options\": [\n      {\n        \"id\": \"digital_12m\",\n        \"name\": \"12 Months Digital Road Tax\",\n        \"total_price\": 90,\n        \"eligible\": true\n      },\n      {\n        \"id\": \"printed_12m\",\n        \"name\": \"12 Months Printed Road Tax\",\n        \"total_price\": 100,\n        \"eligible\": false\n      },\n      {\n        \"id\": \"none\",\n        \"name\": \"No Road Tax Renewal\",\n        \"total_price\": 0,\n        \"eligible\": true\n      }\n    ],\n    \"quotes\": [\n      {\n        \"quote_id\": \"QT-CAR01-TAK-001\",\n        \"insurer\": {\n          \"code\": \"TAKAFUL\",\n          \"name\": \"Takaful Ikhlas\"\n        },\n        \"underwriting\": {\n          \"decision\": \"ACCEPTED\",\n          \"reasons\": []\n        },\n        \"coverage\": {\n          \"type\": \"COMPREHENSIVE\",\n          \"sum_insured\": 34000\n        },\n        \"premium\": {\n          \"base\": 995,\n          \"ncd_percent\": 20,\n          \"ncd_amount\": 199,\n          \"loadings\": [],\n          \"final\": 796,\n          \"currency\": \"MYR\"\n        },\n        \"addons_catalog\": [\n          {\n            \"id\": \"windscreen\",\n            \"name\": \"Windscreen Protection\",\n            \"price\": 100,\n            \"mandatory\": false,\n            \"recommended\": true\n          },\n          {\n            \"id\": \"flood\",\n            \"name\": \"Special Perils (Flood)\",\n            \"price\": 50,\n            \"mandatory\": false,\n            \"recommended\": false\n          },\n          {\n            \"id\": \"ehailing\",\n            \"name\": \"E-hailing Cover\",\n            \"price\": 500,\n            \"mandatory\": false,\n            \"recommended\": false\n          }\n        ]\n      },\n      {\n        \"quote_id\": \"QT-CAR01-ETI-001\",\n        \"insurer\": {\n          \"code\": \"ETIQA\",\n          \"name\": \"Etiqa Insurance\"\n        },\n        \"underwriting\": {\n          \"decision\": \"ACCEPTED\",\n          \"reasons\": []\n        },\n        \"coverage\": {\n          \"type\": \"COMPREHENSIVE\",\n          \"sum_insured\": 35000\n        },\n        \"premium\": {\n          \"base\": 1090,\n          \"ncd_percent\": 20,\n          \"ncd_amount\": 218,\n          \"loadings\": [],\n          \"final\": 872,\n          \"currency\": \"MYR\"\n        },\n        \"addons_catalog\": [\n          {\n            \"id\": \"windscreen\",\n            \"name\": \"Windscreen Protection\",\n            \"price\": 100,\n            \"mandatory\": false,\n            \"recommended\": true\n          },\n          {\n            \"id\": \"flood\",\n            \"name\": \"Special Perils (Flood)\",\n            \"price\": 50,\n            \"mandatory\": false,\n            \"recommended\": false\n          },\n          {\n            \"id\": \"ehailing\",\n            \"name\": \"E-hailing Cover\",\n            \"price\": 500,\n            \"mandatory\": false,\n            \"recommended\": false\n          }\n        ]\n      },\n      {\n        \"quote_id\": \"QT-CAR01-ALL-001\",\n        \"insurer\": {\n          \"code\": \"ALLIANZ\",\n          \"name\": \"Allianz Insurance\"\n        },\n        \"underwriting\": {\n          \"decision\": \"ACCEPTED\",\n          \"reasons\": []\n        },\n        \"coverage\": {\n          \"type\": \"COMPREHENSIVE\",\n          \"sum_insured\": 36000\n        },\n        \"premium\": {\n          \"base\": 1150,\n          \"ncd_percent\": 20,\n          \"ncd_amount\": 230,\n          \"loadings\": [],\n          \"final\": 920,\n          \"currency\": \"MYR\"\n        },\n        \"addons_catalog\": [\n          {\n            \"id\": \"windscreen\",\n            \"name\": \"Windscreen Protection\",\n            \"price\": 100,\n            \"mandatory\": false,\n            \"recommended\": true\n          },\n          {\n            \"id\": \"flood\",\n            \"name\": \"Special Perils (Flood)\",\n            \"price\": 50,\n            \"mandatory\": false,\n            \"recommended\": false\n          },\n          {\n            \"id\": \"ehailing\",\n            \"name\": \"E-hailing Cover\",\n            \"price\": 500,\n            \"mandatory\": false,\n            \"recommended\": false\n          }\n        ]\n      }\n    ],\n    \"notes\": [\n      \"From 1 Feb 2026, printed road tax is available only for foreign_id or company_reg vehicle ownership.\"\n    ]\n  },\n  \"errors\": []\n}",
+          "latency": 900,
+          "statusCode": 200,
+          "label": "CAR01_QUOTE_RESULT",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "params",
+              "modifier": "jobId",
+              "value": "JOB-CAR01-0001",
+              "operator": "equals",
+              "invert": false
+            }
+          ],
+          "rulesOperator": "OR",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "ce5f45da-b3cb-4629-903c-1feca50e58d3",
+          "body": "{\n  \"meta\": {\n    \"request_id\": \"req-qresult-car02\",\n    \"correlation_id\": \"corr-static-001\",\n    \"timestamp\": \"2026-03-06T10:00:00Z\",\n    \"version\": \"v1\"\n  },\n  \"data\": {\n    \"job_id\": \"JOB-CAR02-0001\",\n    \"sample_id\": \"CAR02\",\n    \"quote_valid_until\": \"2026-03-06T10:30:00Z\",\n    \"roadtax_options\": [\n      {\n        \"id\": \"digital_12m\",\n        \"name\": \"12 Months Digital Road Tax\",\n        \"total_price\": 90,\n        \"eligible\": true\n      },\n      {\n        \"id\": \"printed_12m\",\n        \"name\": \"12 Months Printed Road Tax\",\n        \"total_price\": 100,\n        \"eligible\": false\n      },\n      {\n        \"id\": \"none\",\n        \"name\": \"No Road Tax Renewal\",\n        \"total_price\": 0,\n        \"eligible\": true\n      }\n    ],\n    \"quotes\": [\n      {\n        \"quote_id\": \"QT-CAR02-TAK-001\",\n        \"insurer\": {\n          \"code\": \"TAKAFUL\",\n          \"name\": \"Takaful Ikhlas\"\n        },\n        \"underwriting\": {\n          \"decision\": \"ACCEPTED\",\n          \"reasons\": []\n        },\n        \"coverage\": {\n          \"type\": \"COMPREHENSIVE\",\n          \"sum_insured\": 34000\n        },\n        \"premium\": {\n          \"base\": 995,\n          \"ncd_percent\": 25,\n          \"ncd_amount\": 199,\n          \"loadings\": [],\n          \"final\": 796,\n          \"currency\": \"MYR\"\n        },\n        \"addons_catalog\": [\n          {\n            \"id\": \"windscreen\",\n            \"name\": \"Windscreen Protection\",\n            \"price\": 100,\n            \"mandatory\": false,\n            \"recommended\": true\n          },\n          {\n            \"id\": \"flood\",\n            \"name\": \"Special Perils (Flood)\",\n            \"price\": 50,\n            \"mandatory\": false,\n            \"recommended\": false\n          },\n          {\n            \"id\": \"ehailing\",\n            \"name\": \"E-hailing Cover\",\n            \"price\": 500,\n            \"mandatory\": false,\n            \"recommended\": false\n          }\n        ]\n      },\n      {\n        \"quote_id\": \"QT-CAR02-ETI-001\",\n        \"insurer\": {\n          \"code\": \"ETIQA\",\n          \"name\": \"Etiqa Insurance\"\n        },\n        \"underwriting\": {\n          \"decision\": \"ACCEPTED\",\n          \"reasons\": []\n        },\n        \"coverage\": {\n          \"type\": \"COMPREHENSIVE\",\n          \"sum_insured\": 35000\n        },\n        \"premium\": {\n          \"base\": 1090,\n          \"ncd_percent\": 25,\n          \"ncd_amount\": 218,\n          \"loadings\": [],\n          \"final\": 872,\n          \"currency\": \"MYR\"\n        },\n        \"addons_catalog\": [\n          {\n            \"id\": \"windscreen\",\n            \"name\": \"Windscreen Protection\",\n            \"price\": 100,\n            \"mandatory\": false,\n            \"recommended\": true\n          },\n          {\n            \"id\": \"flood\",\n            \"name\": \"Special Perils (Flood)\",\n            \"price\": 50,\n            \"mandatory\": false,\n            \"recommended\": false\n          },\n          {\n            \"id\": \"ehailing\",\n            \"name\": \"E-hailing Cover\",\n            \"price\": 500,\n            \"mandatory\": false,\n            \"recommended\": false\n          }\n        ]\n      },\n      {\n        \"quote_id\": \"QT-CAR02-ALL-001\",\n        \"insurer\": {\n          \"code\": \"ALLIANZ\",\n          \"name\": \"Allianz Insurance\"\n        },\n        \"underwriting\": {\n          \"decision\": \"ACCEPTED\",\n          \"reasons\": []\n        },\n        \"coverage\": {\n          \"type\": \"COMPREHENSIVE\",\n          \"sum_insured\": 36000\n        },\n        \"premium\": {\n          \"base\": 1150,\n          \"ncd_percent\": 25,\n          \"ncd_amount\": 230,\n          \"loadings\": [],\n          \"final\": 920,\n          \"currency\": \"MYR\"\n        },\n        \"addons_catalog\": [\n          {\n            \"id\": \"windscreen\",\n            \"name\": \"Windscreen Protection\",\n            \"price\": 100,\n            \"mandatory\": false,\n            \"recommended\": true\n          },\n          {\n            \"id\": \"flood\",\n            \"name\": \"Special Perils (Flood)\",\n            \"price\": 50,\n            \"mandatory\": false,\n            \"recommended\": false\n          },\n          {\n            \"id\": \"ehailing\",\n            \"name\": \"E-hailing Cover\",\n            \"price\": 500,\n            \"mandatory\": false,\n            \"recommended\": false\n          }\n        ]\n      }\n    ],\n    \"notes\": [\n      \"From 1 Feb 2026, printed road tax is available only for foreign_id or company_reg vehicle ownership.\"\n    ]\n  },\n  \"errors\": []\n}",
+          "latency": 900,
+          "statusCode": 200,
+          "label": "CAR02_QUOTE_RESULT",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "params",
+              "modifier": "jobId",
+              "value": "JOB-CAR02-0001",
+              "operator": "equals",
+              "invert": false
+            }
+          ],
+          "rulesOperator": "OR",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "3cd1cd7c-ef2d-42f5-bdd3-9db5b829a44d",
+          "body": "{\n  \"meta\": {\n    \"request_id\": \"req-qresult-car03\",\n    \"correlation_id\": \"corr-static-001\",\n    \"timestamp\": \"2026-03-06T10:00:00Z\",\n    \"version\": \"v1\"\n  },\n  \"data\": {\n    \"job_id\": \"JOB-CAR03-0001\",\n    \"sample_id\": \"CAR03\",\n    \"quote_valid_until\": \"2026-03-06T10:30:00Z\",\n    \"roadtax_options\": [\n      {\n        \"id\": \"digital_12m\",\n        \"name\": \"12 Months Digital Road Tax\",\n        \"total_price\": 90,\n        \"eligible\": true\n      },\n      {\n        \"id\": \"printed_12m\",\n        \"name\": \"12 Months Printed Road Tax\",\n        \"total_price\": 100,\n        \"eligible\": false\n      },\n      {\n        \"id\": \"none\",\n        \"name\": \"No Road Tax Renewal\",\n        \"total_price\": 0,\n        \"eligible\": true\n      }\n    ],\n    \"quotes\": [\n      {\n        \"quote_id\": \"QT-CAR03-TAK-001\",\n        \"insurer\": {\n          \"code\": \"TAKAFUL\",\n          \"name\": \"Takaful Ikhlas\"\n        },\n        \"underwriting\": {\n          \"decision\": \"ACCEPTED\",\n          \"reasons\": []\n        },\n        \"coverage\": {\n          \"type\": \"COMPREHENSIVE\",\n          \"sum_insured\": 34000\n        },\n        \"premium\": {\n          \"base\": 995,\n          \"ncd_percent\": 38.33,\n          \"ncd_amount\": 199,\n          \"loadings\": [\n            {\n              \"type\": \"risk_loading\",\n              \"amount\": 25\n            }\n          ],\n          \"final\": 821,\n          \"currency\": \"MYR\"\n        },\n        \"addons_catalog\": [\n          {\n            \"id\": \"windscreen\",\n            \"name\": \"Windscreen Protection\",\n            \"price\": 100,\n            \"mandatory\": false,\n            \"recommended\": true\n          },\n          {\n            \"id\": \"flood\",\n            \"name\": \"Special Perils (Flood)\",\n            \"price\": 50,\n            \"mandatory\": false,\n            \"recommended\": true\n          },\n          {\n            \"id\": \"ehailing\",\n            \"name\": \"E-hailing Cover\",\n            \"price\": 500,\n            \"mandatory\": false,\n            \"recommended\": false\n          }\n        ]\n      },\n      {\n        \"quote_id\": \"QT-CAR03-ETI-001\",\n        \"insurer\": {\n          \"code\": \"ETIQA\",\n          \"name\": \"Etiqa Insurance\"\n        },\n        \"underwriting\": {\n          \"decision\": \"ACCEPTED\",\n          \"reasons\": []\n        },\n        \"coverage\": {\n          \"type\": \"COMPREHENSIVE\",\n          \"sum_insured\": 35000\n        },\n        \"premium\": {\n          \"base\": 1090,\n          \"ncd_percent\": 38.33,\n          \"ncd_amount\": 218,\n          \"loadings\": [\n            {\n              \"type\": \"risk_loading\",\n              \"amount\": 25\n            }\n          ],\n          \"final\": 897,\n          \"currency\": \"MYR\"\n        },\n        \"addons_catalog\": [\n          {\n            \"id\": \"windscreen\",\n            \"name\": \"Windscreen Protection\",\n            \"price\": 100,\n            \"mandatory\": false,\n            \"recommended\": true\n          },\n          {\n            \"id\": \"flood\",\n            \"name\": \"Special Perils (Flood)\",\n            \"price\": 50,\n            \"mandatory\": false,\n            \"recommended\": true\n          },\n          {\n            \"id\": \"ehailing\",\n            \"name\": \"E-hailing Cover\",\n            \"price\": 500,\n            \"mandatory\": false,\n            \"recommended\": false\n          }\n        ]\n      },\n      {\n        \"quote_id\": \"QT-CAR03-ALL-001\",\n        \"insurer\": {\n          \"code\": \"ALLIANZ\",\n          \"name\": \"Allianz Insurance\"\n        },\n        \"underwriting\": {\n          \"decision\": \"ACCEPTED\",\n          \"reasons\": []\n        },\n        \"coverage\": {\n          \"type\": \"COMPREHENSIVE\",\n          \"sum_insured\": 36000\n        },\n        \"premium\": {\n          \"base\": 1150,\n          \"ncd_percent\": 38.33,\n          \"ncd_amount\": 230,\n          \"loadings\": [\n            {\n              \"type\": \"risk_loading\",\n              \"amount\": 25\n            }\n          ],\n          \"final\": 945,\n          \"currency\": \"MYR\"\n        },\n        \"addons_catalog\": [\n          {\n            \"id\": \"windscreen\",\n            \"name\": \"Windscreen Protection\",\n            \"price\": 100,\n            \"mandatory\": false,\n            \"recommended\": true\n          },\n          {\n            \"id\": \"flood\",\n            \"name\": \"Special Perils (Flood)\",\n            \"price\": 50,\n            \"mandatory\": false,\n            \"recommended\": true\n          },\n          {\n            \"id\": \"ehailing\",\n            \"name\": \"E-hailing Cover\",\n            \"price\": 500,\n            \"mandatory\": false,\n            \"recommended\": false\n          }\n        ]\n      }\n    ],\n    \"notes\": [\n      \"From 1 Feb 2026, printed road tax is available only for foreign_id or company_reg vehicle ownership.\"\n    ]\n  },\n  \"errors\": []\n}",
+          "latency": 900,
+          "statusCode": 200,
+          "label": "CAR03_QUOTE_RESULT",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "params",
+              "modifier": "jobId",
+              "value": "JOB-CAR03-0001",
+              "operator": "equals",
+              "invert": false
+            }
+          ],
+          "rulesOperator": "OR",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "e63fe15d-4973-49c3-9c46-e18e20f115c1",
+          "body": "{\n  \"meta\": {\n    \"request_id\": \"req-qresult-car04\",\n    \"correlation_id\": \"corr-static-001\",\n    \"timestamp\": \"2026-03-06T10:00:00Z\",\n    \"version\": \"v1\"\n  },\n  \"data\": {\n    \"job_id\": \"JOB-CAR04-0001\",\n    \"sample_id\": \"CAR04\",\n    \"quote_valid_until\": \"2026-03-06T10:30:00Z\",\n    \"roadtax_options\": [\n      {\n        \"id\": \"digital_12m\",\n        \"name\": \"12 Months Digital Road Tax\",\n        \"total_price\": 90,\n        \"eligible\": true\n      },\n      {\n        \"id\": \"printed_12m\",\n        \"name\": \"12 Months Printed Road Tax\",\n        \"total_price\": 100,\n        \"eligible\": false\n      },\n      {\n        \"id\": \"none\",\n        \"name\": \"No Road Tax Renewal\",\n        \"total_price\": 0,\n        \"eligible\": true\n      }\n    ],\n    \"quotes\": [\n      {\n        \"quote_id\": \"QT-CAR04-TAK-001\",\n        \"insurer\": {\n          \"code\": \"TAKAFUL\",\n          \"name\": \"Takaful Ikhlas\"\n        },\n        \"underwriting\": {\n          \"decision\": \"ACCEPTED\",\n          \"reasons\": []\n        },\n        \"coverage\": {\n          \"type\": \"COMPREHENSIVE\",\n          \"sum_insured\": 34000\n        },\n        \"premium\": {\n          \"base\": 995,\n          \"ncd_percent\": 15,\n          \"ncd_amount\": 199,\n          \"loadings\": [\n            {\n              \"type\": \"risk_loading\",\n              \"amount\": 40\n            }\n          ],\n          \"final\": 836,\n          \"currency\": \"MYR\"\n        },\n        \"addons_catalog\": [\n          {\n            \"id\": \"windscreen\",\n            \"name\": \"Windscreen Protection\",\n            \"price\": 100,\n            \"mandatory\": false,\n            \"recommended\": true\n          },\n          {\n            \"id\": \"flood\",\n            \"name\": \"Special Perils (Flood)\",\n            \"price\": 50,\n            \"mandatory\": false,\n            \"recommended\": false\n          },\n          {\n            \"id\": \"ehailing\",\n            \"name\": \"E-hailing Cover\",\n            \"price\": 500,\n            \"mandatory\": false,\n            \"recommended\": false\n          }\n        ]\n      },\n      {\n        \"quote_id\": \"QT-CAR04-ETI-001\",\n        \"insurer\": {\n          \"code\": \"ETIQA\",\n          \"name\": \"Etiqa Insurance\"\n        },\n        \"underwriting\": {\n          \"decision\": \"ACCEPTED\",\n          \"reasons\": []\n        },\n        \"coverage\": {\n          \"type\": \"COMPREHENSIVE\",\n          \"sum_insured\": 35000\n        },\n        \"premium\": {\n          \"base\": 1090,\n          \"ncd_percent\": 15,\n          \"ncd_amount\": 218,\n          \"loadings\": [\n            {\n              \"type\": \"risk_loading\",\n              \"amount\": 40\n            }\n          ],\n          \"final\": 912,\n          \"currency\": \"MYR\"\n        },\n        \"addons_catalog\": [\n          {\n            \"id\": \"windscreen\",\n            \"name\": \"Windscreen Protection\",\n            \"price\": 100,\n            \"mandatory\": false,\n            \"recommended\": true\n          },\n          {\n            \"id\": \"flood\",\n            \"name\": \"Special Perils (Flood)\",\n            \"price\": 50,\n            \"mandatory\": false,\n            \"recommended\": false\n          },\n          {\n            \"id\": \"ehailing\",\n            \"name\": \"E-hailing Cover\",\n            \"price\": 500,\n            \"mandatory\": false,\n            \"recommended\": false\n          }\n        ]\n      },\n      {\n        \"quote_id\": \"QT-CAR04-ALL-001\",\n        \"insurer\": {\n          \"code\": \"ALLIANZ\",\n          \"name\": \"Allianz Insurance\"\n        },\n        \"underwriting\": {\n          \"decision\": \"ACCEPTED\",\n          \"reasons\": []\n        },\n        \"coverage\": {\n          \"type\": \"COMPREHENSIVE\",\n          \"sum_insured\": 36000\n        },\n        \"premium\": {\n          \"base\": 1150,\n          \"ncd_percent\": 15,\n          \"ncd_amount\": 230,\n          \"loadings\": [\n            {\n              \"type\": \"risk_loading\",\n              \"amount\": 40\n            }\n          ],\n          \"final\": 960,\n          \"currency\": \"MYR\"\n        },\n        \"addons_catalog\": [\n          {\n            \"id\": \"windscreen\",\n            \"name\": \"Windscreen Protection\",\n            \"price\": 100,\n            \"mandatory\": false,\n            \"recommended\": true\n          },\n          {\n            \"id\": \"flood\",\n            \"name\": \"Special Perils (Flood)\",\n            \"price\": 50,\n            \"mandatory\": false,\n            \"recommended\": false\n          },\n          {\n            \"id\": \"ehailing\",\n            \"name\": \"E-hailing Cover\",\n            \"price\": 500,\n            \"mandatory\": false,\n            \"recommended\": false\n          }\n        ]\n      }\n    ],\n    \"notes\": [\n      \"From 1 Feb 2026, printed road tax is available only for foreign_id or company_reg vehicle ownership.\"\n    ]\n  },\n  \"errors\": []\n}",
+          "latency": 900,
+          "statusCode": 200,
+          "label": "CAR04_QUOTE_RESULT",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "params",
+              "modifier": "jobId",
+              "value": "JOB-CAR04-0001",
+              "operator": "equals",
+              "invert": false
+            }
+          ],
+          "rulesOperator": "OR",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "615a955c-a9c2-4920-b8c7-cb83b22ec5e0",
+          "body": "{\n  \"meta\": {\n    \"request_id\": \"req-qresult-car05\",\n    \"correlation_id\": \"corr-static-001\",\n    \"timestamp\": \"2026-03-06T10:00:00Z\",\n    \"version\": \"v1\"\n  },\n  \"data\": {\n    \"job_id\": \"JOB-CAR05-0001\",\n    \"sample_id\": \"CAR05\",\n    \"quote_valid_until\": \"2026-03-06T10:30:00Z\",\n    \"roadtax_options\": [\n      {\n        \"id\": \"digital_12m\",\n        \"name\": \"12 Months Digital Road Tax\",\n        \"total_price\": 90,\n        \"eligible\": true\n      },\n      {\n        \"id\": \"printed_12m\",\n        \"name\": \"12 Months Printed Road Tax\",\n        \"total_price\": 100,\n        \"eligible\": false\n      },\n      {\n        \"id\": \"none\",\n        \"name\": \"No Road Tax Renewal\",\n        \"total_price\": 0,\n        \"eligible\": true\n      }\n    ],\n    \"quotes\": [\n      {\n        \"quote_id\": \"QT-CAR05-TAK-001\",\n        \"insurer\": {\n          \"code\": \"TAKAFUL\",\n          \"name\": \"Takaful Ikhlas\"\n        },\n        \"underwriting\": {\n          \"decision\": \"ACCEPTED\",\n          \"reasons\": []\n        },\n        \"coverage\": {\n          \"type\": \"COMPREHENSIVE\",\n          \"sum_insured\": 34000\n        },\n        \"premium\": {\n          \"base\": 995,\n          \"ncd_percent\": 0,\n          \"ncd_amount\": 199,\n          \"loadings\": [\n            {\n              \"type\": \"risk_loading\",\n              \"amount\": 120\n            }\n          ],\n          \"final\": 916,\n          \"currency\": \"MYR\"\n        },\n        \"addons_catalog\": [\n          {\n            \"id\": \"windscreen\",\n            \"name\": \"Windscreen Protection\",\n            \"price\": 100,\n            \"mandatory\": false,\n            \"recommended\": true\n          },\n          {\n            \"id\": \"flood\",\n            \"name\": \"Special Perils (Flood)\",\n            \"price\": 50,\n            \"mandatory\": false,\n            \"recommended\": false\n          },\n          {\n            \"id\": \"ehailing\",\n            \"name\": \"E-hailing Cover\",\n            \"price\": 500,\n            \"mandatory\": false,\n            \"recommended\": false\n          }\n        ]\n      },\n      {\n        \"quote_id\": \"QT-CAR05-ETI-001\",\n        \"insurer\": {\n          \"code\": \"ETIQA\",\n          \"name\": \"Etiqa Insurance\"\n        },\n        \"underwriting\": {\n          \"decision\": \"ACCEPTED\",\n          \"reasons\": []\n        },\n        \"coverage\": {\n          \"type\": \"COMPREHENSIVE\",\n          \"sum_insured\": 35000\n        },\n        \"premium\": {\n          \"base\": 1090,\n          \"ncd_percent\": 0,\n          \"ncd_amount\": 218,\n          \"loadings\": [\n            {\n              \"type\": \"risk_loading\",\n              \"amount\": 120\n            }\n          ],\n          \"final\": 992,\n          \"currency\": \"MYR\"\n        },\n        \"addons_catalog\": [\n          {\n            \"id\": \"windscreen\",\n            \"name\": \"Windscreen Protection\",\n            \"price\": 100,\n            \"mandatory\": false,\n            \"recommended\": true\n          },\n          {\n            \"id\": \"flood\",\n            \"name\": \"Special Perils (Flood)\",\n            \"price\": 50,\n            \"mandatory\": false,\n            \"recommended\": false\n          },\n          {\n            \"id\": \"ehailing\",\n            \"name\": \"E-hailing Cover\",\n            \"price\": 500,\n            \"mandatory\": false,\n            \"recommended\": false\n          }\n        ]\n      },\n      {\n        \"quote_id\": \"QT-CAR05-ALL-001\",\n        \"insurer\": {\n          \"code\": \"ALLIANZ\",\n          \"name\": \"Allianz Insurance\"\n        },\n        \"underwriting\": {\n          \"decision\": \"ACCEPTED\",\n          \"reasons\": []\n        },\n        \"coverage\": {\n          \"type\": \"COMPREHENSIVE\",\n          \"sum_insured\": 36000\n        },\n        \"premium\": {\n          \"base\": 1150,\n          \"ncd_percent\": 0,\n          \"ncd_amount\": 230,\n          \"loadings\": [\n            {\n              \"type\": \"risk_loading\",\n              \"amount\": 120\n            }\n          ],\n          \"final\": 1040,\n          \"currency\": \"MYR\"\n        },\n        \"addons_catalog\": [\n          {\n            \"id\": \"windscreen\",\n            \"name\": \"Windscreen Protection\",\n            \"price\": 100,\n            \"mandatory\": false,\n            \"recommended\": true\n          },\n          {\n            \"id\": \"flood\",\n            \"name\": \"Special Perils (Flood)\",\n            \"price\": 50,\n            \"mandatory\": false,\n            \"recommended\": false\n          },\n          {\n            \"id\": \"ehailing\",\n            \"name\": \"E-hailing Cover\",\n            \"price\": 500,\n            \"mandatory\": false,\n            \"recommended\": false\n          }\n        ]\n      }\n    ],\n    \"notes\": [\n      \"From 1 Feb 2026, printed road tax is available only for foreign_id or company_reg vehicle ownership.\"\n    ]\n  },\n  \"errors\": []\n}",
+          "latency": 900,
+          "statusCode": 200,
+          "label": "CAR05_QUOTE_RESULT",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "params",
+              "modifier": "jobId",
+              "value": "JOB-CAR05-0001",
+              "operator": "equals",
+              "invert": false
+            }
+          ],
+          "rulesOperator": "OR",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "a5258828-8a95-4e8d-9e4c-d5518713e5e8",
+          "body": "{\n  \"meta\": {\n    \"request_id\": \"req-qresult-car06\",\n    \"correlation_id\": \"corr-static-001\",\n    \"timestamp\": \"2026-03-06T10:00:00Z\",\n    \"version\": \"v1\"\n  },\n  \"data\": {\n    \"job_id\": \"JOB-CAR06-0001\",\n    \"sample_id\": \"CAR06\",\n    \"quote_valid_until\": \"2026-03-06T10:30:00Z\",\n    \"roadtax_options\": [\n      {\n        \"id\": \"digital_12m\",\n        \"name\": \"12 Months Digital Road Tax\",\n        \"total_price\": 90,\n        \"eligible\": true\n      },\n      {\n        \"id\": \"printed_12m\",\n        \"name\": \"12 Months Printed Road Tax\",\n        \"total_price\": 100,\n        \"eligible\": true\n      },\n      {\n        \"id\": \"none\",\n        \"name\": \"No Road Tax Renewal\",\n        \"total_price\": 0,\n        \"eligible\": true\n      }\n    ],\n    \"quotes\": [\n      {\n        \"quote_id\": \"QT-CAR06-TAK-001\",\n        \"insurer\": {\n          \"code\": \"TAKAFUL\",\n          \"name\": \"Takaful Ikhlas\"\n        },\n        \"underwriting\": {\n          \"decision\": \"ACCEPTED\",\n          \"reasons\": []\n        },\n        \"coverage\": {\n          \"type\": \"COMPREHENSIVE\",\n          \"sum_insured\": 34000\n        },\n        \"premium\": {\n          \"base\": 995,\n          \"ncd_percent\": 30,\n          \"ncd_amount\": 199,\n          \"loadings\": [\n            {\n              \"type\": \"risk_loading\",\n              \"amount\": 10\n            }\n          ],\n          \"final\": 806,\n          \"currency\": \"MYR\"\n        },\n        \"addons_catalog\": [\n          {\n            \"id\": \"windscreen\",\n            \"name\": \"Windscreen Protection\",\n            \"price\": 100,\n            \"mandatory\": false,\n            \"recommended\": true\n          },\n          {\n            \"id\": \"flood\",\n            \"name\": \"Special Perils (Flood)\",\n            \"price\": 50,\n            \"mandatory\": false,\n            \"recommended\": false\n          },\n          {\n            \"id\": \"ehailing\",\n            \"name\": \"E-hailing Cover\",\n            \"price\": 500,\n            \"mandatory\": false,\n            \"recommended\": false\n          }\n        ]\n      },\n      {\n        \"quote_id\": \"QT-CAR06-ETI-001\",\n        \"insurer\": {\n          \"code\": \"ETIQA\",\n          \"name\": \"Etiqa Insurance\"\n        },\n        \"underwriting\": {\n          \"decision\": \"ACCEPTED\",\n          \"reasons\": []\n        },\n        \"coverage\": {\n          \"type\": \"COMPREHENSIVE\",\n          \"sum_insured\": 35000\n        },\n        \"premium\": {\n          \"base\": 1090,\n          \"ncd_percent\": 30,\n          \"ncd_amount\": 218,\n          \"loadings\": [\n            {\n              \"type\": \"risk_loading\",\n              \"amount\": 10\n            }\n          ],\n          \"final\": 882,\n          \"currency\": \"MYR\"\n        },\n        \"addons_catalog\": [\n          {\n            \"id\": \"windscreen\",\n            \"name\": \"Windscreen Protection\",\n            \"price\": 100,\n            \"mandatory\": false,\n            \"recommended\": true\n          },\n          {\n            \"id\": \"flood\",\n            \"name\": \"Special Perils (Flood)\",\n            \"price\": 50,\n            \"mandatory\": false,\n            \"recommended\": false\n          },\n          {\n            \"id\": \"ehailing\",\n            \"name\": \"E-hailing Cover\",\n            \"price\": 500,\n            \"mandatory\": false,\n            \"recommended\": false\n          }\n        ]\n      },\n      {\n        \"quote_id\": \"QT-CAR06-ALL-001\",\n        \"insurer\": {\n          \"code\": \"ALLIANZ\",\n          \"name\": \"Allianz Insurance\"\n        },\n        \"underwriting\": {\n          \"decision\": \"ACCEPTED\",\n          \"reasons\": []\n        },\n        \"coverage\": {\n          \"type\": \"COMPREHENSIVE\",\n          \"sum_insured\": 36000\n        },\n        \"premium\": {\n          \"base\": 1150,\n          \"ncd_percent\": 30,\n          \"ncd_amount\": 230,\n          \"loadings\": [\n            {\n              \"type\": \"risk_loading\",\n              \"amount\": 10\n            }\n          ],\n          \"final\": 930,\n          \"currency\": \"MYR\"\n        },\n        \"addons_catalog\": [\n          {\n            \"id\": \"windscreen\",\n            \"name\": \"Windscreen Protection\",\n            \"price\": 100,\n            \"mandatory\": false,\n            \"recommended\": true\n          },\n          {\n            \"id\": \"flood\",\n            \"name\": \"Special Perils (Flood)\",\n            \"price\": 50,\n            \"mandatory\": false,\n            \"recommended\": false\n          },\n          {\n            \"id\": \"ehailing\",\n            \"name\": \"E-hailing Cover\",\n            \"price\": 500,\n            \"mandatory\": false,\n            \"recommended\": false\n          }\n        ]\n      }\n    ],\n    \"notes\": [\n      \"From 1 Feb 2026, printed road tax is available only for foreign_id or company_reg vehicle ownership.\"\n    ]\n  },\n  \"errors\": []\n}",
+          "latency": 900,
+          "statusCode": 200,
+          "label": "CAR06_QUOTE_RESULT",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "params",
+              "modifier": "jobId",
+              "value": "JOB-CAR06-0001",
+              "operator": "equals",
+              "invert": false
+            }
+          ],
+          "rulesOperator": "OR",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "b8837a1b-4f5a-446d-af19-fa007e3f090c",
+          "body": "{\n  \"meta\": {\n    \"request_id\": \"req-qresult-car07\",\n    \"correlation_id\": \"corr-static-001\",\n    \"timestamp\": \"2026-03-06T10:00:00Z\",\n    \"version\": \"v1\"\n  },\n  \"data\": {\n    \"job_id\": \"JOB-CAR07-0001\",\n    \"sample_id\": \"CAR07\",\n    \"quote_valid_until\": \"2026-03-06T10:30:00Z\",\n    \"roadtax_options\": [\n      {\n        \"id\": \"digital_12m\",\n        \"name\": \"12 Months Digital Road Tax\",\n        \"total_price\": 90,\n        \"eligible\": true\n      },\n      {\n        \"id\": \"printed_12m\",\n        \"name\": \"12 Months Printed Road Tax\",\n        \"total_price\": 100,\n        \"eligible\": true\n      },\n      {\n        \"id\": \"none\",\n        \"name\": \"No Road Tax Renewal\",\n        \"total_price\": 0,\n        \"eligible\": true\n      }\n    ],\n    \"quotes\": [\n      {\n        \"quote_id\": \"QT-CAR07-TAK-001\",\n        \"insurer\": {\n          \"code\": \"TAKAFUL\",\n          \"name\": \"Takaful Ikhlas\"\n        },\n        \"underwriting\": {\n          \"decision\": \"ACCEPTED\",\n          \"reasons\": []\n        },\n        \"coverage\": {\n          \"type\": \"COMPREHENSIVE\",\n          \"sum_insured\": 34000\n        },\n        \"premium\": {\n          \"base\": 995,\n          \"ncd_percent\": 20,\n          \"ncd_amount\": 199,\n          \"loadings\": [\n            {\n              \"type\": \"risk_loading\",\n              \"amount\": 10\n            }\n          ],\n          \"final\": 806,\n          \"currency\": \"MYR\"\n        },\n        \"addons_catalog\": [\n          {\n            \"id\": \"windscreen\",\n            \"name\": \"Windscreen Protection\",\n            \"price\": 100,\n            \"mandatory\": false,\n            \"recommended\": true\n          },\n          {\n            \"id\": \"flood\",\n            \"name\": \"Special Perils (Flood)\",\n            \"price\": 50,\n            \"mandatory\": false,\n            \"recommended\": false\n          },\n          {\n            \"id\": \"ehailing\",\n            \"name\": \"E-hailing Cover\",\n            \"price\": 500,\n            \"mandatory\": false,\n            \"recommended\": false\n          }\n        ]\n      },\n      {\n        \"quote_id\": \"QT-CAR07-ETI-001\",\n        \"insurer\": {\n          \"code\": \"ETIQA\",\n          \"name\": \"Etiqa Insurance\"\n        },\n        \"underwriting\": {\n          \"decision\": \"ACCEPTED\",\n          \"reasons\": []\n        },\n        \"coverage\": {\n          \"type\": \"COMPREHENSIVE\",\n          \"sum_insured\": 35000\n        },\n        \"premium\": {\n          \"base\": 1090,\n          \"ncd_percent\": 20,\n          \"ncd_amount\": 218,\n          \"loadings\": [\n            {\n              \"type\": \"risk_loading\",\n              \"amount\": 10\n            }\n          ],\n          \"final\": 882,\n          \"currency\": \"MYR\"\n        },\n        \"addons_catalog\": [\n          {\n            \"id\": \"windscreen\",\n            \"name\": \"Windscreen Protection\",\n            \"price\": 100,\n            \"mandatory\": false,\n            \"recommended\": true\n          },\n          {\n            \"id\": \"flood\",\n            \"name\": \"Special Perils (Flood)\",\n            \"price\": 50,\n            \"mandatory\": false,\n            \"recommended\": false\n          },\n          {\n            \"id\": \"ehailing\",\n            \"name\": \"E-hailing Cover\",\n            \"price\": 500,\n            \"mandatory\": false,\n            \"recommended\": false\n          }\n        ]\n      },\n      {\n        \"quote_id\": \"QT-CAR07-ALL-001\",\n        \"insurer\": {\n          \"code\": \"ALLIANZ\",\n          \"name\": \"Allianz Insurance\"\n        },\n        \"underwriting\": {\n          \"decision\": \"ACCEPTED\",\n          \"reasons\": []\n        },\n        \"coverage\": {\n          \"type\": \"COMPREHENSIVE\",\n          \"sum_insured\": 36000\n        },\n        \"premium\": {\n          \"base\": 1150,\n          \"ncd_percent\": 20,\n          \"ncd_amount\": 230,\n          \"loadings\": [\n            {\n              \"type\": \"risk_loading\",\n              \"amount\": 10\n            }\n          ],\n          \"final\": 930,\n          \"currency\": \"MYR\"\n        },\n        \"addons_catalog\": [\n          {\n            \"id\": \"windscreen\",\n            \"name\": \"Windscreen Protection\",\n            \"price\": 100,\n            \"mandatory\": false,\n            \"recommended\": true\n          },\n          {\n            \"id\": \"flood\",\n            \"name\": \"Special Perils (Flood)\",\n            \"price\": 50,\n            \"mandatory\": false,\n            \"recommended\": false\n          },\n          {\n            \"id\": \"ehailing\",\n            \"name\": \"E-hailing Cover\",\n            \"price\": 500,\n            \"mandatory\": false,\n            \"recommended\": false\n          }\n        ]\n      }\n    ],\n    \"notes\": [\n      \"From 1 Feb 2026, printed road tax is available only for foreign_id or company_reg vehicle ownership.\"\n    ]\n  },\n  \"errors\": []\n}",
+          "latency": 900,
+          "statusCode": 200,
+          "label": "CAR07_QUOTE_RESULT",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "params",
+              "modifier": "jobId",
+              "value": "JOB-CAR07-0001",
+              "operator": "equals",
+              "invert": false
+            }
+          ],
+          "rulesOperator": "OR",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "5c2d8eb4-dd14-468e-a98c-bf03118732ba",
+          "body": "{\n  \"meta\": {\n    \"request_id\": \"req-qresult-car08\",\n    \"correlation_id\": \"corr-static-001\",\n    \"timestamp\": \"2026-03-06T10:00:00Z\",\n    \"version\": \"v1\"\n  },\n  \"data\": {\n    \"job_id\": \"JOB-CAR08-0001\",\n    \"sample_id\": \"CAR08\",\n    \"quote_valid_until\": \"2026-03-06T10:30:00Z\",\n    \"roadtax_options\": [\n      {\n        \"id\": \"digital_12m\",\n        \"name\": \"12 Months Digital Road Tax\",\n        \"total_price\": 90,\n        \"eligible\": true\n      },\n      {\n        \"id\": \"printed_12m\",\n        \"name\": \"12 Months Printed Road Tax\",\n        \"total_price\": 100,\n        \"eligible\": false\n      },\n      {\n        \"id\": \"none\",\n        \"name\": \"No Road Tax Renewal\",\n        \"total_price\": 0,\n        \"eligible\": true\n      }\n    ],\n    \"quotes\": [\n      {\n        \"quote_id\": \"QT-CAR08-TAK-001\",\n        \"insurer\": {\n          \"code\": \"TAKAFUL\",\n          \"name\": \"Takaful Ikhlas\"\n        },\n        \"underwriting\": {\n          \"decision\": \"ACCEPTED\",\n          \"reasons\": []\n        },\n        \"coverage\": {\n          \"type\": \"COMPREHENSIVE\",\n          \"sum_insured\": 34000\n        },\n        \"premium\": {\n          \"base\": 995,\n          \"ncd_percent\": 20,\n          \"ncd_amount\": 199,\n          \"loadings\": [],\n          \"final\": 796,\n          \"currency\": \"MYR\"\n        },\n        \"addons_catalog\": [\n          {\n            \"id\": \"windscreen\",\n            \"name\": \"Windscreen Protection\",\n            \"price\": 100,\n            \"mandatory\": false,\n            \"recommended\": true\n          },\n          {\n            \"id\": \"flood\",\n            \"name\": \"Special Perils (Flood)\",\n            \"price\": 50,\n            \"mandatory\": false,\n            \"recommended\": false\n          },\n          {\n            \"id\": \"ehailing\",\n            \"name\": \"E-hailing Cover\",\n            \"price\": 500,\n            \"mandatory\": true,\n            \"recommended\": true\n          }\n        ]\n      },\n      {\n        \"quote_id\": \"QT-CAR08-ETI-001\",\n        \"insurer\": {\n          \"code\": \"ETIQA\",\n          \"name\": \"Etiqa Insurance\"\n        },\n        \"underwriting\": {\n          \"decision\": \"ACCEPTED\",\n          \"reasons\": []\n        },\n        \"coverage\": {\n          \"type\": \"COMPREHENSIVE\",\n          \"sum_insured\": 35000\n        },\n        \"premium\": {\n          \"base\": 1090,\n          \"ncd_percent\": 20,\n          \"ncd_amount\": 218,\n          \"loadings\": [],\n          \"final\": 872,\n          \"currency\": \"MYR\"\n        },\n        \"addons_catalog\": [\n          {\n            \"id\": \"windscreen\",\n            \"name\": \"Windscreen Protection\",\n            \"price\": 100,\n            \"mandatory\": false,\n            \"recommended\": true\n          },\n          {\n            \"id\": \"flood\",\n            \"name\": \"Special Perils (Flood)\",\n            \"price\": 50,\n            \"mandatory\": false,\n            \"recommended\": false\n          },\n          {\n            \"id\": \"ehailing\",\n            \"name\": \"E-hailing Cover\",\n            \"price\": 500,\n            \"mandatory\": true,\n            \"recommended\": true\n          }\n        ]\n      },\n      {\n        \"quote_id\": \"QT-CAR08-ALL-001\",\n        \"insurer\": {\n          \"code\": \"ALLIANZ\",\n          \"name\": \"Allianz Insurance\"\n        },\n        \"underwriting\": {\n          \"decision\": \"ACCEPTED\",\n          \"reasons\": []\n        },\n        \"coverage\": {\n          \"type\": \"COMPREHENSIVE\",\n          \"sum_insured\": 36000\n        },\n        \"premium\": {\n          \"base\": 1150,\n          \"ncd_percent\": 20,\n          \"ncd_amount\": 230,\n          \"loadings\": [],\n          \"final\": 920,\n          \"currency\": \"MYR\"\n        },\n        \"addons_catalog\": [\n          {\n            \"id\": \"windscreen\",\n            \"name\": \"Windscreen Protection\",\n            \"price\": 100,\n            \"mandatory\": false,\n            \"recommended\": true\n          },\n          {\n            \"id\": \"flood\",\n            \"name\": \"Special Perils (Flood)\",\n            \"price\": 50,\n            \"mandatory\": false,\n            \"recommended\": false\n          },\n          {\n            \"id\": \"ehailing\",\n            \"name\": \"E-hailing Cover\",\n            \"price\": 500,\n            \"mandatory\": true,\n            \"recommended\": true\n          }\n        ]\n      }\n    ],\n    \"notes\": [\n      \"From 1 Feb 2026, printed road tax is available only for foreign_id or company_reg vehicle ownership.\"\n    ]\n  },\n  \"errors\": []\n}",
+          "latency": 900,
+          "statusCode": 200,
+          "label": "CAR08_QUOTE_RESULT",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "params",
+              "modifier": "jobId",
+              "value": "JOB-CAR08-0001",
+              "operator": "equals",
+              "invert": false
+            }
+          ],
+          "rulesOperator": "OR",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "ec14a93d-15d1-4603-b87b-70791eb7c36b",
+          "body": "{\n  \"meta\": {\n    \"request_id\": \"req-qresult-car09\",\n    \"correlation_id\": \"corr-static-001\",\n    \"timestamp\": \"2026-03-06T10:00:00Z\",\n    \"version\": \"v1\"\n  },\n  \"data\": {\n    \"job_id\": \"JOB-CAR09-0001\",\n    \"sample_id\": \"CAR09\",\n    \"quote_valid_until\": \"2026-03-06T10:30:00Z\",\n    \"roadtax_options\": [\n      {\n        \"id\": \"digital_12m\",\n        \"name\": \"12 Months Digital Road Tax\",\n        \"total_price\": 90,\n        \"eligible\": true\n      },\n      {\n        \"id\": \"printed_12m\",\n        \"name\": \"12 Months Printed Road Tax\",\n        \"total_price\": 100,\n        \"eligible\": false\n      },\n      {\n        \"id\": \"none\",\n        \"name\": \"No Road Tax Renewal\",\n        \"total_price\": 0,\n        \"eligible\": true\n      }\n    ],\n    \"quotes\": [\n      {\n        \"quote_id\": \"QT-CAR09-TAK-001\",\n        \"insurer\": {\n          \"code\": \"TAKAFUL\",\n          \"name\": \"Takaful Ikhlas\"\n        },\n        \"underwriting\": {\n          \"decision\": \"ACCEPTED\",\n          \"reasons\": []\n        },\n        \"coverage\": {\n          \"type\": \"COMPREHENSIVE\",\n          \"sum_insured\": 34000\n        },\n        \"premium\": {\n          \"base\": 995,\n          \"ncd_percent\": 55,\n          \"ncd_amount\": 199,\n          \"loadings\": [\n            {\n              \"type\": \"risk_loading\",\n              \"amount\": 60\n            }\n          ],\n          \"final\": 856,\n          \"currency\": \"MYR\"\n        },\n        \"addons_catalog\": [\n          {\n            \"id\": \"windscreen\",\n            \"name\": \"Windscreen Protection\",\n            \"price\": 100,\n            \"mandatory\": false,\n            \"recommended\": true\n          },\n          {\n            \"id\": \"flood\",\n            \"name\": \"Special Perils (Flood)\",\n            \"price\": 50,\n            \"mandatory\": false,\n            \"recommended\": false\n          },\n          {\n            \"id\": \"ehailing\",\n            \"name\": \"E-hailing Cover\",\n            \"price\": 500,\n            \"mandatory\": false,\n            \"recommended\": false\n          }\n        ]\n      },\n      {\n        \"quote_id\": \"QT-CAR09-ETI-001\",\n        \"insurer\": {\n          \"code\": \"ETIQA\",\n          \"name\": \"Etiqa Insurance\"\n        },\n        \"underwriting\": {\n          \"decision\": \"ACCEPTED\",\n          \"reasons\": []\n        },\n        \"coverage\": {\n          \"type\": \"COMPREHENSIVE\",\n          \"sum_insured\": 35000\n        },\n        \"premium\": {\n          \"base\": 1090,\n          \"ncd_percent\": 55,\n          \"ncd_amount\": 218,\n          \"loadings\": [\n            {\n              \"type\": \"risk_loading\",\n              \"amount\": 60\n            }\n          ],\n          \"final\": 932,\n          \"currency\": \"MYR\"\n        },\n        \"addons_catalog\": [\n          {\n            \"id\": \"windscreen\",\n            \"name\": \"Windscreen Protection\",\n            \"price\": 100,\n            \"mandatory\": false,\n            \"recommended\": true\n          },\n          {\n            \"id\": \"flood\",\n            \"name\": \"Special Perils (Flood)\",\n            \"price\": 50,\n            \"mandatory\": false,\n            \"recommended\": false\n          },\n          {\n            \"id\": \"ehailing\",\n            \"name\": \"E-hailing Cover\",\n            \"price\": 500,\n            \"mandatory\": false,\n            \"recommended\": false\n          }\n        ]\n      },\n      {\n        \"quote_id\": \"QT-CAR09-ALL-001\",\n        \"insurer\": {\n          \"code\": \"ALLIANZ\",\n          \"name\": \"Allianz Insurance\"\n        },\n        \"underwriting\": {\n          \"decision\": \"REFERRED\",\n          \"reasons\": [\n            \"High-value risk profile requires manual underwriter review.\"\n          ]\n        },\n        \"coverage\": {\n          \"type\": \"COMPREHENSIVE\",\n          \"sum_insured\": 36000\n        },\n        \"premium\": {\n          \"base\": 1150,\n          \"ncd_percent\": 55,\n          \"ncd_amount\": 230,\n          \"loadings\": [\n            {\n              \"type\": \"risk_loading\",\n              \"amount\": 60\n            }\n          ],\n          \"final\": 980,\n          \"currency\": \"MYR\"\n        },\n        \"addons_catalog\": [\n          {\n            \"id\": \"windscreen\",\n            \"name\": \"Windscreen Protection\",\n            \"price\": 100,\n            \"mandatory\": false,\n            \"recommended\": true\n          },\n          {\n            \"id\": \"flood\",\n            \"name\": \"Special Perils (Flood)\",\n            \"price\": 50,\n            \"mandatory\": false,\n            \"recommended\": false\n          },\n          {\n            \"id\": \"ehailing\",\n            \"name\": \"E-hailing Cover\",\n            \"price\": 500,\n            \"mandatory\": false,\n            \"recommended\": false\n          }\n        ]\n      }\n    ],\n    \"notes\": [\n      \"From 1 Feb 2026, printed road tax is available only for foreign_id or company_reg vehicle ownership.\"\n    ]\n  },\n  \"errors\": []\n}",
+          "latency": 900,
+          "statusCode": 200,
+          "label": "CAR09_QUOTE_RESULT",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "params",
+              "modifier": "jobId",
+              "value": "JOB-CAR09-0001",
+              "operator": "equals",
+              "invert": false
+            }
+          ],
+          "rulesOperator": "OR",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "9851c1c1-2e7b-4b8a-9cbb-ef90dac5a9da",
+          "body": "{\n  \"meta\": {\n    \"request_id\": \"req-qresult-car10\",\n    \"correlation_id\": \"corr-static-001\",\n    \"timestamp\": \"2026-03-06T10:00:00Z\",\n    \"version\": \"v1\"\n  },\n  \"data\": null,\n  \"errors\": [\n    {\n      \"code\": \"UW_DECLINED\",\n      \"message\": \"Risk does not meet underwriting acceptance criteria.\",\n      \"field\": \"vehicle_ref_id\",\n      \"retriable\": false\n    }\n  ]\n}",
+          "latency": 0,
+          "statusCode": 409,
+          "label": "CAR10_UW_DECLINED",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "params",
+              "modifier": "jobId",
+              "value": "JOB-CAR10-0001",
+              "operator": "equals",
+              "invert": false
+            }
+          ],
+          "rulesOperator": "OR",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "7b622f95-8dd0-485b-967b-b7a813f002ad",
+          "body": "{\n  \"meta\": {\n    \"request_id\": \"req-qresult-404b\",\n    \"correlation_id\": \"corr-static-001\",\n    \"timestamp\": \"2026-03-06T10:00:00Z\",\n    \"version\": \"v1\"\n  },\n  \"data\": null,\n  \"errors\": [\n    {\n      \"code\": \"QUOTE_JOB_NOT_FOUND\",\n      \"message\": \"Quote result not found for job ID.\",\n      \"field\": \"jobId\",\n      \"retriable\": false\n    }\n  ]\n}",
+          "latency": 0,
+          "statusCode": 404,
+          "label": "QUOTE_RESULT_FALLBACK_NOT_FOUND",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [],
+          "rulesOperator": "OR",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": true,
+          "crudKey": "id",
+          "callbacks": []
+        }
+      ],
+      "responseMode": null,
+      "streamingMode": null,
+      "streamingInterval": 0
+    },
+    {
+      "uuid": "06f25771-6a6b-4dbc-83ad-d2cd6faacaa6",
+      "type": "http",
+      "documentation": "Final payable breakdown endpoint; supports digital/printed/none road-tax option checks.",
+      "method": "post",
+      "endpoint": "/quotes/:quoteId/reprice",
+      "responses": [
+        {
+          "uuid": "0f4398ff-ca03-41e2-b02e-f04ed6930009",
+          "body": "{\n  \"meta\": {\n    \"request_id\": \"req-reprice-401\",\n    \"correlation_id\": \"corr-static-001\",\n    \"timestamp\": \"2026-03-06T10:00:00Z\",\n    \"version\": \"v1\"\n  },\n  \"data\": null,\n  \"errors\": [\n    {\n      \"code\": \"UNAUTHORIZED\",\n      \"message\": \"Missing or invalid bearer token.\",\n      \"field\": \"Authorization\",\n      \"retriable\": false\n    }\n  ]\n}",
+          "latency": 0,
+          "statusCode": 401,
+          "label": "UNAUTHORIZED",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "header",
+              "modifier": "authorization",
+              "value": "Bearer mock-access-token",
+              "operator": "equals",
+              "invert": true
+            }
+          ],
+          "rulesOperator": "OR",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "898c3a23-ad3c-4200-a7ac-852c09b12bf8",
+          "body": "{\n  \"meta\": {\n    \"request_id\": \"req-reprice-422\",\n    \"correlation_id\": \"corr-static-001\",\n    \"timestamp\": \"2026-03-06T10:00:00Z\",\n    \"version\": \"v1\"\n  },\n  \"data\": null,\n  \"errors\": [\n    {\n      \"code\": \"VALIDATION_ERROR\",\n      \"message\": \"roadtax_option is required.\",\n      \"field\": \"roadtax_option\",\n      \"retriable\": false\n    }\n  ]\n}",
+          "latency": 0,
+          "statusCode": 422,
+          "label": "VALIDATION_ERROR_MISSING_ROADTAX_OPTION",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "body",
+              "modifier": "roadtax_option",
+              "value": ".+",
+              "operator": "regex",
+              "invert": true
+            }
+          ],
+          "rulesOperator": "OR",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "0322e576-4a8f-4fda-a969-d67c3cb91000",
+          "body": "{\n  \"meta\": {\n    \"request_id\": \"req-reprice-409\",\n    \"correlation_id\": \"corr-static-001\",\n    \"timestamp\": \"2026-03-06T10:00:00Z\",\n    \"version\": \"v1\"\n  },\n  \"data\": null,\n  \"errors\": [\n    {\n      \"code\": \"ROADTAX_PRINTED_NOT_ELIGIBLE\",\n      \"message\": \"Printed road tax is available only for foreign_id or company_reg ownership.\",\n      \"field\": \"roadtax_option\",\n      \"retriable\": false\n    }\n  ]\n}",
+          "latency": 0,
+          "statusCode": 409,
+          "label": "ROADTAX_PRINTED_NOT_ELIGIBLE",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "body",
+              "modifier": "roadtax_option",
+              "value": "printed_12m",
+              "operator": "equals",
+              "invert": false
+            },
+            {
+              "target": "body",
+              "modifier": "owner_id_type",
+              "value": "nric",
+              "operator": "equals",
+              "invert": false
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "7bb0ab4f-b64b-4bd6-a57c-a21cb5255cf8",
+          "body": "{\n  \"meta\": {\n    \"request_id\": \"req-reprice-200b\",\n    \"correlation_id\": \"corr-static-001\",\n    \"timestamp\": \"2026-03-06T10:00:00Z\",\n    \"version\": \"v1\"\n  },\n  \"data\": {\n    \"quote_id\": \"QT-CAR01-TAK-001\",\n    \"breakdown\": {\n      \"insurance_premium\": 796,\n      \"addons_total\": 150,\n      \"roadtax_total\": 100\n    },\n    \"grand_total\": 1046,\n    \"currency\": \"MYR\",\n    \"notes\": [\n      \"Printed road tax fee includes handling and delivery charge.\"\n    ]\n  },\n  \"errors\": []\n}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "REPRICE_PRINTED_ELIGIBLE_SUCCESS",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "body",
+              "modifier": "roadtax_option",
+              "value": "printed_12m",
+              "operator": "equals",
+              "invert": false
+            },
+            {
+              "target": "body",
+              "modifier": "owner_id_type",
+              "value": "^(foreign_id|company_reg)$",
+              "operator": "regex",
+              "invert": false
+            }
+          ],
+          "rulesOperator": "AND",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "2bc34301-6a34-47cb-815a-16a619b2dde2",
+          "body": "{\n  \"meta\": {\n    \"request_id\": \"req-reprice-200c\",\n    \"correlation_id\": \"corr-static-001\",\n    \"timestamp\": \"2026-03-06T10:00:00Z\",\n    \"version\": \"v1\"\n  },\n  \"data\": {\n    \"quote_id\": \"QT-CAR01-TAK-001\",\n    \"breakdown\": {\n      \"insurance_premium\": 796,\n      \"addons_total\": 150,\n      \"roadtax_total\": 0\n    },\n    \"grand_total\": 946,\n    \"currency\": \"MYR\"\n  },\n  \"errors\": []\n}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "REPRICE_NO_ROADTAX",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "body",
+              "modifier": "roadtax_option",
+              "value": "none",
+              "operator": "equals",
+              "invert": false
+            }
+          ],
+          "rulesOperator": "OR",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "e682ac89-d3e8-4122-ac2b-0909aed2454f",
+          "body": "{\n  \"meta\": {\n    \"request_id\": \"req-reprice-200a\",\n    \"correlation_id\": \"corr-static-001\",\n    \"timestamp\": \"2026-03-06T10:00:00Z\",\n    \"version\": \"v1\"\n  },\n  \"data\": {\n    \"quote_id\": \"QT-CAR01-TAK-001\",\n    \"breakdown\": {\n      \"insurance_premium\": 796,\n      \"addons_total\": 150,\n      \"roadtax_total\": 90\n    },\n    \"grand_total\": 1036,\n    \"currency\": \"MYR\"\n  },\n  \"errors\": []\n}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "REPRICE_DIGITAL_SUCCESS",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [],
+          "rulesOperator": "OR",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": true,
+          "crudKey": "id",
+          "callbacks": []
+        }
+      ],
+      "responseMode": null,
+      "streamingMode": null,
+      "streamingInterval": 0
+    },
+    {
+      "uuid": "e446da70-81e8-4a0a-a466-e42653931034",
+      "type": "http",
+      "documentation": "Proposal creation endpoint after quote selection and repricing.",
+      "method": "post",
+      "endpoint": "/proposals",
+      "responses": [
+        {
+          "uuid": "efd31abe-c1a8-4777-8eaa-82e4c4577de3",
+          "body": "{\n  \"meta\": {\n    \"request_id\": \"req-prop-401\",\n    \"correlation_id\": \"corr-static-001\",\n    \"timestamp\": \"2026-03-06T10:00:00Z\",\n    \"version\": \"v1\"\n  },\n  \"data\": null,\n  \"errors\": [\n    {\n      \"code\": \"UNAUTHORIZED\",\n      \"message\": \"Missing or invalid bearer token.\",\n      \"field\": \"Authorization\",\n      \"retriable\": false\n    }\n  ]\n}",
+          "latency": 0,
+          "statusCode": 401,
+          "label": "UNAUTHORIZED",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "header",
+              "modifier": "authorization",
+              "value": "Bearer mock-access-token",
+              "operator": "equals",
+              "invert": true
+            }
+          ],
+          "rulesOperator": "OR",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "0ab5f5b5-a19f-4e76-9005-04f751655ef5",
+          "body": "{\n  \"meta\": {\n    \"request_id\": \"req-prop-400\",\n    \"correlation_id\": \"corr-static-001\",\n    \"timestamp\": \"2026-03-06T10:00:00Z\",\n    \"version\": \"v1\"\n  },\n  \"data\": null,\n  \"errors\": [\n    {\n      \"code\": \"IDEMPOTENCY_KEY_REQUIRED\",\n      \"message\": \"Idempotency-Key header is required for proposal creation.\",\n      \"field\": \"Idempotency-Key\",\n      \"retriable\": false\n    }\n  ]\n}",
+          "latency": 0,
+          "statusCode": 400,
+          "label": "IDEMPOTENCY_KEY_REQUIRED",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "header",
+              "modifier": "idempotency-key",
+              "value": ".+",
+              "operator": "regex",
+              "invert": true
+            }
+          ],
+          "rulesOperator": "OR",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "e66d05be-17f0-4cb9-ae61-ce76ce542c89",
+          "body": "{\n  \"meta\": {\n    \"request_id\": \"req-prop-422a\",\n    \"correlation_id\": \"corr-static-001\",\n    \"timestamp\": \"2026-03-06T10:00:00Z\",\n    \"version\": \"v1\"\n  },\n  \"data\": null,\n  \"errors\": [\n    {\n      \"code\": \"VALIDATION_ERROR\",\n      \"message\": \"quote_id is required.\",\n      \"field\": \"quote_id\",\n      \"retriable\": false\n    }\n  ]\n}",
+          "latency": 0,
+          "statusCode": 422,
+          "label": "VALIDATION_MISSING_QUOTE_ID",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "body",
+              "modifier": "quote_id",
+              "value": ".+",
+              "operator": "regex",
+              "invert": true
+            }
+          ],
+          "rulesOperator": "OR",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "eefc1e87-bcfb-44d1-96ef-65bdcfdbc7dc",
+          "body": "{\n  \"meta\": {\n    \"request_id\": \"req-prop-422b\",\n    \"correlation_id\": \"corr-static-001\",\n    \"timestamp\": \"2026-03-06T10:00:00Z\",\n    \"version\": \"v1\"\n  },\n  \"data\": null,\n  \"errors\": [\n    {\n      \"code\": \"VALIDATION_ERROR\",\n      \"message\": \"customer.email is required.\",\n      \"field\": \"customer.email\",\n      \"retriable\": false\n    }\n  ]\n}",
+          "latency": 0,
+          "statusCode": 422,
+          "label": "VALIDATION_MISSING_CUSTOMER_EMAIL",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "body",
+              "modifier": "customer.email",
+              "value": ".+",
+              "operator": "regex",
+              "invert": true
+            }
+          ],
+          "rulesOperator": "OR",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "7c87e216-3078-4f60-b83f-cbfe94ce1cc5",
+          "body": "{\n  \"meta\": {\n    \"request_id\": \"req-prop-201\",\n    \"correlation_id\": \"corr-static-001\",\n    \"timestamp\": \"2026-03-06T10:00:00Z\",\n    \"version\": \"v1\"\n  },\n  \"data\": {\n    \"proposal_id\": \"PRP-0001\",\n    \"status\": \"DRAFT\",\n    \"quote_id\": \"QT-CAR01-TAK-001\"\n  },\n  \"errors\": []\n}",
+          "latency": 0,
+          "statusCode": 201,
+          "label": "PROPOSAL_CREATED",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [],
+          "rulesOperator": "OR",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": true,
+          "crudKey": "id",
+          "callbacks": []
+        }
+      ],
+      "responseMode": null,
+      "streamingMode": null,
+      "streamingInterval": 0
+    },
+    {
+      "uuid": "75138239-bacd-4362-b2c3-2d6112e1a308",
+      "type": "http",
+      "documentation": "",
+      "method": "post",
+      "endpoint": "/proposals/:proposalId/submit",
+      "responses": [
+        {
+          "uuid": "63615986-86a7-49a2-b61e-6a9d8c740c8a",
+          "body": "{\n  \"meta\": {\n    \"request_id\": \"req-prop-submit-401\",\n    \"correlation_id\": \"corr-static-001\",\n    \"timestamp\": \"2026-03-06T10:00:00Z\",\n    \"version\": \"v1\"\n  },\n  \"data\": null,\n  \"errors\": [\n    {\n      \"code\": \"UNAUTHORIZED\",\n      \"message\": \"Missing or invalid bearer token.\",\n      \"field\": \"Authorization\",\n      \"retriable\": false\n    }\n  ]\n}",
+          "latency": 0,
+          "statusCode": 401,
+          "label": "UNAUTHORIZED",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "header",
+              "modifier": "authorization",
+              "value": "Bearer mock-access-token",
+              "operator": "equals",
+              "invert": true
+            }
+          ],
+          "rulesOperator": "OR",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "d258f32c-7ba2-441a-83d4-fdd4c5fcb6b4",
+          "body": "{\n  \"meta\": {\n    \"request_id\": \"req-prop-submit-200\",\n    \"correlation_id\": \"corr-static-001\",\n    \"timestamp\": \"2026-03-06T10:00:00Z\",\n    \"version\": \"v1\"\n  },\n  \"data\": {\n    \"proposal_id\": \"PRP-0001\",\n    \"status\": \"SUBMITTED\"\n  },\n  \"errors\": []\n}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "PROPOSAL_SUBMITTED",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [],
+          "rulesOperator": "OR",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": true,
+          "crudKey": "id",
+          "callbacks": []
+        }
+      ],
+      "responseMode": null,
+      "streamingMode": null,
+      "streamingInterval": 0
+    },
+    {
+      "uuid": "56d84b06-989a-4195-89b6-1006b33d352f",
+      "type": "http",
+      "documentation": "Payment intent for proposal checkout.",
+      "method": "post",
+      "endpoint": "/payments/intents",
+      "responses": [
+        {
+          "uuid": "56dbcb12-65f5-4b54-ae40-15a9e87caac9",
+          "body": "{\n  \"meta\": {\n    \"request_id\": \"req-pay-401\",\n    \"correlation_id\": \"corr-static-001\",\n    \"timestamp\": \"2026-03-06T10:00:00Z\",\n    \"version\": \"v1\"\n  },\n  \"data\": null,\n  \"errors\": [\n    {\n      \"code\": \"UNAUTHORIZED\",\n      \"message\": \"Missing or invalid bearer token.\",\n      \"field\": \"Authorization\",\n      \"retriable\": false\n    }\n  ]\n}",
+          "latency": 0,
+          "statusCode": 401,
+          "label": "UNAUTHORIZED",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "header",
+              "modifier": "authorization",
+              "value": "Bearer mock-access-token",
+              "operator": "equals",
+              "invert": true
+            }
+          ],
+          "rulesOperator": "OR",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "5cabbec8-7cb6-4c1c-a658-070abadaa249",
+          "body": "{\n  \"meta\": {\n    \"request_id\": \"req-pay-400\",\n    \"correlation_id\": \"corr-static-001\",\n    \"timestamp\": \"2026-03-06T10:00:00Z\",\n    \"version\": \"v1\"\n  },\n  \"data\": null,\n  \"errors\": [\n    {\n      \"code\": \"IDEMPOTENCY_KEY_REQUIRED\",\n      \"message\": \"Idempotency-Key header is required for payment-intent creation.\",\n      \"field\": \"Idempotency-Key\",\n      \"retriable\": false\n    }\n  ]\n}",
+          "latency": 0,
+          "statusCode": 400,
+          "label": "IDEMPOTENCY_KEY_REQUIRED",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "header",
+              "modifier": "idempotency-key",
+              "value": ".+",
+              "operator": "regex",
+              "invert": true
+            }
+          ],
+          "rulesOperator": "OR",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "3bcc4528-26dd-4be0-b004-70072aa494e6",
+          "body": "{\n  \"meta\": {\n    \"request_id\": \"req-pay-422\",\n    \"correlation_id\": \"corr-static-001\",\n    \"timestamp\": \"2026-03-06T10:00:00Z\",\n    \"version\": \"v1\"\n  },\n  \"data\": null,\n  \"errors\": [\n    {\n      \"code\": \"VALIDATION_ERROR\",\n      \"message\": \"proposal_id is required.\",\n      \"field\": \"proposal_id\",\n      \"retriable\": false\n    }\n  ]\n}",
+          "latency": 0,
+          "statusCode": 422,
+          "label": "VALIDATION_MISSING_PROPOSAL_ID",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "body",
+              "modifier": "proposal_id",
+              "value": ".+",
+              "operator": "regex",
+              "invert": true
+            }
+          ],
+          "rulesOperator": "OR",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "fc5dc552-e300-4673-8628-456cc55be743",
+          "body": "{\n  \"meta\": {\n    \"request_id\": \"req-pay-201\",\n    \"correlation_id\": \"corr-static-001\",\n    \"timestamp\": \"2026-03-06T10:00:00Z\",\n    \"version\": \"v1\"\n  },\n  \"data\": {\n    \"payment_intent_id\": \"PAY-INT-0001\",\n    \"status\": \"PENDING\",\n    \"amount\": 1036,\n    \"currency\": \"MYR\",\n    \"methods_available\": [\n      \"card\",\n      \"fpx\",\n      \"ewallet\",\n      \"bnpl\"\n    ]\n  },\n  \"errors\": []\n}",
+          "latency": 0,
+          "statusCode": 201,
+          "label": "PAYMENT_INTENT_CREATED",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [],
+          "rulesOperator": "OR",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": true,
+          "crudKey": "id",
+          "callbacks": []
+        }
+      ],
+      "responseMode": null,
+      "streamingMode": null,
+      "streamingInterval": 0
+    },
+    {
+      "uuid": "4eb83e1c-fc78-4f6f-ab00-bb80d6b4b5ec",
+      "type": "http",
+      "documentation": "Confirms payment intent; supports simulated failure modes.",
+      "method": "post",
+      "endpoint": "/payments/intents/:paymentIntentId/confirm",
+      "responses": [
+        {
+          "uuid": "e12298a6-c1cb-4a9b-b58b-b7f08bb331ee",
+          "body": "{\n  \"meta\": {\n    \"request_id\": \"req-pay-confirm-401\",\n    \"correlation_id\": \"corr-static-001\",\n    \"timestamp\": \"2026-03-06T10:00:00Z\",\n    \"version\": \"v1\"\n  },\n  \"data\": null,\n  \"errors\": [\n    {\n      \"code\": \"UNAUTHORIZED\",\n      \"message\": \"Missing or invalid bearer token.\",\n      \"field\": \"Authorization\",\n      \"retriable\": false\n    }\n  ]\n}",
+          "latency": 0,
+          "statusCode": 401,
+          "label": "UNAUTHORIZED",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "header",
+              "modifier": "authorization",
+              "value": "Bearer mock-access-token",
+              "operator": "equals",
+              "invert": true
+            }
+          ],
+          "rulesOperator": "OR",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "8915aeb7-e7ed-46a0-b33f-a0c4055b148a",
+          "body": "{\n  \"meta\": {\n    \"request_id\": \"req-pay-confirm-402\",\n    \"correlation_id\": \"corr-static-001\",\n    \"timestamp\": \"2026-03-06T10:00:00Z\",\n    \"version\": \"v1\"\n  },\n  \"data\": null,\n  \"errors\": [\n    {\n      \"code\": \"PAYMENT_DECLINED\",\n      \"message\": \"Issuer declined the payment authorization.\",\n      \"field\": \"payment_method\",\n      \"retriable\": true\n    }\n  ]\n}",
+          "latency": 0,
+          "statusCode": 402,
+          "label": "PAYMENT_DECLINED",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "body",
+              "modifier": "simulate",
+              "value": "decline",
+              "operator": "equals",
+              "invert": false
+            }
+          ],
+          "rulesOperator": "OR",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "bccda3c8-180b-4c21-bb3d-4f40d18ba6f4",
+          "body": "{\n  \"meta\": {\n    \"request_id\": \"req-pay-confirm-503\",\n    \"correlation_id\": \"corr-static-001\",\n    \"timestamp\": \"2026-03-06T10:00:00Z\",\n    \"version\": \"v1\"\n  },\n  \"data\": null,\n  \"errors\": [\n    {\n      \"code\": \"DOWNSTREAM_TIMEOUT\",\n      \"message\": \"Payment gateway timeout. Retry is allowed.\",\n      \"field\": \"gateway\",\n      \"retriable\": true\n    }\n  ]\n}",
+          "latency": 0,
+          "statusCode": 503,
+          "label": "PAYMENT_TIMEOUT",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "body",
+              "modifier": "simulate",
+              "value": "timeout",
+              "operator": "equals",
+              "invert": false
+            }
+          ],
+          "rulesOperator": "OR",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "e63f50af-7986-4ee5-9864-61bc44d96f28",
+          "body": "{\n  \"meta\": {\n    \"request_id\": \"req-pay-confirm-200\",\n    \"correlation_id\": \"corr-static-001\",\n    \"timestamp\": \"2026-03-06T10:00:00Z\",\n    \"version\": \"v1\"\n  },\n  \"data\": {\n    \"payment_intent_id\": \"PAY-INT-0001\",\n    \"status\": \"PAID\",\n    \"paid_at\": \"2026-03-06T10:00:00Z\"\n  },\n  \"errors\": []\n}",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "PAYMENT_CONFIRMED",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [],
+          "rulesOperator": "OR",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": true,
+          "crudKey": "id",
+          "callbacks": []
+        }
+      ],
+      "responseMode": null,
+      "streamingMode": null,
+      "streamingInterval": 0
+    },
+    {
+      "uuid": "0c4810ea-6334-4791-88f7-0215d07cf344",
+      "type": "http",
+      "documentation": "Issues policy when payment is complete.",
+      "method": "post",
+      "endpoint": "/policies/issue",
+      "responses": [
+        {
+          "uuid": "f23a9f98-56df-4383-b6ed-da924b8446fc",
+          "body": "{\n  \"meta\": {\n    \"request_id\": \"req-policy-401\",\n    \"correlation_id\": \"corr-static-001\",\n    \"timestamp\": \"2026-03-06T10:00:00Z\",\n    \"version\": \"v1\"\n  },\n  \"data\": null,\n  \"errors\": [\n    {\n      \"code\": \"UNAUTHORIZED\",\n      \"message\": \"Missing or invalid bearer token.\",\n      \"field\": \"Authorization\",\n      \"retriable\": false\n    }\n  ]\n}",
+          "latency": 0,
+          "statusCode": 401,
+          "label": "UNAUTHORIZED",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "header",
+              "modifier": "authorization",
+              "value": "Bearer mock-access-token",
+              "operator": "equals",
+              "invert": true
+            }
+          ],
+          "rulesOperator": "OR",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "3329aed6-1703-485b-9252-a8e56ab73c61",
+          "body": "{\n  \"meta\": {\n    \"request_id\": \"req-policy-400\",\n    \"correlation_id\": \"corr-static-001\",\n    \"timestamp\": \"2026-03-06T10:00:00Z\",\n    \"version\": \"v1\"\n  },\n  \"data\": null,\n  \"errors\": [\n    {\n      \"code\": \"IDEMPOTENCY_KEY_REQUIRED\",\n      \"message\": \"Idempotency-Key header is required for policy issuance.\",\n      \"field\": \"Idempotency-Key\",\n      \"retriable\": false\n    }\n  ]\n}",
+          "latency": 0,
+          "statusCode": 400,
+          "label": "IDEMPOTENCY_KEY_REQUIRED",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "header",
+              "modifier": "idempotency-key",
+              "value": ".+",
+              "operator": "regex",
+              "invert": true
+            }
+          ],
+          "rulesOperator": "OR",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "76a210c8-5cc2-4437-a375-d0d4cdaaac19",
+          "body": "{\n  \"meta\": {\n    \"request_id\": \"req-policy-422\",\n    \"correlation_id\": \"corr-static-001\",\n    \"timestamp\": \"2026-03-06T10:00:00Z\",\n    \"version\": \"v1\"\n  },\n  \"data\": null,\n  \"errors\": [\n    {\n      \"code\": \"VALIDATION_ERROR\",\n      \"message\": \"proposal_id is required.\",\n      \"field\": \"proposal_id\",\n      \"retriable\": false\n    }\n  ]\n}",
+          "latency": 0,
+          "statusCode": 422,
+          "label": "VALIDATION_MISSING_PROPOSAL_ID",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "body",
+              "modifier": "proposal_id",
+              "value": ".+",
+              "operator": "regex",
+              "invert": true
+            }
+          ],
+          "rulesOperator": "OR",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "7f9dc47e-04ee-4933-b8ca-72b60dad1a61",
+          "body": "{\n  \"meta\": {\n    \"request_id\": \"req-policy-409\",\n    \"correlation_id\": \"corr-static-001\",\n    \"timestamp\": \"2026-03-06T10:00:00Z\",\n    \"version\": \"v1\"\n  },\n  \"data\": null,\n  \"errors\": [\n    {\n      \"code\": \"PAYMENT_NOT_SUCCESSFUL\",\n      \"message\": \"Payment must be PAID before policy issuance.\",\n      \"field\": \"payment_status\",\n      \"retriable\": false\n    }\n  ]\n}",
+          "latency": 0,
+          "statusCode": 409,
+          "label": "PAYMENT_NOT_SUCCESSFUL",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [
+            {
+              "target": "body",
+              "modifier": "payment_status",
+              "value": "PAID",
+              "operator": "equals",
+              "invert": true
+            }
+          ],
+          "rulesOperator": "OR",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": false,
+          "crudKey": "id",
+          "callbacks": []
+        },
+        {
+          "uuid": "10849c3a-c631-4843-95c6-ebb6bb136483",
+          "body": "{\n  \"meta\": {\n    \"request_id\": \"req-policy-201\",\n    \"correlation_id\": \"corr-static-001\",\n    \"timestamp\": \"2026-03-06T10:00:00Z\",\n    \"version\": \"v1\"\n  },\n  \"data\": {\n    \"policy_number\": \"POL-2026-000001\",\n    \"status\": \"ISSUED\",\n    \"effective_date\": \"2026-04-05\",\n    \"expiry_date\": \"2027-04-04\",\n    \"documents\": [\n      {\n        \"type\": \"schedule\",\n        \"url\": \"/v1/policies/POL-2026-000001/documents/schedule.pdf\"\n      },\n      {\n        \"type\": \"receipt\",\n        \"url\": \"/v1/policies/POL-2026-000001/documents/receipt.pdf\"\n      }\n    ]\n  },\n  \"errors\": []\n}",
+          "latency": 0,
+          "statusCode": 201,
+          "label": "POLICY_ISSUED",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [],
+          "rulesOperator": "OR",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": true,
+          "crudKey": "id",
+          "callbacks": []
+        }
+      ],
+      "responseMode": null,
+      "streamingMode": null,
+      "streamingInterval": 0
+    },
+    {
+      "uuid": "dcbba8d8-90fc-44e4-84fb-4034d201a7be",
+      "type": "http",
+      "documentation": "",
+      "method": "get",
+      "endpoint": "/simulate/rate-limit",
+      "responses": [
+        {
+          "uuid": "6d3301c7-1cc3-4bd0-8abb-c79b8e5cf659",
+          "body": "{\n  \"meta\": {\n    \"request_id\": \"req-sim-429\",\n    \"correlation_id\": \"corr-static-001\",\n    \"timestamp\": \"2026-03-06T10:00:00Z\",\n    \"version\": \"v1\"\n  },\n  \"data\": null,\n  \"errors\": [\n    {\n      \"code\": \"RATE_LIMITED\",\n      \"message\": \"Too many requests. Retry later.\",\n      \"field\": null,\n      \"retriable\": true\n    }\n  ]\n}",
+          "latency": 0,
+          "statusCode": 429,
+          "label": "RATE_LIMITED",
+          "headers": [
+            {
+              "key": "Retry-After",
+              "value": "30"
+            }
+          ],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [],
+          "rulesOperator": "OR",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": true,
+          "crudKey": "id",
+          "callbacks": []
+        }
+      ],
+      "responseMode": null,
+      "streamingMode": null,
+      "streamingInterval": 0
+    },
+    {
+      "uuid": "c0d24c0a-ef75-4ef9-abd7-720a59fb16cc",
+      "type": "http",
+      "documentation": "",
+      "method": "get",
+      "endpoint": "/simulate/downstream-timeout",
+      "responses": [
+        {
+          "uuid": "d885667f-4012-4d3b-98f6-c47608f46d94",
+          "body": "{\n  \"meta\": {\n    \"request_id\": \"req-sim-503\",\n    \"correlation_id\": \"corr-static-001\",\n    \"timestamp\": \"2026-03-06T10:00:00Z\",\n    \"version\": \"v1\"\n  },\n  \"data\": null,\n  \"errors\": [\n    {\n      \"code\": \"DOWNSTREAM_TIMEOUT\",\n      \"message\": \"Dependent system timeout encountered.\",\n      \"field\": null,\n      \"retriable\": true\n    }\n  ]\n}",
+          "latency": 0,
+          "statusCode": 503,
+          "label": "DOWNSTREAM_TIMEOUT",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [],
+          "rulesOperator": "OR",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": true,
+          "crudKey": "id",
+          "callbacks": []
+        }
+      ],
+      "responseMode": null,
+      "streamingMode": null,
+      "streamingInterval": 0
+    },
+    {
+      "uuid": "5c7ad171-c68c-482d-92ab-5a8b40bb1fc1",
+      "type": "http",
+      "documentation": "",
+      "method": "get",
+      "endpoint": "/simulate/internal-error",
+      "responses": [
+        {
+          "uuid": "0a15a4f7-fb39-438c-8630-206f52961dbc",
+          "body": "{\n  \"meta\": {\n    \"request_id\": \"req-sim-500\",\n    \"correlation_id\": \"corr-static-001\",\n    \"timestamp\": \"2026-03-06T10:00:00Z\",\n    \"version\": \"v1\"\n  },\n  \"data\": null,\n  \"errors\": [\n    {\n      \"code\": \"INTERNAL_ERROR\",\n      \"message\": \"Unexpected internal server error.\",\n      \"field\": null,\n      \"retriable\": true\n    }\n  ]\n}",
+          "latency": 0,
+          "statusCode": 500,
+          "label": "INTERNAL_ERROR",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [],
+          "rulesOperator": "OR",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": true,
+          "crudKey": "id",
+          "callbacks": []
+        }
+      ],
+      "responseMode": null,
+      "streamingMode": null,
+      "streamingInterval": 0
+    },
+    {
+      "uuid": "4c4bfe20-61d8-43a0-aab0-d2828280923b",
+      "type": "http",
+      "documentation": "",
+      "method": "get",
+      "endpoint": "/simulate/unauthorized",
+      "responses": [
+        {
+          "uuid": "78efb9d8-e894-4213-a22a-4e0cba1c6037",
+          "body": "{\n  \"meta\": {\n    \"request_id\": \"req-sim-401\",\n    \"correlation_id\": \"corr-static-001\",\n    \"timestamp\": \"2026-03-06T10:00:00Z\",\n    \"version\": \"v1\"\n  },\n  \"data\": null,\n  \"errors\": [\n    {\n      \"code\": \"UNAUTHORIZED\",\n      \"message\": \"Unauthorized simulation endpoint response.\",\n      \"field\": \"Authorization\",\n      \"retriable\": false\n    }\n  ]\n}",
+          "latency": 0,
+          "statusCode": 401,
+          "label": "UNAUTHORIZED",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [],
+          "rulesOperator": "OR",
+          "disableTemplating": false,
+          "fallbackTo404": false,
+          "default": true,
+          "crudKey": "id",
+          "callbacks": []
+        }
+      ],
+      "responseMode": null,
+      "streamingMode": null,
+      "streamingInterval": 0
+    }
+  ],
+  "rootChildren": [
+    {
+      "uuid": "867797b8-3a6c-453b-aabd-b3e8ab6e4d61",
+      "type": "folder"
+    },
+    {
+      "uuid": "58d7de86-6e14-4dce-8d57-168d72bc1e44",
+      "type": "folder"
+    },
+    {
+      "uuid": "498fbd42-efcb-46af-b4fc-014337f89571",
+      "type": "folder"
+    },
+    {
+      "uuid": "074783ee-65a3-4f1e-ac78-e5ab7e0ef34f",
+      "type": "folder"
+    },
+    {
+      "uuid": "fbd95779-1ae7-49a7-b78f-7374dd348060",
+      "type": "folder"
+    },
+    {
+      "uuid": "53eb12a4-8bc0-466d-a386-e2824b0c97df",
+      "type": "folder"
+    },
+    {
+      "uuid": "501493c4-fbad-4c26-95ae-76e8925a992b",
+      "type": "folder"
+    },
+    {
+      "uuid": "d52bc8bd-97df-45ad-86d0-5b7d11243d60",
+      "type": "folder"
+    }
+  ],
+  "proxyMode": false,
+  "proxyHost": "",
+  "proxyRemovePrefix": false,
+  "tlsOptions": {
+    "enabled": false,
+    "type": "CERT",
+    "pfxPath": "",
+    "certPath": "",
+    "keyPath": "",
+    "caPath": "",
+    "passphrase": ""
+  },
+  "cors": true,
+  "headers": [
+    {
+      "key": "Content-Type",
+      "value": "application/json"
+    },
+    {
+      "key": "X-Mock-Provider",
+      "value": "mockoon-lajoo-insurer"
+    }
+  ],
+  "proxyReqHeaders": [],
+  "proxyResHeaders": [],
+  "data": [],
+  "callbacks": []
+}

@@ -1,0 +1,56 @@
+{
+  "as_of_date": "2026-03-12",
+  "insurers": [
+    {
+      "code": "TAKAFUL",
+      "name": "Takaful Ikhlas",
+      "type": "TAKAFUL"
+    },
+    {
+      "code": "ETIQA",
+      "name": "Etiqa Insurance",
+      "type": "CONVENTIONAL"
+    },
+    {
+      "code": "ALLIANZ",
+      "name": "Allianz Insurance",
+      "type": "CONVENTIONAL"
+    }
+  ],
+  "facts": [
+    {
+      "insurer_code": "ETIQA",
+      "fact_type": "TOWING",
+      "title": "Free towing distance",
+      "value": "Free towing up to 200km",
+      "valid_from": "2026-03-01",
+      "valid_to": "2026-03-31",
+      "status": "VERIFIED",
+      "source_excerpt": "Free towing up to 200km",
+      "source_page": 7
+    },
+    {
+      "insurer_code": "ALLIANZ",
+      "fact_type": "BETTERMENT",
+      "title": "Waiver of betterment availability",
+      "value": "Waiver available via A201 endorsement when added to schedule.",
+      "valid_from": "2026-01-01",
+      "valid_to": null,
+      "status": "VERIFIED",
+      "source_excerpt": "A201 Waiver of Betterment endorsement",
+      "source_page": 12
+    }
+  ],
+  "promotions": [
+    {
+      "insurer_code": "TAKAFUL",
+      "title": "March Renewal Campaign",
+      "description": "Campaign description from insurer circular",
+      "valid_from": "2026-03-01",
+      "valid_to": "2026-03-31",
+      "status": "ACTIVE",
+      "source_excerpt": "Promo terms and conditions apply",
+      "source_page": 2
+    }
+  ]
+}

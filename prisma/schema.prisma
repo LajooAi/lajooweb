@@ -1,0 +1,130 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum InsurerType {
+  TAKAFUL
+  CONVENTIONAL
+}
+
+enum FactType {
+  TOWING
+  CLAIMS
+  BETTERMENT
+  WINDSCREEN
+  FLOOD
+  ROADTAX
+  ELIGIBILITY
+  CONTACT
+  GENERAL
+}
+
+enum FactStatus {
+  DRAFT
+  VERIFIED
+  ARCHIVED
+}
+
+enum PromotionStatus {
+  UPCOMING
+  ACTIVE
+  EXPIRED
+  ARCHIVED
+}
+
+model Insurer {
+  id              String             @id @default(cuid())
+  code            String             @unique
+  name            String
+  type            InsurerType
+  isActive        Boolean            @default(true)
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+  policyDocuments PolicyDocument[]
+  facts           InsurerFact[]
+  promotions      InsurerPromotion[]
+  chunks          KnowledgeChunk[]
+}
+
+model PolicyDocument {
+  id             String             @id @default(cuid())
+  insurerId      String
+  insurer        Insurer            @relation(fields: [insurerId], references: [id], onDelete: Cascade)
+  title          String
+  sourceFileName String
+  sourcePath     String?
+  versionLabel   String?
+  effectiveFrom  DateTime?
+  effectiveTo    DateTime?
+  extractedText  String?
+  createdAt      DateTime           @default(now())
+  updatedAt      DateTime           @updatedAt
+  chunks         KnowledgeChunk[]
+  facts          InsurerFact[]
+  promotions     InsurerPromotion[]
+
+  @@index([insurerId])
+  @@index([effectiveFrom, effectiveTo])
+}
+
+model KnowledgeChunk {
+  id               String         @id @default(cuid())
+  insurerId        String
+  insurer          Insurer        @relation(fields: [insurerId], references: [id], onDelete: Cascade)
+  policyDocumentId String
+  policyDocument   PolicyDocument @relation(fields: [policyDocumentId], references: [id], onDelete: Cascade)
+  pageNumber       Int?
+  chunkOrder       Int
+  chunkText        String
+  tokenCount       Int?
+  createdAt        DateTime       @default(now())
+
+  @@index([insurerId, policyDocumentId])
+  @@index([policyDocumentId, chunkOrder])
+}
+
+model InsurerFact {
+  id               String          @id @default(cuid())
+  insurerId        String
+  insurer          Insurer         @relation(fields: [insurerId], references: [id], onDelete: Cascade)
+  policyDocumentId String?
+  policyDocument   PolicyDocument? @relation(fields: [policyDocumentId], references: [id], onDelete: SetNull)
+  factType         FactType
+  title            String
+  value            String
+  validFrom        DateTime?
+  validTo          DateTime?
+  status           FactStatus      @default(DRAFT)
+  sourcePage       Int?
+  sourceExcerpt    String?
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+
+  @@index([insurerId, factType])
+  @@index([validFrom, validTo])
+}
+
+model InsurerPromotion {
+  id               String          @id @default(cuid())
+  insurerId        String
+  insurer          Insurer         @relation(fields: [insurerId], references: [id], onDelete: Cascade)
+  policyDocumentId String?
+  policyDocument   PolicyDocument? @relation(fields: [policyDocumentId], references: [id], onDelete: SetNull)
+  title            String
+  description      String
+  validFrom        DateTime
+  validTo          DateTime
+  status           PromotionStatus @default(UPCOMING)
+  sourcePage       Int?
+  sourceExcerpt    String?
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+
+  @@index([insurerId, validFrom, validTo])
+  @@index([status])
+}

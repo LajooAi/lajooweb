@@ -12,7 +12,7 @@
  * - Ready for real insurer API integration
  */
 
-import { extractVehicleInfo } from '../utils/nlpExtractor.js';
+import { extractPersonalInfo, extractVehicleInfo } from '../utils/nlpExtractor.js';
 
 // ============================================================================
 // FLOW STEPS - The insurance renewal journey
@@ -47,6 +47,7 @@ export class ConversationState {
     this.nricNumber = null;
     this.ownerIdType = null; // nric | foreign_id | army_ic | police_ic | company_reg | other_id
     this.selectedQuote = null;
+    this.lastRecommendedInsurer = null; // takaful | etiqa | allianz
     this.quoteGeneratedAt = null;    // Timestamp when quotes were fetched
     this.quoteValidUntil = null;     // Timestamp when quotes expire
     this.selectedAddOns = [];
@@ -55,8 +56,51 @@ export class ConversationState {
     this.personalDetails = null;
     this.otpVerified = false;
     this.paymentMethod = null;
+    this.transaction = {
+      quoteId: null,
+      reprice: null,
+      proposalId: null,
+      proposalStatus: null,
+      paymentIntentId: null,
+      paymentStatus: null,
+      policyNumber: null,
+      policyStatus: null,
+      lastError: null,
+    };
     // Pending action confirmation guard (e.g., switching insurer mid-flow)
     this.pendingAction = null;
+    this.userPreferences = {
+      budgetFocused: false,
+      claimsFocused: false,
+      coverageFocused: false,
+      concisePreferred: null, // true | false | null (unknown)
+      preferenceScores: {
+        budgetFocused: 0,
+        claimsFocused: 0,
+        coverageFocused: 0,
+        concisePreferred: 0, // positive = concise, negative = detailed
+      },
+      preferenceTurnCounter: 0,
+      preferenceUpdatedAt: null,
+    };
+    this.experiment = {
+      promptVariant: 'A',
+      experimentMode: 'off',
+      startedAt: Date.now(),
+      updatedAt: Date.now(),
+      turns: 0,
+      decisionTurns: 0,
+      conversionIntentTurns: 0,
+      conversionRate: 0,
+      milestones: {
+        quoteSelected: false,
+        addOnsConfirmed: false,
+        roadTaxSelected: false,
+        reachedOtp: false,
+        reachedPayment: false,
+        completedPayment: false,
+      },
+    };
   }
 
   /**
@@ -116,6 +160,9 @@ export class ConversationState {
     }
     state.vehicleInfo = json.vehicleInfo || null;
     state.selectedQuote = json.selectedQuote || null;
+    state.lastRecommendedInsurer = ['takaful', 'etiqa', 'allianz'].includes(json.lastRecommendedInsurer)
+      ? json.lastRecommendedInsurer
+      : null;
     state.quoteGeneratedAt = json.quoteGeneratedAt || null;
     state.quoteValidUntil = json.quoteValidUntil || null;
     state.selectedAddOns = Array.isArray(json.selectedAddOns) ? json.selectedAddOns : [];
@@ -124,7 +171,52 @@ export class ConversationState {
     state.personalDetails = json.personalDetails || null;
     state.otpVerified = !!json.otpVerified;
     state.paymentMethod = json.paymentMethod || null;
+    state.transaction = {
+      quoteId: json?.transaction?.quoteId || null,
+      reprice: json?.transaction?.reprice || null,
+      proposalId: json?.transaction?.proposalId || null,
+      proposalStatus: json?.transaction?.proposalStatus || null,
+      paymentIntentId: json?.transaction?.paymentIntentId || null,
+      paymentStatus: json?.transaction?.paymentStatus || null,
+      policyNumber: json?.transaction?.policyNumber || null,
+      policyStatus: json?.transaction?.policyStatus || null,
+      lastError: json?.transaction?.lastError || null,
+    };
     state.pendingAction = json.pendingAction || null;
+    state.userPreferences = {
+      budgetFocused: !!json?.userPreferences?.budgetFocused,
+      claimsFocused: !!json?.userPreferences?.claimsFocused,
+      coverageFocused: !!json?.userPreferences?.coverageFocused,
+      concisePreferred: typeof json?.userPreferences?.concisePreferred === 'boolean'
+        ? json.userPreferences.concisePreferred
+        : null,
+      preferenceScores: {
+        budgetFocused: Number(json?.userPreferences?.preferenceScores?.budgetFocused || 0),
+        claimsFocused: Number(json?.userPreferences?.preferenceScores?.claimsFocused || 0),
+        coverageFocused: Number(json?.userPreferences?.preferenceScores?.coverageFocused || 0),
+        concisePreferred: Number(json?.userPreferences?.preferenceScores?.concisePreferred || 0),
+      },
+      preferenceTurnCounter: Number(json?.userPreferences?.preferenceTurnCounter || 0),
+      preferenceUpdatedAt: json?.userPreferences?.preferenceUpdatedAt || null,
+    };
+    state.experiment = {
+      promptVariant: ['A', 'B'].includes(json?.experiment?.promptVariant) ? json.experiment.promptVariant : 'A',
+      experimentMode: json?.experiment?.experimentMode || 'off',
+      startedAt: Number(json?.experiment?.startedAt || Date.now()),
+      updatedAt: Number(json?.experiment?.updatedAt || Date.now()),
+      turns: Number(json?.experiment?.turns || 0),
+      decisionTurns: Number(json?.experiment?.decisionTurns || 0),
+      conversionIntentTurns: Number(json?.experiment?.conversionIntentTurns || 0),
+      conversionRate: Number(json?.experiment?.conversionRate || 0),
+      milestones: {
+        quoteSelected: !!json?.experiment?.milestones?.quoteSelected,
+        addOnsConfirmed: !!json?.experiment?.milestones?.addOnsConfirmed,
+        roadTaxSelected: !!json?.experiment?.milestones?.roadTaxSelected,
+        reachedOtp: !!json?.experiment?.milestones?.reachedOtp,
+        reachedPayment: !!json?.experiment?.milestones?.reachedPayment,
+        completedPayment: !!json?.experiment?.milestones?.completedPayment,
+      },
+    };
 
     return state;
   }
@@ -161,6 +253,9 @@ export class ConversationState {
 
         if (meta.selectedQuote) {
           state.selectedQuote = meta.selectedQuote;
+        }
+        if (['takaful', 'etiqa', 'allianz'].includes(meta.lastRecommendedInsurer)) {
+          state.lastRecommendedInsurer = meta.lastRecommendedInsurer;
         }
         if (meta.quoteGeneratedAt) {
           state.quoteGeneratedAt = meta.quoteGeneratedAt;
@@ -264,6 +359,7 @@ export class ConversationState {
    */
   selectQuote(quote) {
     this.selectedQuote = quote;
+    this.lastRecommendedInsurer = null;
     this.setQuoteTimestamps(); // Set validity when quote is selected
     this.step = FLOW_STEPS.ADDONS;
     this.pendingAction = null;
@@ -307,6 +403,7 @@ export class ConversationState {
 
     // Reset all selections and quote timestamps
     this.selectedQuote = null;
+    this.lastRecommendedInsurer = null;
     this.quoteGeneratedAt = null;
     this.quoteValidUntil = null;
     this.selectedAddOns = [];
@@ -315,6 +412,17 @@ export class ConversationState {
     this.personalDetails = null;
     this.otpVerified = false;
     this.paymentMethod = null;
+    this.transaction = {
+      quoteId: null,
+      reprice: null,
+      proposalId: null,
+      proposalStatus: null,
+      paymentIntentId: null,
+      paymentStatus: null,
+      policyNumber: null,
+      policyStatus: null,
+      lastError: null,
+    };
     this.pendingAction = null;
 
     // Go back to quotes step
@@ -359,6 +467,7 @@ export class ConversationState {
       ownerIdType: this.ownerIdType,
       vehicleInfo: this.vehicleInfo,
       selectedQuote: this.selectedQuote,
+      lastRecommendedInsurer: this.lastRecommendedInsurer,
       quoteGeneratedAt: this.quoteGeneratedAt,
       quoteValidUntil: this.quoteValidUntil,
       quoteExpired: this.isQuoteExpired(),
@@ -373,7 +482,20 @@ export class ConversationState {
       } : null,
       otpVerified: this.otpVerified,
       paymentMethod: this.paymentMethod,
+      transaction: this.transaction ? {
+        quoteId: this.transaction.quoteId || null,
+        reprice: this.transaction.reprice || null,
+        proposalId: this.transaction.proposalId || null,
+        proposalStatus: this.transaction.proposalStatus || null,
+        paymentIntentId: this.transaction.paymentIntentId || null,
+        paymentStatus: this.transaction.paymentStatus || null,
+        policyNumber: this.transaction.policyNumber || null,
+        policyStatus: this.transaction.policyStatus || null,
+        lastError: this.transaction.lastError || null,
+      } : null,
       pendingAction: this.pendingAction,
+      userPreferences: this.userPreferences,
+      experiment: this.experiment,
     };
   }
 
@@ -414,6 +536,13 @@ export class ConversationState {
         const mins = this.getQuoteTimeRemaining();
         parts.push(`Quote valid for: ${mins} minute${mins !== 1 ? 's' : ''}`);
       }
+    } else if (this.lastRecommendedInsurer && this.step === FLOW_STEPS.QUOTES) {
+      const labelMap = {
+        takaful: 'Takaful Ikhlas',
+        etiqa: 'Etiqa Insurance',
+        allianz: 'Allianz Insurance',
+      };
+      parts.push(`Last recommendation: ${labelMap[this.lastRecommendedInsurer] || this.lastRecommendedInsurer}`);
     }
     if (this.selectedAddOns.length > 0) {
       const status = this.addOnsConfirmed ? 'Confirmed' : 'Pre-selected (waiting for confirmation)';
@@ -425,6 +554,26 @@ export class ConversationState {
     if (this.personalDetails) {
       const collected = ['email', 'phone', 'address'].filter(k => this.personalDetails[k]).length;
       parts.push(`Personal details collected: ${collected}/3`);
+    }
+    if (this.transaction?.proposalId) {
+      parts.push(`Proposal: ${this.transaction.proposalId} (${this.transaction.proposalStatus || 'DRAFT'})`);
+    }
+    if (this.transaction?.paymentIntentId) {
+      parts.push(`Payment Intent: ${this.transaction.paymentIntentId} (${this.transaction.paymentStatus || 'PENDING'})`);
+    }
+    if (this.transaction?.policyNumber) {
+      parts.push(`Policy: ${this.transaction.policyNumber} (${this.transaction.policyStatus || 'ISSUED'})`);
+    }
+    if (this.userPreferences) {
+      const prefs = [];
+      if (this.userPreferences.budgetFocused) prefs.push('budget-focused');
+      if (this.userPreferences.claimsFocused) prefs.push('claims-focused');
+      if (this.userPreferences.coverageFocused) prefs.push('coverage-focused');
+      if (this.userPreferences.concisePreferred === true) prefs.push('prefers concise replies');
+      if (this.userPreferences.concisePreferred === false) prefs.push('prefers detailed replies');
+      if (prefs.length > 0) {
+        parts.push(`User preferences: ${prefs.join(', ')}`);
+      }
     }
 
     return parts.join('\n');
@@ -474,11 +623,241 @@ function fuzzyMatch(word, targets, maxDistance = 2) {
   return null;
 }
 
+function hasApproxToken(text, targets, maxDistance = 2) {
+  const tokens = tokenizeIntentText(text);
+  return tokens.some((token) => token.length >= 3 && !!fuzzyMatch(token, targets, maxDistance));
+}
+
+function normalizeCommonIntentTypos(text) {
+  let out = String(text || '');
+  const replacements = [
+    [/\bobleh\b/gi, 'boleh'],
+    [/\bbole\b/gi, 'boleh'],
+    [/\bboeh\b/gi, 'boleh'],
+    [/\bboelh\b/gi, 'boleh'],
+    [/\bbloeh\b/gi, 'boleh'],
+    [/\bskp\b/gi, 'skip'],
+    [/\bskpi\b/gi, 'skip'],
+    [/\bksip\b/gi, 'skip'],
+    [/\bsikp\b/gi, 'skip'],
+    [/\bernew\b/gi, 'renew'],
+    [/\bcrad\b/gi, 'card'],
+    [/\bcadr\b/gi, 'card'],
+    [/\bacrd\b/gi, 'card'],
+    [/\bello\b/gi, 'hello'],
+    [/\bhelo\b/gi, 'hello'],
+    [/\bhllo\b/gi, 'hello'],
+    [/\bhlelo\b/gi, 'hello'],
+    [/\behllo\b/gi, 'hello'],
+    [/\bhelol\b/gi, 'hello'],
+    [/\brecommnd\b/gi, 'recommend'],
+    [/\brecomend\b/gi, 'recommend'],
+    [/\brecommed\b/gi, 'recommend'],
+    [/\brecomnd\b/gi, 'recommend'],
+    [/\beitqa\b/gi, 'etiqa'],
+    [/\betiaq\b/gi, 'etiqa'],
+    [/\btakaflu\b/gi, 'takaful'],
+    [/\btoki\b/gi, 'tokio'],
+    [/\bokio\b/gi, 'tokio'],
+  ];
+
+  for (const [pattern, replacement] of replacements) {
+    out = out.replace(pattern, replacement);
+  }
+  return out;
+}
+
+function isStartGreetingMessage(text) {
+  const tokens = tokenizeIntentText(text);
+  if (!tokens.length) return false;
+
+  let consumed = 0;
+  const first = tokens[0];
+  const second = tokens[1] || '';
+
+  if (['hi', 'hello', 'hey', 'yo', 'salam', 'assalam', 'hell'].includes(first)) {
+    consumed = 1;
+  } else if (first === 'good' && ['morning', 'afternoon', 'evening'].includes(second)) {
+    consumed = 2;
+  } else {
+    return false;
+  }
+
+  const tail = tokens.slice(consumed);
+  const filler = new Set(['please', 'pls', 'boleh', 'can', 'leh', 'ah', 'la', 'lah', 'bro', 'boss', 'sis', 'tq', 'thanks', 'there']);
+  return tail.every((token) => filler.has(token));
+}
+
+function detectSingleInsurerKey(text) {
+  const msg = String(text || '').toLowerCase();
+  const hits = new Set();
+
+  if (/\btakaful\b|\bikhlas\b/i.test(msg)) hits.add('takaful');
+  if (/\betiqa\b/i.test(msg)) hits.add('etiqa');
+  if (/\ballianz\b/i.test(msg)) hits.add('allianz');
+
+  const tokens = tokenizeIntentText(msg);
+  for (const token of tokens) {
+    if (fuzzyMatch(token, ['takaful', 'ikhlas'], 2)) hits.add('takaful');
+    if (fuzzyMatch(token, ['etiqa'], 2)) hits.add('etiqa');
+    if (fuzzyMatch(token, ['allianz'], 2)) hits.add('allianz');
+  }
+
+  if (hits.size !== 1) return null;
+  return [...hits][0];
+}
+
+function parsePaymentMethodFromText(text) {
+  const msg = String(text || '').toLowerCase();
+
+  if (
+    /\bfpx\b|online banking|bank transfer|internet banking/i.test(msg) ||
+    hasApproxToken(msg, ['fpx'], 1)
+  ) return 'fpx';
+
+  if (
+    /\b(e.?wallet|wallet|tng|touch n go|grabpay|boost|shopeepay)\b/i.test(msg) ||
+    hasApproxToken(msg, ['wallet', 'ewallet', 'grabpay', 'boost', 'tng'], 2)
+  ) return 'ewallet';
+
+  if (
+    /\b(instalment|installment|bnpl|pay later|atome|paylater)\b/i.test(msg) ||
+    hasApproxToken(msg, ['instalment', 'installment', 'bnpl', 'atome'], 2)
+  ) return 'bnpl';
+
+  if (
+    /\b(card|cadr|acrd|credit|debit|visa|mastercard)\b/i.test(msg) ||
+    hasApproxToken(msg, ['card', 'credit', 'debit'], 2)
+  ) return 'card';
+
+  return null;
+}
+
+function hasGeneralQuestionSignal(text) {
+  const msg = String(text || '').toLowerCase().trim();
+  if (!msg) return false;
+
+  if (/\?/.test(msg)) return true;
+  if (/\b(do i|should i|can i|could i|would i|what|why|how|when|where|which|who|explain|tell me|clarify|compare|difference|worth it|necessary)\b/i.test(msg)) return true;
+  if (/\b(apa|kenapa|bagaimana|macam mana|boleh ke|perlu ke|patut ke)\b/i.test(msg)) return true;
+  if (hasApproxToken(msg, ['recommend', 'compare', 'comparison', 'difference', 'explain', 'clarify'], 2)) return true;
+
+  return false;
+}
+
+/**
+ * Normalize intent text and remove known noise tails that should not drive routing.
+ */
+function sanitizeIntentMessage(message) {
+  let normalized = String(message || '').toLowerCase();
+  normalized = normalized.replace(/[\r\n]+/g, ' ');
+  normalized = normalized.replace(/\s+/g, ' ').trim();
+  normalized = normalizeCommonIntentTypos(normalized);
+
+  // Strip prompt-injection style tails often appended after an otherwise valid user intent.
+  normalized = normalized.replace(/\b(?:ignore|ingore)\s+(?:previous|preivous)\s+(?:instructions?|intsructions?|istructions?)[\s\S]*$/i, '').trim();
+  return normalized;
+}
+
+/**
+ * Remove conversational tag-question suffixes so structured extractors
+ * still work for messages like "0123 ... boleh ah?".
+ */
+function stripTagQuestionSuffix(text) {
+  const input = String(text || '').trim();
+  if (!input) return input;
+
+  // Drop trailing emoji/symbol noise so suffix stripping still works.
+  const withoutTrailingNoise = input.replace(/[^\p{L}\p{N}\s?!.,:'"-]+$/gu, '').trim();
+  const stripped = withoutTrailingNoise
+    .replace(/\b(?:boleh|can|leh)\s*ah\??(?:\s*please)?$/i, '')
+    .replace(/\b(?:boleh|can|leh)\??(?:\s*please)?$/i, '')
+    .trim();
+
+  return stripped.length > 0 ? stripped : (withoutTrailingNoise || input);
+}
+
+function tokenizeIntentText(text) {
+  return String(text || '')
+    .toLowerCase()
+    .replace(/[^a-z0-9'\s]/g, ' ')
+    .split(/\s+/)
+    .filter(Boolean);
+}
+
+function isAffirmativeToken(token) {
+  const t = String(token || '').toLowerCase();
+  return /^(ok+|okay+|ya+|yah+|yes+|yep+|yup+|sure+|alright+|betul+|correct+|confirm+)$/i.test(t);
+}
+
+function hasAffirmativePrefix(text) {
+  const tokens = tokenizeIntentText(text);
+  if (!tokens.length) return false;
+  let i = 0;
+  while (i < tokens.length && /^(hmm+|umm+|uhh+|eh+|ah+)$/i.test(tokens[i])) i += 1;
+  if (i >= tokens.length) return false;
+
+  const first = tokens[i];
+  const second = tokens[i + 1] || '';
+  if (isAffirmativeToken(first)) return true;
+  if (/^(proceed|continue)$/i.test(first)) return true;
+  if (/^(go|do|lets|let's)$/i.test(first) && /^(ahead|it|go)$/i.test(second)) return true;
+  return false;
+}
+
+function isSimpleAffirmative(text) {
+  const tokens = tokenizeIntentText(text);
+  if (!tokens.length) return false;
+
+  let i = 0;
+  while (i < tokens.length && /^(hmm+|umm+|uhh+|eh+|ah+)$/i.test(tokens[i])) i += 1;
+  if (i >= tokens.length) return false;
+
+  const first = tokens[i];
+  const second = tokens[i + 1] || '';
+  const rest = tokens.slice(i + 1);
+  const filler = new Set(['please', 'pls', 'pls.', 'lah', 'la', 'bro', 'boss', 'sis', 'tq', 'thanks', 'ah', 'leh', 'boleh', 'can']);
+
+  if (/^(proceed|continue)$/i.test(first)) {
+    return rest.every((w) => filler.has(w));
+  }
+
+  if (/^(go|do|lets|let's)$/i.test(first) && /^(ahead|it|go)$/i.test(second)) {
+    const phraseRest = tokens.slice(i + 2);
+    return phraseRest.every((w) => filler.has(w));
+  }
+
+  if (!isAffirmativeToken(first)) return false;
+  return rest.every((w) => filler.has(w));
+}
+
+function isNegativeToken(token) {
+  const t = String(token || '').toLowerCase();
+  return /^(no+|nope+|nah+|nop+|cancel|stop)$/i.test(t);
+}
+
+function isSimpleNegative(text) {
+  const tokens = tokenizeIntentText(text);
+  if (!tokens.length) return false;
+
+  let i = 0;
+  while (i < tokens.length && /^(hmm+|umm+|uhh+|eh+|ah+)$/i.test(tokens[i])) i += 1;
+  if (i >= tokens.length) return false;
+
+  const first = tokens[i];
+  const rest = tokens.slice(i + 1);
+  const filler = new Set(['please', 'pls', 'pls.', 'lah', 'la', 'bro', 'boss', 'sis', 'tq', 'thanks', 'ah', 'leh', 'boleh', 'can']);
+
+  if (!isNegativeToken(first)) return false;
+  return rest.every((w) => filler.has(w));
+}
+
 // ============================================================================
 // INTENT DETECTION - What does the user want to do?
 // ============================================================================
 
 export const USER_INTENTS = {
+  GREETING: 'greeting',
   START_RENEWAL: 'start_renewal',
   PROVIDE_INFO: 'provide_info',
   CONFIRM: 'confirm',
@@ -500,16 +879,39 @@ export const USER_INTENTS = {
  * This replaces scattered regex patterns throughout route.js
  */
 export function detectUserIntent(message, currentState) {
-  const msg = message.toLowerCase().trim();
+  const normalized = sanitizeIntentMessage(message);
+  const msg = stripTagQuestionSuffix(normalized);
+  const structuredMsg = msg;
 
   // Pending insurer-switch confirmation: only interpret short confirmations in this mode.
   if (currentState.pendingAction?.type === 'confirm_quote_change') {
-    if (/^(yes|ya|ok|okay|confirm|sure|proceed|do it|change it|yes please)$/i.test(msg)) {
+    if (isSimpleAffirmative(msg) || /^(change it)$/i.test(msg)) {
       return { intent: USER_INTENTS.CONFIRM_CHANGE_QUOTE, confidence: 0.95 };
     }
     if (/^(no|nope|cancel|don'?t|do not|never mind|nevermind|continue|keep current|stay)$/i.test(msg)) {
       return { intent: USER_INTENTS.OTHER, confidence: 0.9, data: { cancelPendingAction: true } };
     }
+  }
+
+  // Greeting at start: keep this separate so route.js can answer naturally
+  // without forcing a full form/list on "hello".
+  if (
+    currentState.step === FLOW_STEPS.START &&
+    !currentState.plateNumber &&
+    !currentState.nricNumber &&
+    isStartGreetingMessage(msg)
+  ) {
+    return { intent: USER_INTENTS.GREETING, confidence: 0.95 };
+  }
+
+  // Probe/testing messages at start should feel human, not force immediate intake.
+  if (
+    currentState.step === FLOW_STEPS.START &&
+    !currentState.plateNumber &&
+    !currentState.nricNumber &&
+    /^(?:just\s+)?(test|testing|check|checking|ping|trial|demo)\b[!. ]*$/i.test(msg)
+  ) {
+    return { intent: USER_INTENTS.UNCLEAR_OR_PLAYFUL, confidence: 0.9 };
   }
 
   // CHANGE QUOTE DETECTION - HIGHEST PRIORITY when user has selected a quote
@@ -553,27 +955,34 @@ export function detectUserIntent(message, currentState) {
     }
   }
 
-  // OTP verification (any 4 digits - for testing, accept any 4-digit code or specifically "1470")
+  // OTP verification (any 4 digits - for testing, accept any 4-digit code token such as "1470" or "hmm 1470 please")
   // In production, this should verify against the actual OTP sent
-  if (/^\d{4}$/.test(msg) && currentState.step === FLOW_STEPS.OTP) {
-    console.log('[Intent] OTP verification detected:', msg);
-    // For testing: accept any 4-digit code
-    // In production: verify against actual OTP
-    return { intent: USER_INTENTS.VERIFY_OTP, confidence: 1.0, data: { otp: msg, valid: true } };
+  if (currentState.step === FLOW_STEPS.OTP) {
+    const otpMatch = msg.match(/\b(\d{4})\b/);
+    if (otpMatch) {
+      const otp = otpMatch[1];
+      console.log('[Intent] OTP verification detected:', otp);
+      // For testing: accept any 4-digit code
+      // In production: verify against actual OTP
+      return { intent: USER_INTENTS.VERIFY_OTP, confidence: 1.0, data: { otp, valid: true } };
+    }
   }
 
   // Payment selection
   if (currentState.step === FLOW_STEPS.PAYMENT) {
+    // Explicit negative/cancel response should stay as non-selection.
+    if (/^(?:hmm+\s+)?(?:no|nope|not now|cancel|don'?t|do not)\b/i.test(msg)) {
+      return { intent: USER_INTENTS.OTHER, confidence: 0.9 };
+    }
+
     // Specific payment method selection
-    if (/card|fpx|wallet|instalment|atome|pay later/i.test(msg)) {
-      const method = msg.includes('card') ? 'card' :
-                     msg.includes('fpx') ? 'fpx' :
-                     msg.includes('wallet') ? 'ewallet' :
-                     msg.includes('atome') || msg.includes('instalment') ? 'bnpl' : 'card';
+    const paymentMethod = parsePaymentMethodFromText(msg);
+    if (paymentMethod) {
+      const method = paymentMethod;
       return { intent: USER_INTENTS.SELECT_PAYMENT, confidence: 0.9, data: { method } };
     }
     // General confirmation to proceed with payment (e.g., "yes please", "ok", "proceed")
-    if (/^(yes|ya|ok|okay|sure|proceed|continue|yes please|let'?s go|ready|pay now|confirm)$/i.test(msg)) {
+    if (isSimpleAffirmative(msg) || /^(ready|pay now|let'?s go)$/i.test(msg)) {
       return { intent: USER_INTENTS.SELECT_PAYMENT, confidence: 0.85, data: { method: 'any' } };
     }
   }
@@ -582,10 +991,29 @@ export function detectUserIntent(message, currentState) {
   // IMPORTANT: Only treat as selection when user explicitly confirms their choice.
   // Mentioning an insurer alone (e.g. "I want to know about Allianz") is NOT a selection.
   if (currentState.step === FLOW_STEPS.QUOTES) {
+    if (isSimpleNegative(msg)) {
+      return { intent: USER_INTENTS.OTHER, confidence: 0.9 };
+    }
+
     // If user just says "ok", "yes", etc. without specifying an insurer
     // The AI will naturally ask which quote they prefer
-    if (/^(ok|okay|yes|ya|sure|alright|proceed|continue)$/i.test(msg)) {
+    if (isSimpleAffirmative(msg)) {
       return { intent: USER_INTENTS.CONFIRM, confidence: 0.7 };
+    }
+
+    // Explicit request to re-show quotes/options should always stay in quote Q&A mode
+    // e.g. "show me the quotes again", "repeat options", "list prices"
+    const asksToSeeQuotesAgain =
+      /(?:show|list|repeat|remind(?: me)?|display)\b.*\b(?:quote|quotes|options|price|prices)\b|\b(?:quote|quotes|options|price list)\b.*\b(?:again|repeat)\b|what are the options|show me (?:the )?quotes/i.test(msg);
+    if (asksToSeeQuotesAgain) {
+      return { intent: USER_INTENTS.ASK_QUESTION, confidence: 0.95 };
+    }
+
+    // User may mention a preferred insurer that's outside current panel (e.g., Tokio Marine).
+    // Treat this as a consultative question so AI can acknowledge and map to best available option.
+    const mentionsUnavailableInsurer = /\b(tokio\s*marine|toki(?:o)?\s*marine|tokio|toki|okio\s*marine|okio|zurich|axa|generali|msig|sompo|rhb|liberty)\b/i.test(msg);
+    if (mentionsUnavailableInsurer) {
+      return { intent: USER_INTENTS.ASK_QUESTION, confidence: 0.9 };
     }
 
     // DILEMMA/INDECISION detection — user needs help deciding, NOT making a selection
@@ -595,19 +1023,37 @@ export function detectUserIntent(message, currentState) {
       return { intent: USER_INTENTS.ASK_QUESTION, confidence: 0.95 };
     }
 
-    // Delegation / playful uncertainty
-    if (/you choose|you pick|up to you|whatever|whichever|surprise me|idk|dunno|not sure|hmm+|haha|lol/i.test(msg)) {
-      return { intent: USER_INTENTS.UNCLEAR_OR_PLAYFUL, confidence: 0.88 };
+    const singleInsurerMention = detectSingleInsurerKey(msg);
+    const hasSelectionNegationCue = /\b(no|not|don'?t|dont|can'?t|cannot|couldn'?t|not sure|between)\b/i.test(msg);
+    const hasQuoteQuestionCue =
+      hasGeneralQuestionSignal(msg) ||
+      /\b(about|tell me|explain|compare|difference|details|info)\b/i.test(msg);
+    if (singleInsurerMention && !hasSelectionNegationCue && !hasQuoteQuestionCue) {
+      return {
+        intent: USER_INTENTS.SELECT_QUOTE,
+        confidence: 0.9,
+        data: { insurer: singleInsurerMention }
+      };
     }
 
     // Treat as question if message contains question markers or inquiry words + insurer
-    const isQuestion = /\?|tell me|what about|how about|about\s+(takaful|ikhlas|etiqa|allianz)|do i need|should i|explain|interested|want to know|more about|details|which is better|what(?:'s| is) better|better one|best one/i.test(msg);
-    const isDiscussion = /which|what|why|compare|difference|better|best|recommend/i.test(msg);
+    const isRecommendationQuestion = /\brecommend(?:ation)?\b|your (pick|choice|suggestion)|suggest/i.test(msg) || hasApproxToken(msg, ['recommend'], 2);
+    const isQuestion = hasGeneralQuestionSignal(msg) || /tell me|what about|how about|about\s+(takaful|ikhlas|etiqa|allianz)|interested|want to know|more about|details|which is better|what(?:'s| is) better|better one|best one/i.test(msg);
+    const isDiscussion = /\b(which|what|why|compare|difference|better|best)\b/i.test(msg) || isRecommendationQuestion;
 
     if (isQuestion || isDiscussion) {
       // At quote step, discussion/question phrasing should stay in Q&A mode
       // rather than falling through to generic OTHER.
       return { intent: USER_INTENTS.ASK_QUESTION, confidence: 0.9 };
+    }
+
+    // Delegation / playful uncertainty
+    if (
+      /you choose|you pick|up to you|whatever|whichever|surprise me|idk|dunno|not sure|hmm+|haha|lol/i.test(msg) &&
+      !isQuestion &&
+      !isDiscussion
+    ) {
+      return { intent: USER_INTENTS.UNCLEAR_OR_PLAYFUL, confidence: 0.88 };
     }
 
     // Require explicit selection verb: "go with", "choose", "select", "pick", "I'll take"
@@ -690,28 +1136,74 @@ export function detectUserIntent(message, currentState) {
 
   // Add-on selection - AI handles this conversationally
   if (currentState.step === FLOW_STEPS.ADDONS) {
+    const hasSkipToken =
+      /\b(skip|skpi|ksip|sikp)\b/i.test(msg) ||
+      /^skp$/i.test(msg.trim()) ||
+      (() => {
+        const tokens = tokenizeIntentText(msg);
+        const filler = new Set(['please', 'pls', 'lah', 'la', 'ah', 'leh', 'boleh', 'can', 'bro', 'boss', 'sis']);
+        const core = tokens.filter((token) => !filler.has(token));
+        if (core.length === 0 || core.length > 2) return false;
+        return core.some((token) => /^(ski|sip|kip)$/i.test(token));
+      })();
+
     // Check for explicit "no add-ons" / "skip" / "none"
-    if (/no add.?on|none|skip add|no thanks|don't need|dont need|proceed without|no insurance add|skip$|no$|nope/i.test(msg)) {
+    if (
+      /\b(no add.?on|none|skip(?: all)?(?: add.?ons?)?|skip add|no thanks|don't need|dont need|proceed without|no insurance add)\b/i.test(msg) ||
+      hasSkipToken
+    ) {
       return { intent: USER_INTENTS.SELECT_ADDON, confidence: 0.9, data: { addOns: [], confirmed: true } };
     }
 
     // Detect which add-ons are mentioned
     const mentionedAddOns = [];
-    if (/windscreen/i.test(msg)) mentionedAddOns.push('windscreen');
+
+    const addonWords = msg
+      .replace(/[^a-z0-9\s]/gi, ' ')
+      .split(/\s+/)
+      .filter(Boolean);
+
+    const hasWindscreen = /windscreen/i.test(msg) || addonWords.some((w) => !!fuzzyMatch(w, ['windscreen'], 3));
+    if (hasWindscreen) mentionedAddOns.push('windscreen');
     if (/flood|disaster|perils|special perils/i.test(msg)) mentionedAddOns.push('flood');
     if (/e.?hailing|grab|ride.?sharing|ride.?share/i.test(msg)) mentionedAddOns.push('ehailing');
     if (/both|all/i.test(msg)) {
       mentionedAddOns.push('windscreen', 'flood', 'ehailing');
     }
 
+    // Number-based selection: "1", "1 and 3", "1,3", "1 3", "1 & 2"
+    const numberMap = { '1': 'windscreen', '2': 'flood', '3': 'ehailing' };
+    const numberMatches = msg.match(/\b[1-3]\b/g);
+    if (numberMatches && mentionedAddOns.length === 0) {
+      const unique = [...new Set(numberMatches)];
+      for (const n of unique) {
+        if (numberMap[n] && !mentionedAddOns.includes(numberMap[n])) {
+          mentionedAddOns.push(numberMap[n]);
+        }
+      }
+      if (mentionedAddOns.length > 0) {
+        return {
+          intent: USER_INTENTS.SELECT_ADDON,
+          confidence: 0.9,
+          data: { addOns: mentionedAddOns, confirmed: true }
+        };
+      }
+    }
+
     // Check if this is a QUESTION about add-ons (not a selection)
     // "what is windscreen?", "do I need flood?", "tell me about special perils"
-    const isQuestion = /\?|what is|what's|do i need|should i|tell me|explain|which one|recommend|need this|worth it|necessary|how does|what does/i.test(msg);
+    const isQuestion = /\?|what is|what's|do i need|should i|tell me|explain|clarify|which one|which insurer|recommend|need this|worth it|necessary|how does|what does|betterment|zero betterment/i.test(msg);
+
+    // Cross-topic insurance/policy questions can happen mid-step.
+    // Answer first, then route back to add-ons (handled in route.js).
+    const startsLikeQuestion = /^(which|what|how|why|when|where|can|could|would|is|are|do|does|should)\b/i.test(msg);
+    const hasInsuranceTopicCue = /\b(insurer|policy|coverage|cover|claims?|betterment|waiver|depreciation|premium|sum insured|ncd)\b/i.test(msg);
+    const isCrossTopicInsuranceQuestion = (startsLikeQuestion && hasInsuranceTopicCue) || /\bclarify this\b/i.test(msg);
 
     // Check for indecision/dilemma about add-ons
     const isIndecision = /can'?t (choose|decide)|not sure|help me (choose|decide)|which (one|should)/i.test(msg);
 
-    if (isQuestion || isIndecision) {
+    if (isQuestion || isIndecision || isCrossTopicInsuranceQuestion) {
       // User is asking about add-ons, not selecting them
       return { intent: USER_INTENTS.ASK_QUESTION, confidence: 0.9 };
     }
@@ -738,7 +1230,7 @@ export function detectUserIntent(message, currentState) {
     }
 
     // If user just says "ok", "yes", etc. - AI will clarify what they want
-    if (/^(ok|okay|yes|ya|sure|alright)$/i.test(msg)) {
+    if (isSimpleAffirmative(msg)) {
       return { intent: USER_INTENTS.OTHER, confidence: 0.5 };
     }
 
@@ -750,9 +1242,59 @@ export function detectUserIntent(message, currentState) {
   // Road tax selection - check if user is selecting a road tax option
   const isRoadTaxStep = currentState.step === FLOW_STEPS.ROADTAX;
   if (isRoadTaxStep) {
+    const compactMsg = msg.replace(/[^a-z0-9]/g, '');
+    if (isSimpleNegative(msg)) {
+      return { intent: USER_INTENTS.SELECT_ROADTAX, confidence: 0.9, data: { option: 'none' } };
+    }
+
+    // Explicit "no road tax" intent should win before generic affirmations.
+    if (
+      /\bno\s*(?:road\s*tax|roadtax|orad\s*tax|raod\s*tax|rod\s*tax|roa\s*tax|rad\s*tax|oad\s*tax|roda\s*tax)\b/i.test(msg) ||
+      /\b(just insurance|insurance only|skip)\b/i.test(msg) ||
+      /no(?:roadtax|oradtax|raodtax|rodtax|roatax|radtax|oadtax|rodatax)/i.test(compactMsg)
+    ) {
+      return { intent: USER_INTENTS.SELECT_ROADTAX, confidence: 0.9, data: { option: 'none' } };
+    }
+
+    // Alternative renewal location question (e.g., "where else can i renew roadtax")
+    if (/where\s*else|whereelse|wehreelse|other place|where can i renew|renew.*where/i.test(msg)) {
+      return { intent: USER_INTENTS.ASK_QUESTION, confidence: 0.85 };
+    }
+
+    // Clarifying questions about digital road tax should stay in Q&A mode.
+    const asksDigitalMeaning =
+      /\b((?:what|wat|wht|hwat|waht)\s+(?:do\s+you\s+)?(?:mean|maen|mea)|(?:what|wat|wht|hwat|waht)\s+you\s+(?:mean|maen|mea)|(?:mean|maen|mea)\s+what|meaning)\b/i.test(msg) &&
+      /\b(digital|dgital|digitl|diigtal|idgital|digial|road\s*tax|roadtax)\b/i.test(msg);
+    if (asksDigitalMeaning) {
+      return { intent: USER_INTENTS.ASK_QUESTION, confidence: 0.9 };
+    }
+
     // Single-option flow: "ok/yes/proceed" means accept default 12-month digital.
-    if (/^(ok|okay|yes|ya|sure|alright|proceed|continue|go ahead|do it|yes please)$/i.test(msg)) {
+    if (isSimpleAffirmative(msg)) {
       return { intent: USER_INTENTS.SELECT_ROADTAX, confidence: 0.9, data: { option: '12month-digital' } };
+    }
+
+    // Natural affirmations like "ok renew", "yes renew roadtax", "add digital".
+    const hasAffirmative = hasAffirmativePrefix(msg) || /\b(add|include)\b/i.test(msg);
+    const hasRoadTaxContext = /\b(renew|road tax|roadtax|digital|12 month|12 months|1 year)\b/i.test(msg);
+    if (hasAffirmative && hasRoadTaxContext) {
+      return { intent: USER_INTENTS.SELECT_ROADTAX, confidence: 0.88, data: { option: '12month-digital' } };
+    }
+
+    if (hasAffirmativePrefix(msg) && !hasGeneralQuestionSignal(msg) && !/\b(no|none|skip)\b/i.test(msg)) {
+      return { intent: USER_INTENTS.SELECT_ROADTAX, confidence: 0.84, data: { option: '12month-digital' } };
+    }
+
+    // Direct action phrasing: "renew roadtax", "add digital road tax"
+    const startsWithAction = /^(renew|add|include|take|go with)\b/i.test(msg);
+    const hasSpecificRoadTaxTarget = /\b(road tax|roadtax|digital|12\s*(month|months|mth|mths|year|yr)|1\s*year)\b/i.test(msg);
+    if (startsWithAction && hasSpecificRoadTaxTarget) {
+      return { intent: USER_INTENTS.SELECT_ROADTAX, confidence: 0.87, data: { option: '12month-digital' } };
+    }
+
+    // Delivery/printed requests are clarified in conversational response.
+    if (/deliver|delivery|printed|physical|sticker/i.test(msg)) {
+      return { intent: USER_INTENTS.ASK_QUESTION, confidence: 0.8 };
     }
 
     if (/12.*month.*digital|digital.*12|year.*digital/i.test(msg)) {
@@ -767,11 +1309,6 @@ export function detectUserIntent(message, currentState) {
       return { intent: USER_INTENTS.ASK_QUESTION, confidence: 0.8 };
     }
 
-    // Delivery/printed requests are clarified in conversational response.
-    if (/deliver|delivery|printed|physical|sticker/i.test(msg)) {
-      return { intent: USER_INTENTS.ASK_QUESTION, confidence: 0.8 };
-    }
-
     // Plain duration fallback:
     // "12 months" (without digital/delivered) should still select road tax.
     // Default to digital option when channel is not specified.
@@ -779,22 +1316,54 @@ export function detectUserIntent(message, currentState) {
       return { intent: USER_INTENTS.SELECT_ROADTAX, confidence: 0.85, data: { option: '12month-digital' } };
     }
 
-    if (/no road tax|just insurance|insurance only|skip/i.test(msg)) {
-      return { intent: USER_INTENTS.SELECT_ROADTAX, confidence: 0.9, data: { option: 'none' } };
-    }
-
     if (/you choose|you pick|up to you|whatever|whichever|surprise me|idk|dunno|not sure|hmm+|haha|lol/i.test(msg)) {
       return { intent: USER_INTENTS.UNCLEAR_OR_PLAYFUL, confidence: 0.82 };
     }
   }
 
+  // IMPORTANT: Prioritize structured payload detection before broad question routing.
+  const personalInfo = extractPersonalInfo(structuredMsg);
+  const hasEmail = !!personalInfo.email;
+  const hasPhone = !!personalInfo.phone;
+  const hasAddress = !!personalInfo.address;
+
+  if (hasEmail) {
+    console.log('[Intent] Detected SUBMIT_DETAILS intent - email found');
+    return { intent: USER_INTENTS.SUBMIT_DETAILS, confidence: 0.95 };
+  }
+
+  if ((hasPhone || hasAddress) && currentState.step === FLOW_STEPS.PERSONAL_DETAILS) {
+    console.log('[Intent] Detected SUBMIT_DETAILS intent - phone/address found at personal_details step');
+    return { intent: USER_INTENTS.SUBMIT_DETAILS, confidence: 0.85 };
+  }
+
+  // Personal details fallback: treat messy combined payloads as details submission
+  // so route can ask specifically for missing/invalid fields instead of generic repeat.
+  if (currentState.step === FLOW_STEPS.PERSONAL_DETAILS) {
+    const looksLikeQuestion = /\?|^(how|what|when|where|why|which|can|do|does|is|are|should)\b/i.test(msg.trim());
+    const hasDetailSignal =
+      /@|(?:\+?60|0?1)\D*\d{6,}|\b(jalan|jln|lorong|taman|seksyen|section|address|addr|postcode|poskod)\b|,/.test(msg);
+    if (!looksLikeQuestion && hasDetailSignal) {
+      console.log('[Intent] Detected SUBMIT_DETAILS intent - fallback detail signal at personal_details step');
+      return { intent: USER_INTENTS.SUBMIT_DETAILS, confidence: 0.72 };
+    }
+  }
+
+  const extractedVehicle = extractVehicleInfo(structuredMsg);
+  const hasPlate = !!extractedVehicle.registrationNumber;
+  const hasNRIC = !!extractedVehicle.ownerId;
+  if ((hasPlate || hasNRIC) && currentState.step !== FLOW_STEPS.PERSONAL_DETAILS) {
+    return { intent: USER_INTENTS.PROVIDE_INFO, confidence: 0.9, data: { hasPlate, hasNRIC } };
+  }
+
   // Question detection (after step-specific handlers so payment questions don't get swallowed)
-  if (/\?|do i need|should i|what is|what's|how does|explain|tell me about|why|which one|recommend|need this|need these|worth it|necessary/i.test(msg)) {
+  if (hasGeneralQuestionSignal(msg) || /tell me about|need this|need these/i.test(msg)) {
     return { intent: USER_INTENTS.ASK_QUESTION, confidence: 0.9 };
   }
 
   // Confirmation - detect various ways users say "yes, that's correct"
-  if (/^(yes|correct|confirm|ok|okay|ya|betul|proceed|looks good|that's right|continue|all good|all is good|good|yep|yup|right|thats? correct)$/i.test(msg) ||
+  if (isSimpleAffirmative(msg) ||
+      /^(yes|correct|confirm|ok|okay|ya|betul|proceed|looks good|that's right|continue|all good|all is good|good|yep|yup|right|thats? correct)$/i.test(msg) ||
       /\b(yes|correct|confirm|proceed|looks good|all good|all is good)\b/i.test(msg)) {
     return { intent: USER_INTENTS.CONFIRM, confidence: 0.7 };
   }
@@ -808,35 +1377,6 @@ export function detectUserIntent(message, currentState) {
   if (/^(haha|lol|lmao|hehe|hmm+|umm+|uhh+|idk|dunno|whatever|anything|up to you|you choose|you pick|as you say|as you think|whichever)\b/i.test(msg) ||
       /\b(haha|lol|idk|dunno|whatever|up to you|you choose|you pick|whichever)\b/i.test(msg)) {
     return { intent: USER_INTENTS.UNCLEAR_OR_PLAYFUL, confidence: 0.75 };
-  }
-
-  // IMPORTANT: Check for personal details BEFORE plate/NRIC to avoid false positives
-  // Personal details submission - detect email (strongest signal)
-  const hasEmail = /[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/i.test(msg);
-  const hasPhone = /\b0?1[0-9][\s\-]?[0-9]{3,4}[\s\-]?[0-9]{4}\b/.test(msg);
-  const hasAddress = /jalan|jln|lorong|taman|persiaran|lebuh/i.test(msg);
-
-  console.log('[Intent] Personal details check:', { hasEmail, hasPhone, hasAddress, msgPreview: msg.substring(0, 50), currentStep: currentState.step });
-
-  // If message contains email, it's definitely a personal details submission
-  if (hasEmail) {
-    console.log('[Intent] Detected SUBMIT_DETAILS intent - email found');
-    return { intent: USER_INTENTS.SUBMIT_DETAILS, confidence: 0.95 };
-  }
-
-  // Also check for phone + address combination when in personal details step
-  if (hasPhone && hasAddress && currentState.step === FLOW_STEPS.PERSONAL_DETAILS) {
-    console.log('[Intent] Detected SUBMIT_DETAILS intent - phone + address found at personal_details step');
-    return { intent: USER_INTENTS.SUBMIT_DETAILS, confidence: 0.85 };
-  }
-
-  // Providing info (plate/IC detected) - only check if NOT in personal details step
-  // Use structured extraction so we can support non-NRIC owner IDs safely.
-  const extractedVehicle = extractVehicleInfo(msg);
-  const hasPlate = !!extractedVehicle.registrationNumber && currentState.step !== FLOW_STEPS.PERSONAL_DETAILS;
-  const hasNRIC = !!extractedVehicle.ownerId && currentState.step !== FLOW_STEPS.PERSONAL_DETAILS;
-  if (hasPlate || hasNRIC) {
-    return { intent: USER_INTENTS.PROVIDE_INFO, confidence: 0.9, data: { hasPlate, hasNRIC } };
   }
 
   return { intent: USER_INTENTS.OTHER, confidence: 0.5 };

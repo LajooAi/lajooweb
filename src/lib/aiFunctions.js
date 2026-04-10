@@ -3,8 +3,6 @@
  * These define what functions the AI can call to help users
  */
 
-import { searchKnowledgeBase, getKnowledgeByCategory } from './knowledgeBase.js';
-
 export const AI_FUNCTIONS = [
   {
     name: "lookup_previous_policy",

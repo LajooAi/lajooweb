@@ -3,22 +3,40 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
-    "build": "next build",
-    "start": "next start",
+    "dev": "NEXT_DIST_DIR=.next-dev next dev",
+    "build": "NEXT_DIST_DIR=.next-build next build",
+    "start": "NEXT_DIST_DIR=.next-build next start",
     "lint": "eslint",
+    "prisma:generate": "prisma generate",
+    "db:migrate": "prisma migrate dev",
+    "db:push": "prisma db push",
+    "db:studio": "prisma studio",
+    "db:seed:insurers": "node scripts/import-insurer-facts.mjs",
+    "db:import:pdf": "node scripts/import-policy-pdf.mjs",
+    "db:import:pdf:batch": "node scripts/import-policy-pdf-batch.mjs",
     "test:assistant": "node --test tests/assistant-intent.test.mjs tests/flow-guards.test.mjs",
     "eval:intent": "node scripts/run-intent-eval.mjs",
+    "eval:chaos": "node scripts/run-chaos-conversation-eval.mjs --runs 400 --seed 42",
+    "eval:chaos:quick": "node scripts/run-chaos-conversation-eval.mjs --runs 150 --seed 42",
+    "eval:capture:build": "node scripts/build-intent-eval-from-captures.mjs",
     "eval:flow": "node scripts/run-flow-eval.mjs",
-    "eval:assistant": "npm run -s eval:intent && npm run -s eval:flow"
+    "eval:conversation": "node scripts/run-conversation-eval.mjs",
+    "eval:judge": "node scripts/run-llm-judge-eval.mjs",
+    "eval:ab": "node scripts/run-llm-judge-eval.mjs --file tests/evals/llm-judge-transcripts.json",
+    "eval:assistant": "npm run -s eval:intent && npm run -s eval:flow && npm run -s eval:conversation",
+    "test:insurer:contract": "node scripts/run-insurer-adapter-contract.mjs",
+    "test:insurer:contract:full": "node scripts/run-insurer-adapter-contract.mjs --mode full",
+    "test:insurer:contract:batch": "node scripts/run-insurer-contract-batch.mjs"
   },
   "dependencies": {
     "@anthropic-ai/claude-code": "^2.0.55",
+    "@prisma/client": "^6.19.2",
     "@upstash/ratelimit": "^2.0.8",
     "@upstash/redis": "^1.36.1",
     "g": "^2.0.1",
     "next": "^15.5.7",
     "openai": "^6.9.0",
+    "pdf-parse": "^2.4.5",
     "react": "^19.1.2",
     "react-dom": "^19.1.2",
     "react-markdown": "^10.1.0",
@@ -30,6 +48,7 @@
   "devDependencies": {
     "@eslint/eslintrc": "^3",
     "eslint": "^9",
-    "eslint-config-next": "15.5.5"
+    "eslint-config-next": "15.5.5",
+    "prisma": "^6.19.2"
   }
 }

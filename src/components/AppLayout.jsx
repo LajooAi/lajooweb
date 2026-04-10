@@ -45,6 +45,12 @@ export default function AppLayout({ children }) {
             <Link href={`/${country}/what-is-lajoo`} className={`sidebar-link ${isActive(`/${country}/what-is-lajoo`)}`}>
               What is LAJOO ?
             </Link>
+            <Link href={`/${country}/faq`} className={`sidebar-link ${isActive(`/${country}/faq`)}`}>
+              FAQ
+            </Link>
+            <Link href={`/${country}/contact-us`} className={`sidebar-link ${isActive(`/${country}/contact-us`)}`}>
+              Contact Us
+            </Link>
             <Link href={`/${country}/terms`} className={`sidebar-link ${isActive(`/${country}/terms`)}`}>
               Terms & Privacy Policy
             </Link>
@@ -56,18 +62,26 @@ export default function AppLayout({ children }) {
       <div className="content-col">
         {/* Mobile header */}
         <header className="mobile-header">
-          <button className="burger-icon" aria-label="Open menu" onClick={() => setOpen(true)}>
-            <svg className="icon" viewBox="0 0 24 24" width="24" height="24" aria-hidden="true">
-              <path d="M3 6h18M3 12h18M3 18h18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-            </svg>
-          </button>
+          <div className="mobile-header-left">
+            <button className="burger-icon" aria-label="Open menu" onClick={() => setOpen(true)}>
+              <svg className="icon" viewBox="0 0 24 24" width="24" height="24" aria-hidden="true">
+                <path d="M0 5H24" fill="none" stroke="currentColor" strokeWidth="2.8" strokeLinecap="round" />
+                <path d="M0 12H16.8" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" />
+                <path d="M0 19H11" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+              </svg>
+            </button>
+          </div>
 
-        <button className="lajoo-logo" aria-label="Start new chat" onClick={startNewChat}>
-          <img src="/logo/lajoo-logo.png" alt="LAJOO logo" />
-        </button>
+          <div className="mobile-header-center">
+            <button className="lajoo-logo" aria-label="Start new chat" onClick={startNewChat}>
+              <img src="/logo/lajoo-logo-white.png" alt="LAJOO logo" />
+            </button>
+          </div>
 
-          {/* Country/Language button opens picker */}
-          <CountryLangPicker currentCountry={country} />
+          <div className="mobile-header-right">
+            {/* Country/Language button opens picker */}
+            <CountryLangPicker currentCountry={country} />
+          </div>
         </header>
 
         {children}
@@ -83,6 +97,8 @@ export default function AppLayout({ children }) {
         <nav className="drawer-nav">
           <Link href={`/${country}`} className={`drawer-link ${isActive(`/${country}`)}`}>LAJOO</Link>
           <Link href={`/${country}/what-is-lajoo`} className={`drawer-link ${isActive(`/${country}/what-is-lajoo`)}`}>What is LAJOO ?</Link>
+          <Link href={`/${country}/faq`} className={`drawer-link ${isActive(`/${country}/faq`)}`}>FAQ</Link>
+          <Link href={`/${country}/contact-us`} className={`drawer-link ${isActive(`/${country}/contact-us`)}`}>Contact Us</Link>
           <Link href={`/${country}/terms`} className={`drawer-link ${isActive(`/${country}/terms`)}`}>Terms & Privacy Policy</Link>
         </nav>
       </aside>

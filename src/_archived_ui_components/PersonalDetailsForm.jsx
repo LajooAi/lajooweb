@@ -89,7 +89,7 @@ export default function PersonalDetailsForm({ heading, onSubmit, prefilledData =
           </label>
           <textarea
             className={`form-textarea ${autoFilledFields.address ? 'auto-filled' : ''} ${disabled ? 'form-input-disabled' : ''}`}
-            placeholder="Enter your delivery address"
+            placeholder="Enter your address"
             value={formData.address}
             onChange={(e) => handleChange("address", e.target.value)}
             rows={3}

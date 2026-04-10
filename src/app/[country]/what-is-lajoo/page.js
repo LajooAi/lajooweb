@@ -1,5 +1,7 @@
 import "./about.css";
 import Link from "next/link";
+import InfoFooter from "@/components/InfoFooter";
+import EqualWidthTitle from "@/components/EqualWidthTitle";
 
 const insurerLogos = [
   "/partners/etiqa.svg",
@@ -45,38 +47,17 @@ export default function WhatIsLajooPage() {
     {
       icon: "/icons/chat-icon.png",
       title: "Chat",
-      subtitle: "Ask anything.",
-      copy: "Tell LAJOO what you need. Anything related to your car and insurance.",
+      subtitle: "Ask anything about insurance.",
     },
     {
       icon: "/icons/quote-icon.png",
-      title: "Quote",
-      subtitle: "Compare instantly.",
-      copy: "Compare insurer prices instantly. AI explains & recommends the best match.",
+      title: "Compare",
+      subtitle: "Compare prices with AI.",
     },
     {
       icon: "/icons/renew-icon.png",
       title: "Renew",
-      subtitle: "Pay securely.",
-      copy: "Pick your favourite plan, settle payment, and receive policy & road tax docs instantly.",
-    },
-  ];
-
-  const stats = [
-    {
-      badge: "12,000+",
-      title: "Renewals completed",
-      copy: "Malaysian motorists renewed since 2022.",
-    },
-    {
-      badge: "RM 2.4 mil",
-      title: "Savings delivered",
-      copy: "Cumulative premium savings negotiated by LAJOO AI.",
-    },
-    {
-      badge: "4.9 / 5★",
-      title: "Customer happiness",
-      copy: "Real reviews averaged across Google & Meta.",
+      subtitle: "Pay and get covered instantly.",
     },
   ];
 
@@ -98,48 +79,42 @@ export default function WhatIsLajooPage() {
     },
   ];
 
-  const videos = [
-    {
-      title: "Road-tax renewed over lunch break",
-      duration: "01:12",
-      thumbnail: "/placeholders/video-thumb.jpg",
-    },
-    {
-      title: "How LAJOO compares insurers for me",
-      duration: "00:52",
-      thumbnail: "/placeholders/video-thumb.jpg",
-    },
-    {
-      title: "Saving RM480 with AI prompts",
-      duration: "01:34",
-      thumbnail: "/placeholders/video-thumb.jpg",
-    },
-  ];
-
   return (
     <main className="about-wrap">
       <section className="about-hero">
         <div className="hero-copy">
-          <p className="about-eyebrow">WHAT IS LAJOO ?</p>
-          <h1 className="about-h1">
-            Malaysia’s Smartest AI-Powered Car
-            <br />Insurance & Road Tax Renewal Platform.
-          </h1>
-          <p className="about-meta">
-            Chat with LAJOO & renew instantly in minutes.
-            <br />No agents, no forms, 24/7 AI-powered.
-          </p>
-          <div className="cta-row">
-          <Link className="cta-primary" href="/">
-            Chat with LAJOO
-          </Link>
+          <div className="hero-top">
+            <EqualWidthTitle
+              className="about-h1"
+              lineClassName="about-h1-line"
+              secondaryLineClassName="about-h1-line-second"
+              primaryText="Renew insurance"
+              secondaryText="in one simple chat with AI."
+            />
+            <img
+              className="about-hero-photo"
+              src="/images/what-is-lajoo-step2.png"
+              alt="LAJOO insurer comparison preview"
+              loading="lazy"
+            />
+            <p className="about-meta about-meta--inline-benefits" aria-label="Just chat, no forms, instant">
+              <span className="about-benefit">Just chat</span>
+              <span className="about-benefit-divider" aria-hidden="true">·</span>
+              <span className="about-benefit">No forms</span>
+              <span className="about-benefit-divider" aria-hidden="true">·</span>
+              <span className="about-benefit">Instant</span>
+            </p>
+            <div className="cta-row">
+            <Link className="cta-primary" href="/">
+              Renew Now
+            </Link>
+            </div>
           </div>
 
 <section className="steps-panel" id="steps">
   <div className="steps-panel__inner">
     <div className="steps-panel__header">
-      <p className="steps-panel__eyebrow">How it works</p>
-      <h3 className="steps-panel__title">3 simple steps</h3>
+      <p className="steps-panel__eyebrow">Renew in 3 simple steps.</p>
     </div>
 
     <div className="steps-panel__grid">
@@ -148,48 +123,25 @@ export default function WhatIsLajooPage() {
             <div className="step-icon">
               <img src={step.icon} alt={step.title} loading="lazy" />
             </div>
-            <div className="step-text">
-              <p className="step-title">{step.title}</p>
-              <p className="step-subtitle">{step.subtitle}</p>
-            </div>
-            <p className="step-copy">{step.copy}</p>
-          </article>
+                <div className="step-text">
+                  <p className="step-title">{step.title}</p>
+                  <p className="step-subtitle">{step.subtitle}</p>
+                </div>
+              </article>
 
       ))}
     </div>
   </div>
 </section>
 
-      <Section title="Trusted Insurer Partners">
-        <LogoStrip images={insurerLogos} cols={4} colsMd={4} imgH={36} />
-      </Section>
-
-
-
-          <div className="hero-metrics">
-            <div className="hero-metric">
-              <span className="metric-eyebrow">Time to renew</span>
-              <strong className="metric-value">6 mins</strong>
-              <p>Average completion from chat to payment.</p>
-            </div>
-            <div className="hero-metric">
-              <span className="metric-eyebrow">Live agents</span>
-              <strong className="metric-value">24 / 7</strong>
-              <p>Humans + AI co-pilot whenever you need help.</p>
-            </div>
-            <div className="hero-metric">
-              <span className="metric-eyebrow">Coverage score</span>
-              <strong className="metric-value">98%</strong>
-              <p>Customers who upgraded to better protection.</p>
-            </div>
-          </div>
-
+      <section className="trusted-insurers-section" aria-labelledby="trusted-insurers-title">
+        <div className="trusted-insurers-inner">
+          <h3 id="trusted-insurers-title" className="trusted-insurers-title">
+            Trusted by top insurers.
+          </h3>
+          <LogoStrip images={insurerLogos} cols={4} colsMd={4} imgH={42} />
         </div>
-
-
       </section>
-
-      <StatsSection eyebrow="WHY LAJOO" title="Faster, smarter renewals" items={stats} />
 
       <Section title="Supported Payment Methods">
         <LogoStrip images={paymentLogos} cols={4} colsMd={4} imgH={28} />
@@ -202,7 +154,7 @@ export default function WhatIsLajooPage() {
       <section className="reviews-block" id="reviews">
         <div className="reviews-head">
           <img src="/logo/lajoo-logo.png" alt="LAJOO logo" className="brand-logo" />
-          <div>
+          <div className="reviews-head-meta">
             <p className="brand-word">Recommended by Malaysians</p>
             <div className="rating-line">
               <strong>4.9</strong>
@@ -220,37 +172,29 @@ export default function WhatIsLajooPage() {
         </ul>
       </section>
 
-      <section className="video-block" id="videos">
-        <h3 className="video-h">What LAJOO customers are saying</h3>
-        <div className="video-list">
-          {videos.map((video) => (
-            <VideoTile key={video.title} {...video} />
-          ))}
+      <section className="renew-cta-band" aria-labelledby="renew-cta-title">
+        <div className="renew-cta-inner">
+          <h3 id="renew-cta-title" className="renew-cta-title">
+            Ready to renew in one simple chat?
+          </h3>
+          <p className="renew-cta-copy">
+            Get your quote, compare options, and renew in minutes with LAJOO.
+          </p>
+          <Link className="renew-cta-button" href="/">
+            Renew Now
+          </Link>
         </div>
       </section>
+
+      </div>
+      </section>
+
+      <InfoFooter />
     </main>
   );
 }
 
 /* ---------- tiny, page-local components ---------- */
-
-function StatsSection({ eyebrow, title, items = [] }) {
-  return (
-    <section className="stats-block">
-      <p className="stats-eyebrow">{eyebrow}</p>
-      <h4 className="stats-title">{title}</h4>
-      <div className="stats-grid">
-        {items.map((item) => (
-          <article key={item.title} className="stat-card">
-            <span className="stat-badge">{item.badge}</span>
-            <p className="stat-title">{item.title}</p>
-            <p className="stat-copy">{item.copy}</p>
-          </article>
-        ))}
-      </div>
-    </section>
-  );
-}
 
 function Section({ title, children }) {
   return (
@@ -294,20 +238,5 @@ function ReviewCard({ text, author, time }) {
         </div>
       </div>
     </li>
-  );
-}
-
-function VideoTile({ title, duration, thumbnail }) {
-  return (
-    <article className="video-tile">
-      <img src={thumbnail} alt={title} loading="lazy" />
-      <button className="play" type="button" aria-label={`Play ${title}`}>
-        ▶
-      </button>
-      <div className="video-meta">
-        <p className="video-title">{title}</p>
-        <span className="video-duration">{duration}</span>
-      </div>
-    </article>
   );
 }

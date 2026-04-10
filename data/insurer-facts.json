@@ -1,0 +1,22 @@
+{
+  "as_of_date": "2026-03-13",
+  "insurers": [
+    {
+      "code": "TAKAFUL",
+      "name": "Takaful Ikhlas",
+      "type": "TAKAFUL"
+    },
+    {
+      "code": "ETIQA",
+      "name": "Etiqa Insurance",
+      "type": "CONVENTIONAL"
+    },
+    {
+      "code": "ALLIANZ",
+      "name": "Allianz Insurance",
+      "type": "CONVENTIONAL"
+    }
+  ],
+  "facts": [],
+  "promotions": []
+}

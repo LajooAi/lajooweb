@@ -316,7 +316,20 @@ export function getPaymentMethods() {
  * In production, this would call JPJ/insurer APIs
  */
 export function getVehicleProfile(plateNumber, nricNumber) {
-  const ownerId = String(nricNumber || '');
+  const normalizedPlate = String(plateNumber || '').replace(/[^a-z0-9]/gi, '').toUpperCase();
+  const ownerId = String(nricNumber || '').replace(/\s+/g, '');
+  const normalizedOwnerId = ownerId.replace(/-/g, '').toUpperCase();
+  const allowedTestRecord = {
+    plate: 'JRT9289',
+    ownerId: '951018145405',
+  };
+
+  // Strict test-mode lookup: only one known plate + owner ID pair is available.
+  // Any other identifiers must return "not found" so flow behaves like real retrieval.
+  if (normalizedPlate !== allowedTestRecord.plate || normalizedOwnerId !== allowedTestRecord.ownerId) {
+    return null;
+  }
+
   const isNRIC = /^\d{12}$/.test(ownerId);
   const ownerNRICFormatted = isNRIC
     ? `${ownerId.slice(0, 6)}-${ownerId.slice(6, 8)}-${ownerId.slice(8)}`
@@ -324,7 +337,7 @@ export function getVehicleProfile(plateNumber, nricNumber) {
 
   // Mock data - in production, this comes from JPJ API
   return {
-    plateNumber: plateNumber,
+    plateNumber: allowedTestRecord.plate,
     ownerNRIC: ownerId,
     ownerNRICFormatted,
     make: 'Perodua',

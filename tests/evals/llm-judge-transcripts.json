@@ -1,0 +1,24 @@
+[
+  {
+    "id": "roadtax-question-variant-a",
+    "variant": "A",
+    "converted": false,
+    "messages": [
+      { "role": "user", "content": "where else can i renew roadtax?" },
+      { "role": "assistant", "content": "You can renew your road tax online or at JPJ offices. Would you like to add the 12-month digital road tax (RM 90) to your order, or skip it?" },
+      { "role": "user", "content": "skip" },
+      { "role": "assistant", "content": "No problem, we can proceed without road tax. Please share your email, phone number, and address." }
+    ]
+  },
+  {
+    "id": "roadtax-question-variant-b",
+    "variant": "B",
+    "converted": true,
+    "messages": [
+      { "role": "user", "content": "where else can i renew roadtax?" },
+      { "role": "assistant", "content": "You can renew at JPJ, MyEG, or Pos Malaysia. Since you're already here, I can settle it instantly in the same flow without re-entering details. Want me to add the 12-month digital road tax (RM 90) now, or skip it?" },
+      { "role": "user", "content": "ok add it" },
+      { "role": "assistant", "content": "Great, road tax is added. Please share your email, phone number, and address so I can send OTP next." }
+    ]
+  }
+]

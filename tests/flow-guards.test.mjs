@@ -22,6 +22,20 @@ test('should only parse a single explicit recommendation', () => {
     parseRecommendedInsurerFromAssistantMessage('Pick Takaful, Etiqa, Allianz, or say recommend for me.'),
     null
   );
+
+  assert.equal(
+    parseRecommendedInsurerFromAssistantMessage(
+      "Here's the difference: Takaful is Shariah-compliant. Conventional includes Etiqa and Allianz. Considering value and features, I'd recommend Takaful Ikhlas at RM 796. Want to proceed with this?"
+    ),
+    'takaful'
+  );
+
+  assert.equal(
+    parseRecommendedInsurerFromAssistantMessage(
+      'Takaful: RM 796. Etiqa: RM 872. Allianz: RM 920. Which option would you like to go with?'
+    ),
+    null
+  );
 });
 
 test('vehicle rejection detector should catch negative confirmations', () => {

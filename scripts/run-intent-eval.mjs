@@ -6,6 +6,17 @@ import { detectUserIntent, FLOW_STEPS } from '../src/lib/conversationState.js';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const evalPath = path.join(__dirname, '..', 'tests', 'evals', 'intent-eval.json');
+const generatedEvalPath = path.join(__dirname, '..', 'tests', 'evals', 'intent-eval.generated.json');
+
+async function loadCases(filePath) {
+  try {
+    const raw = await fs.readFile(filePath, 'utf8');
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
 
 function buildState(testCase) {
   const step = FLOW_STEPS[(testCase.step || 'start').toUpperCase()] || FLOW_STEPS.START;
@@ -94,8 +105,19 @@ function validateCase(c, result) {
 }
 
 async function run() {
-  const raw = await fs.readFile(evalPath, 'utf8');
-  const cases = JSON.parse(raw);
+  const [baseCases, generatedCases] = await Promise.all([
+    loadCases(evalPath),
+    loadCases(generatedEvalPath),
+  ]);
+  const cases = [...baseCases, ...generatedCases];
+
+  if (cases.length === 0) {
+    throw new Error('No intent eval cases found.');
+  }
+
+  if (generatedCases.length > 0) {
+    console.log(`Loaded ${baseCases.length} base + ${generatedCases.length} generated intent eval cases.`);
+  }
 
   let passed = 0;
   const failed = [];
@@ -155,4 +177,3 @@ run().catch((err) => {
   console.error('Failed to run eval:', err);
   process.exitCode = 1;
 });
-

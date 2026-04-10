@@ -54,9 +54,17 @@ export default function CountryLangPicker({ currentCountry }) {
   return (
     <>
       {/* Header button: show CODE | LANG (same as before) */}
-      <button className="country-language-button" onClick={() => setOpen(true)}>
+      <button
+        className="country-language-button"
+        onClick={() => setOpen(true)}
+        aria-label={`Open country and language selector. Current: ${country.toUpperCase()} ${lang.toUpperCase()}`}
+      >
         <img src={current.flag} alt="" />
-        <span>{country.toUpperCase()}|{lang.toUpperCase()}</span>
+        <span className="country-language-text">
+          <span className="country-language-code">{country.toUpperCase()}</span>
+          <span className="country-language-dot" aria-hidden="true">·</span>
+          <span className="country-language-lang">{lang.toUpperCase()}</span>
+        </span>
       </button>
 
       {mounted && createPortal(
@@ -96,7 +104,7 @@ export default function CountryLangPicker({ currentCountry }) {
                   {langs.map((l) => (
                     <button
                       key={l.code}
-                      className={`picker-row ${l.code === lang ? "checked" : ""}`}
+                      className={`picker-row picker-row-language ${l.code === lang ? "checked" : ""}`}
                       onClick={() => { setCookieLang(l.code); close(); }}
                     >
                       <span className="row-left">{l.label}</span>

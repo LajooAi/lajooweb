@@ -3,6 +3,9 @@
  * from chat messages
  */
 
+const MY_LOCAL_PHONE_REGEX = /\b0?1\d(?:[\s\-]?\d){7,8}\b/;
+const MY_COUNTRY_PHONE_REGEX = /\+?60(?:[\s\-]?\d){9,10}\b/;
+
 /**
  * Extract email address from text
  * @param {string} text - The text to search
@@ -20,35 +23,41 @@ export function extractEmail(text) {
  * @returns {string|null} - Extracted phone or null
  */
 export function extractPhone(text) {
+  if (!text || typeof text !== 'string') return null;
+
+  const normalizePhone = (raw) => {
+    if (!raw) return null;
+    let digits = String(raw).replace(/\D/g, '');
+
+    if (digits.startsWith('60')) {
+      digits = `0${digits.slice(2)}`;
+    } else if (digits.startsWith('1')) {
+      digits = `0${digits}`;
+    }
+
+    return /^01\d{8,9}$/.test(digits) ? digits : null;
+  };
+
   // Malaysian phone patterns:
   // 01X-XXXXXXX (10 digits starting with 01)
   // +60 1X-XXXXXXX (with country code)
 
-  // Try to find Malaysian mobile number in original text (with separators)
-  const mobileRegex = /\b0?1[0-9][\s\-]?[0-9]{3,4}[\s\-]?[0-9]{4}\b/;
-  const mobileMatch = text.match(mobileRegex);
-  if (mobileMatch) {
-    // Extract just digits
-    const phone = mobileMatch[0].replace(/\D/g, '');
-    // Ensure 10 digits and starts with 01
-    if (phone.length === 10 && phone.startsWith('01')) {
-      return phone;
-    }
+  // Try country-code form first (+60 / 60)
+  const countryMatch = text.match(MY_COUNTRY_PHONE_REGEX);
+  const countryPhone = normalizePhone(countryMatch?.[0]);
+  if (countryPhone) {
+    return countryPhone;
   }
 
-  // Try with country code +60
-  const countryCodeRegex = /\+?60[\s\-]?1[0-9][\s\-]?[0-9]{3,4}[\s\-]?[0-9]{4}\b/;
-  const countryMatch = text.match(countryCodeRegex);
-  if (countryMatch) {
-    const phone = countryMatch[0].replace(/\D/g, '');
-    // Remove country code and add 0
-    if (phone.startsWith('60') && phone.length === 11) {
-      return '0' + phone.substring(2);
-    }
+  // Local form (supports grouped spacing/hyphens like "012 2277 888")
+  const mobileMatch = text.match(MY_LOCAL_PHONE_REGEX);
+  const mobilePhone = normalizePhone(mobileMatch?.[0]);
+  if (mobilePhone) {
+    return mobilePhone;
   }
 
-  // Fallback: just look for 10 consecutive digits starting with 01
-  const simpleRegex = /\b(01[0-9]{8})\b/;
+  // Fallback: just look for a plain 10/11-digit Malaysian mobile
+  const simpleRegex = /\b(01\d{8,9})\b/;
   const simpleMatch = text.match(simpleRegex);
   if (simpleMatch) {
     return simpleMatch[1];
@@ -58,7 +67,7 @@ export function extractPhone(text) {
 }
 
 /**
- * Extract delivery address from text
+ * Extract address from text
  * @param {string} text - The text to search
  * @returns {string|null} - Extracted address or null
  */
@@ -69,8 +78,8 @@ export function extractAddress(text) {
   // Remove obvious non-address tokens first (email/phone often come in same message).
   const textWithoutEmail = text.replace(/\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b/g, ' ');
   const textWithoutEmailPhone = textWithoutEmail
-    .replace(/\+?60[\s\-]?1[0-9][\s\-]?[0-9]{3,4}[\s\-]?[0-9]{4}\b/g, ' ')
-    .replace(/\b0?1[0-9][\s\-]?[0-9]{3,4}[\s\-]?[0-9]{4}\b/g, ' ');
+    .replace(MY_COUNTRY_PHONE_REGEX, ' ')
+    .replace(MY_LOCAL_PHONE_REGEX, ' ');
   const addressText = textWithoutEmailPhone.replace(/\s+/g, ' ').trim();
   const lowerAddressText = addressText.toLowerCase();
 
@@ -163,6 +172,7 @@ export function extractRegistrationNumber(text) {
   if (!matches) return null;
 
   // Filter out common false positives (like "NCD" or short codes)
+  const lowerText = String(text || '').toLowerCase();
   const validMatches = matches.filter(match => {
     const normalized = match.replace(/\s+/g, '');
     const upper = normalized.toUpperCase();
@@ -170,7 +180,21 @@ export function extractRegistrationNumber(text) {
     if (upper.length < 4) return false;
     // Exclude common abbreviations
     const excludeList = ['NCD', 'CC', 'RM', 'EMAIL', 'NRIC', 'IC'];
-    return !excludeList.includes(upper);
+    if (excludeList.includes(upper)) return false;
+    // Reject if the match is part of a regular word/sentence (e.g. "is 30" → "IS30")
+    // Check that the match appears as a standalone token in original text
+    const matchRegex = new RegExp(`(?:^|\\s)${match.replace(/\s+/g, '\\s?')}(?:\\s|$|[,\\.!?])`, 'i');
+    const looseMatchRegex = new RegExp(`(?:^|\\s)${match.trim()}(?:\\s|$|[,\\.!?])`, 'i');
+    if (!matchRegex.test(text) && !looseMatchRegex.test(text)) return false;
+    // Reject matches extracted from common phrases (e.g. "is 30", "am 40", "at 50")
+    const matchIndex = lowerText.indexOf(match.toLowerCase());
+    const beforeMatch = text.substring(0, matchIndex).trim();
+    const lastWordBefore = beforeMatch.split(/\s+/).pop()?.toLowerCase() || '';
+    const contextWindow = lowerText.slice(Math.max(0, matchIndex - 24), Math.max(0, matchIndex) + match.length + 24);
+    const hasPlateContext = /\b(plate|registration|reg(?:\.|istration)?|vehicle|car)\b/i.test(contextWindow);
+    const commonWords = ['is', 'am', 'are', 'was', 'were', 'be', 'at', 'my', 'the', 'a', 'an', 'to', 'of', 'in', 'on', 'for', 'has', 'have', 'had', 'do', 'does', 'did', 'get', 'got'];
+    if (commonWords.includes(lastWordBefore) && !hasPlateContext) return false;
+    return true;
   });
 
   return validMatches.length > 0 ? validMatches[0].replace(/\s+/g, '').toUpperCase() : null;
@@ -280,11 +304,19 @@ export function extractOwnerIdentification(text) {
   const alphaNumToken = text.match(/\b([A-Z]{1,4}[0-9]{4,12}|[0-9]{3,12}[A-Z]{1,4}[0-9]{1,8}|[A-Z0-9]{6,18})\b/i);
   if (alphaNumToken) {
     const token = alphaNumToken[1].toUpperCase();
+    const extractedPlate = extractRegistrationNumber(text);
+    const normalizedPlate = extractedPlate ? extractedPlate.replace(/\s+/g, '').toUpperCase() : null;
+    const looksLikePlate =
+      token === normalizedPlate
+      || /^[A-Z]{1,3}\d{1,4}[A-Z]{0,3}$/.test(token)
+      || /^\d[A-Z]{1,3}\d{1,4}$/.test(token);
     const hasLetter = /[A-Z]/.test(token);
     const hasDigit = /\d/.test(token);
-    const likelyIdContext = /\b(id|passport|owner|army|police|foreign|company)\b/i.test(lower) || text.trim().split(/\s+/).length <= 4;
+    const likelyIdContext =
+      /\b(id|passport|owner|army|police|foreign|company|ssm|brn|roc|nric|ic)\b/i.test(lower)
+      || token.length >= 8;
     const blocked = ['NCD', 'EMAIL', 'PHONE', 'ROADTAX', 'QUOTE', 'ADDON', 'IC'].includes(token);
-    if (!blocked && hasLetter && hasDigit && likelyIdContext) {
+    if (!blocked && !looksLikePlate && hasLetter && hasDigit && likelyIdContext) {
       return { value: token, type: 'other_id' };
     }
   }
@@ -311,9 +343,17 @@ export function extractPersonalInfo(text) {
  * @returns {Object} - Object with extracted registration number and NRIC
  */
 export function extractVehicleInfo(text) {
-  const ownerId = extractOwnerIdentification(text);
+  const registrationNumber = extractRegistrationNumber(text);
+  let ownerId = extractOwnerIdentification(text);
+  if (
+    ownerId?.value
+    && registrationNumber
+    && String(ownerId.value).replace(/\s+/g, '').toUpperCase() === String(registrationNumber).replace(/\s+/g, '').toUpperCase()
+  ) {
+    ownerId = null;
+  }
   return {
-    registrationNumber: extractRegistrationNumber(text),
+    registrationNumber,
     // Keep "nric" for backward compatibility with current flow code.
     nric: ownerId?.value || null,
     ownerId: ownerId?.value || null,

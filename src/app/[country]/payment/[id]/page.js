@@ -11,9 +11,9 @@ const PAYMENT_METHODS = [
     name: "Credit / Debit Card",
     subtitle: "Visa, Mastercard, American Express",
     logos: [
-      { src: "https://upload.wikimedia.org/wikipedia/commons/5/5e/Visa_Inc._logo.svg", alt: "Visa" },
-      { src: "https://upload.wikimedia.org/wikipedia/commons/2/2a/Mastercard-logo.svg", alt: "Mastercard" },
-      { src: "https://upload.wikimedia.org/wikipedia/commons/f/fa/American_Express_logo_%282018%29.svg", alt: "Amex" },
+      { src: "/payments/visa.svg", alt: "Visa", label: "Visa" },
+      { src: "/payments/mastercard.svg", alt: "Mastercard", label: "Mastercard" },
+      { src: "/payments/amex.svg", alt: "Amex", label: "Amex" },
     ],
   },
   {
@@ -21,9 +21,12 @@ const PAYMENT_METHODS = [
     name: "FPX Online Banking",
     subtitle: "Direct bank transfer",
     logos: [
-      { src: "https://upload.wikimedia.org/wikipedia/commons/a/ad/FPX_logo.svg", alt: "FPX" },
-      { src: "https://upload.wikimedia.org/wikipedia/commons/a/a0/Maybank_logo.svg", alt: "Maybank" },
-      { src: "https://upload.wikimedia.org/wikipedia/commons/c/cf/CIMB_logo.svg", alt: "CIMB" },
+      { src: "/payments/fpx.svg", alt: "FPX", label: "FPX" },
+      { src: "/banks/maybank.svg", alt: "Maybank", label: "Maybank" },
+      { src: "/banks/cimb.svg", alt: "CIMB", label: "CIMB" },
+      { src: "/banks/public-bank.svg", alt: "Public Bank", label: "Public Bank" },
+      { src: "/banks/rhb.svg", alt: "RHB", label: "RHB" },
+      { src: "/banks/hongleong.svg", alt: "Hong Leong", label: "Hong Leong" },
     ],
   },
   {
@@ -31,9 +34,10 @@ const PAYMENT_METHODS = [
     name: "E-Wallet",
     subtitle: "Touch 'n Go, GrabPay, Boost",
     logos: [
-      { src: "https://upload.wikimedia.org/wikipedia/en/f/f7/Touch_%27n_Go_eWallet_logo.png", alt: "TnG" },
-      { src: "https://upload.wikimedia.org/wikipedia/commons/1/12/Grab_%28application%29_logo.svg", alt: "GrabPay" },
-      { src: "https://upload.wikimedia.org/wikipedia/commons/8/88/Boost_Malaysia_logo.svg", alt: "Boost" },
+      { src: "/payments/tng.svg", alt: "TnG", label: "TnG" },
+      { src: "/payments/grabpay.svg", alt: "GrabPay", label: "GrabPay" },
+      { src: "/payments/boost.svg", alt: "Boost", label: "Boost" },
+      { src: "/payments/shopee.svg", alt: "ShopeePay", label: "ShopeePay" },
     ],
   },
   {
@@ -41,8 +45,8 @@ const PAYMENT_METHODS = [
     name: "Credit Card Instalment",
     subtitle: "0% interest for 6/12 months",
     logos: [
-      { src: "https://upload.wikimedia.org/wikipedia/commons/5/5e/Visa_Inc._logo.svg", alt: "Visa" },
-      { src: "https://upload.wikimedia.org/wikipedia/commons/2/2a/Mastercard-logo.svg", alt: "Mastercard" },
+      { src: "/payments/visa.svg", alt: "Visa", label: "Visa" },
+      { src: "/payments/mastercard.svg", alt: "Mastercard", label: "Mastercard" },
     ],
     badge: "0% Interest",
   },
@@ -51,8 +55,8 @@ const PAYMENT_METHODS = [
     name: "Buy Now, Pay Later",
     subtitle: "Split into 3 payments",
     logos: [
-      { src: "https://cdn.worldvectorlogo.com/logos/atome.svg", alt: "Atome" },
-      { src: "https://upload.wikimedia.org/wikipedia/commons/3/37/ShopBack_PayLater_Logo.png", alt: "ShopBack" },
+      { src: "/payments/atome.svg", alt: "Atome", label: "Atome" },
+      { src: "/payments/shopee.svg", alt: "ShopeePay", label: "ShopeePay" },
     ],
     badge: "Split Payment",
   },
@@ -65,14 +69,23 @@ export default function PaymentPage() {
   const [selectedMethod, setSelectedMethod] = useState(null);
   const [isProcessing, setIsProcessing] = useState(false);
 
+  const parseAmount = (value, fallback = 0) => {
+    const cleaned = String(value ?? "").replace(/[^\d.]/g, "");
+    const amount = Number(cleaned);
+    return Number.isFinite(amount) ? amount : fallback;
+  };
+
   // Parse payment details from URL params
   const paymentId = params.id;
-  const total = searchParams.get("total") || "1182";
+  const session = searchParams.get("session") || "default";
   const insurer = searchParams.get("insurer") || "Allianz";
   const plate = searchParams.get("plate") || "JRT 9289";
-  const insurance = searchParams.get("insurance") || "920";
-  const addons = searchParams.get("addons") || "152";
-  const roadtax = searchParams.get("roadtax") || "110";
+  const insurance = parseAmount(searchParams.get("insurance"), 920);
+  const addons = parseAmount(searchParams.get("addons"), 152);
+  const roadtax = parseAmount(searchParams.get("roadtax"), 110);
+  const totalFromParams = parseAmount(searchParams.get("total"), insurance + addons + roadtax);
+  const computedTotal = insurance + addons + roadtax;
+  const total = computedTotal > 0 ? computedTotal : totalFromParams;
 
   const handlePayment = async () => {
     if (!selectedMethod) return;
@@ -86,9 +99,9 @@ export default function PaymentPage() {
     const paymentData = {
       type: 'PAYMENT_SUCCESS',
       timestamp: Date.now(),
-      data: {
-        paymentId,
-        total,
+        data: {
+          paymentId,
+          total,
         insurer,
         plate,
         insurance,
@@ -105,7 +118,7 @@ export default function PaymentPage() {
     // Fallback: if window.close() doesn't work (some browsers block it),
     // redirect after a short delay
     setTimeout(() => {
-      window.location.href = `/${params.country}?payment=success&ref=${paymentId}`;
+      window.location.href = `/${params.country}?session=${encodeURIComponent(session)}&payment=success&ref=${paymentId}`;
     }, 500);
   };
 
@@ -141,23 +154,23 @@ export default function PaymentPage() {
           <div className="order-breakdown">
             <div className="breakdown-row">
               <span>Insurance Premium</span>
-              <span>RM {Number(insurance).toLocaleString()}</span>
+              <span>RM {insurance.toLocaleString()}</span>
             </div>
-            {Number(addons) > 0 && (
+            {addons > 0 && (
               <div className="breakdown-row">
                 <span>Add-ons</span>
-                <span>RM {Number(addons).toLocaleString()}</span>
+                <span>RM {addons.toLocaleString()}</span>
               </div>
             )}
-            {Number(roadtax) > 0 && (
+            {roadtax > 0 && (
               <div className="breakdown-row">
                 <span>Road Tax</span>
-                <span>RM {Number(roadtax).toLocaleString()}</span>
+                <span>RM {roadtax.toLocaleString()}</span>
               </div>
             )}
             <div className="breakdown-row total">
               <span>Total</span>
-              <span>RM {Number(total).toLocaleString()}</span>
+              <span>RM {total.toLocaleString()}</span>
             </div>
           </div>
         </div>
@@ -188,15 +201,27 @@ export default function PaymentPage() {
 
                   <div className="method-logos">
                     {method.logos.map((logo, idx) => (
-                      <img
-                        key={idx}
-                        src={logo.src}
-                        alt={logo.alt}
-                        className="payment-logo"
-                        onError={(e) => {
-                          e.target.style.display = 'none';
-                        }}
-                      />
+                      <span key={idx} className="payment-logo-item">
+                        {logo.src ? (
+                          <img
+                            src={logo.src}
+                            alt={logo.alt}
+                            className="payment-logo"
+                            loading="lazy"
+                            onError={(e) => {
+                              e.currentTarget.style.display = "none";
+                              const chip = e.currentTarget.nextElementSibling;
+                              if (chip) chip.style.display = "inline-flex";
+                            }}
+                          />
+                        ) : null}
+                        <span
+                          className="payment-logo-chip"
+                          style={{ display: logo.src ? "none" : "inline-flex" }}
+                        >
+                          {logo.label || logo.alt}
+                        </span>
+                      </span>
                     ))}
                   </div>
                 </div>
@@ -218,7 +243,7 @@ export default function PaymentPage() {
                 Processing...
               </>
             ) : (
-              <>Pay RM {Number(total).toLocaleString()}</>
+              <>Pay RM {total.toLocaleString()}</>
             )}
           </button>
 
@@ -244,16 +269,28 @@ export default function PaymentPage() {
 
       <style jsx>{`
         .payment-page {
+          --pay-space-1: var(--space-1, 4px);
+          --pay-space-2: var(--space-2, 8px);
+          --pay-space-3: var(--space-3, 12px);
+          --pay-space-4: var(--space-4, 16px);
+          --pay-space-5: var(--space-5, 20px);
+          --pay-space-6: var(--space-6, 24px);
+          --pay-radius-sm: var(--radius-sm, 8px);
+          --pay-radius-md: var(--radius-md, 12px);
+          --pay-radius-lg: var(--radius-lg, 16px);
+          --pay-radius-xl: var(--radius-xl, 24px);
+          --pay-radius-pill: var(--radius-pill, 999px);
+
           min-height: 100vh;
           background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
-          padding: 20px;
+          padding: var(--pay-space-5);
         }
 
         .payment-container {
           max-width: 480px;
           margin: 0 auto;
           background: #fff;
-          border-radius: 24px;
+          border-radius: var(--pay-radius-xl);
           box-shadow: 0 4px 24px rgba(0, 0, 0, 0.08);
           overflow: hidden;
         }
@@ -262,7 +299,7 @@ export default function PaymentPage() {
           display: flex;
           align-items: center;
           justify-content: space-between;
-          padding: 20px 24px;
+          padding: var(--pay-space-5) var(--pay-space-6);
           border-bottom: 1px solid #f1f5f9;
         }
 
@@ -273,7 +310,7 @@ export default function PaymentPage() {
           justify-content: center;
           width: 40px;
           height: 40px;
-          border-radius: 12px;
+          border-radius: var(--pay-radius-md);
           transition: all 0.2s;
           background: none;
           border: none;
@@ -297,7 +334,7 @@ export default function PaymentPage() {
         }
 
         .order-summary {
-          padding: 24px;
+          padding: var(--pay-space-6);
           background: linear-gradient(135deg, #0062ff 0%, #0047b3 100%);
           color: #fff;
         }
@@ -305,72 +342,72 @@ export default function PaymentPage() {
         .order-badge {
           display: inline-flex;
           align-items: center;
-          gap: 6px;
+          gap: var(--pay-space-2);
           background: rgba(255, 255, 255, 0.2);
-          padding: 6px 12px;
-          border-radius: 20px;
+          padding: 6px var(--pay-space-3);
+          border-radius: var(--pay-radius-pill);
           font-size: 13px;
           font-weight: 500;
-          margin-bottom: 16px;
+          margin-bottom: var(--pay-space-4);
         }
 
         .order-title {
           font-size: 22px;
           font-weight: 700;
-          margin: 0 0 4px 0;
+          margin: 0 0 var(--pay-space-1) 0;
         }
 
         .order-plate {
           font-size: 16px;
           opacity: 0.9;
-          margin: 0 0 20px 0;
+          margin: 0 0 var(--pay-space-5) 0;
         }
 
         .order-breakdown {
           background: rgba(255, 255, 255, 0.1);
-          border-radius: 12px;
-          padding: 16px;
+          border-radius: var(--pay-radius-md);
+          padding: var(--pay-space-4);
         }
 
         .breakdown-row {
           display: flex;
           justify-content: space-between;
-          padding: 8px 0;
+          padding: var(--pay-space-2) 0;
           font-size: 15px;
         }
 
         .breakdown-row.total {
           border-top: 1px solid rgba(255, 255, 255, 0.2);
-          margin-top: 8px;
-          padding-top: 16px;
+          margin-top: var(--pay-space-2);
+          padding-top: var(--pay-space-4);
           font-size: 20px;
           font-weight: 700;
         }
 
         .payment-methods-section {
-          padding: 24px;
+          padding: var(--pay-space-6);
         }
 
         .payment-methods-section h3 {
           font-size: 16px;
           font-weight: 600;
           color: #0f172a;
-          margin: 0 0 16px 0;
+          margin: 0 0 var(--pay-space-4) 0;
         }
 
         .payment-methods-list {
           display: flex;
           flex-direction: column;
-          gap: 12px;
+          gap: var(--pay-space-3);
         }
 
         .payment-method-card {
           display: flex;
           align-items: flex-start;
           gap: 14px;
-          padding: 16px;
+          padding: var(--pay-space-4);
           border: 2px solid #e2e8f0;
-          border-radius: 16px;
+          border-radius: var(--pay-radius-lg);
           background: #fff;
           cursor: pointer;
           transition: all 0.2s;
@@ -392,7 +429,7 @@ export default function PaymentPage() {
           width: 22px;
           height: 22px;
           border: 2px solid #cbd5e1;
-          border-radius: 50%;
+          border-radius: var(--pay-radius-pill);
           display: flex;
           align-items: center;
           justify-content: center;
@@ -408,7 +445,7 @@ export default function PaymentPage() {
         .radio-dot {
           width: 12px;
           height: 12px;
-          border-radius: 50%;
+          border-radius: var(--pay-radius-pill);
           background: transparent;
           transition: all 0.2s;
         }
@@ -421,13 +458,13 @@ export default function PaymentPage() {
           flex: 1;
           display: flex;
           flex-direction: column;
-          gap: 4px;
+          gap: var(--pay-space-1);
         }
 
         .method-header {
           display: flex;
           align-items: center;
-          gap: 8px;
+          gap: var(--pay-space-2);
           flex-wrap: wrap;
         }
 
@@ -442,8 +479,8 @@ export default function PaymentPage() {
           color: #166534;
           font-size: 11px;
           font-weight: 600;
-          padding: 3px 8px;
-          border-radius: 12px;
+          padding: 3px var(--pay-space-2);
+          border-radius: var(--pay-space-3);
         }
 
         .method-subtitle {
@@ -460,21 +497,40 @@ export default function PaymentPage() {
         }
 
         .payment-logo {
-          height: 22px;
+          height: 20px;
           width: auto;
-          max-width: 50px;
+          max-width: 88px;
           object-fit: contain;
-          filter: grayscale(20%);
+        }
+
+        .payment-logo-item {
+          display: inline-flex;
+          align-items: center;
+        }
+
+        .payment-logo-chip {
+          align-items: center;
+          justify-content: center;
+          height: 22px;
+          padding: 0 10px;
+          border-radius: var(--pay-radius-pill);
+          border: 1px solid #cbd5e1;
+          background: #f8fafc;
+          color: #334155;
+          font-size: 11px;
+          font-weight: 600;
+          line-height: 1;
+          white-space: nowrap;
         }
 
         .payment-action {
-          padding: 24px;
+          padding: var(--pay-space-6);
           border-top: 1px solid #f1f5f9;
         }
 
         .pay-button {
           width: 100%;
-          padding: 16px 24px;
+          padding: var(--pay-space-4) var(--pay-space-6);
           border: none;
           border-radius: 14px;
           font-size: 18px;
@@ -515,7 +571,7 @@ export default function PaymentPage() {
           height: 20px;
           border: 2px solid rgba(255, 255, 255, 0.3);
           border-top-color: #fff;
-          border-radius: 50%;
+          border-radius: var(--pay-radius-pill);
           animation: spin 0.8s linear infinite;
         }
 
@@ -527,14 +583,14 @@ export default function PaymentPage() {
           display: flex;
           align-items: center;
           justify-content: center;
-          gap: 8px;
+          gap: var(--pay-space-2);
           font-size: 13px;
           color: #64748b;
-          margin: 16px 0 0 0;
+          margin: var(--pay-space-4) 0 0 0;
         }
 
         .payment-footer {
-          padding: 20px 24px;
+          padding: var(--pay-space-5) var(--pay-space-6);
           background: #f8fafc;
           text-align: center;
         }
@@ -542,7 +598,7 @@ export default function PaymentPage() {
         .payment-footer p {
           font-size: 14px;
           color: #64748b;
-          margin: 0 0 8px 0;
+          margin: 0 0 var(--pay-space-2) 0;
         }
 
         .payment-footer strong {
@@ -553,7 +609,7 @@ export default function PaymentPage() {
           display: flex;
           align-items: center;
           justify-content: center;
-          gap: 12px;
+          gap: var(--pay-space-3);
           font-size: 13px;
         }
 

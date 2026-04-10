@@ -1,0 +1,822 @@
+{
+  "uuid": "ee39805e-a333-4360-893c-532a867f7d42",
+  "lastMigration": 33,
+  "name": "Lajoo Insurer Sandbox (Production-Style Mock)",
+  "endpointPrefix": "/v1",
+  "latency": 0,
+  "port": 4001,
+  "hostname": "",
+  "folders": [
+    {
+      "uuid": "8610a3fc-7ce3-4a7b-bf3d-0a860a266234",
+      "name": "01 Auth",
+      "children": [
+        {
+          "uuid": "e9e465ed-3224-400b-b705-7282852be760",
+          "type": "route"
+        },
+        {
+          "uuid": "f006de61-8a21-4f03-9814-bb75c2d4ae6e",
+          "type": "route"
+        }
+      ]
+    },
+    {
+      "uuid": "e8680756-8a8e-4a0d-8d9d-9135649bd2d8",
+      "name": "02 Reference",
+      "children": [
+        {
+          "uuid": "fb9e1997-7775-4209-af08-f9c156ba0506",
+          "type": "route"
+        },
+        {
+          "uuid": "78ed7a14-aefd-494e-9f0c-4b4f9111ab15",
+          "type": "route"
+        },
+        {
+          "uuid": "ec5b932a-b5fb-4219-b128-8f69c9e7045e",
+          "type": "route"
+        },
+        {
+          "uuid": "4d21af9f-a195-4f3b-ac68-8f1da783bac6",
+          "type": "route"
+        }
+      ]
+    },
+    {
+      "uuid": "53e10014-cf9c-4c3f-9d78-f5b31f124c35",
+      "name": "03 Vehicle",
+      "children": [
+        {
+          "uuid": "3a997b21-00ce-47b2-af1f-b7b2510db68c",
+          "type": "route"
+        }
+      ]
+    },
+    {
+      "uuid": "b94a4ef4-46dc-4cdf-8cc6-cd89e6247f78",
+      "name": "04 Quotes",
+      "children": [
+        {
+          "uuid": "93953c7d-5685-4677-a99e-31334ad4ff40",
+          "type": "route"
+        },
+        {
+          "uuid": "3e37efe8-6fef-407e-91a0-cc58b559a10d",
+          "type": "route"
+        },
+        {
+          "uuid": "32284700-d21a-411e-beec-b1adb3f48cf9",
+          "type": "route"
+        },
+        {
+          "uuid": "7482e467-902e-49dd-99ea-b2744ec8dd07",
+          "type": "route"
+        }
+      ]
+    },
+    {
+      "uuid": "175e834e-5d08-4a00-87e3-d2743144163b",
+      "name": "05 Proposal",
+      "children": [
+        {
+          "uuid": "62a289d5-6a02-4bcd-b81d-f561673ce920",
+          "type": "route"
+        },
+        {
+          "uuid": "4a646f0b-3864-4037-9b56-1639b47965f8",
+          "type": "route"
+        }
+      ]
+    },
+    {
+      "uuid": "78fc842c-a0e0-4a15-bebf-cd5644c533a5",
+      "name": "06 Payment",
+      "children": [
+        {
+          "uuid": "25443801-8be9-4f9b-ba1c-5a0ce5326a6a",
+          "type": "route"
+        },
+        {
+          "uuid": "577f7a51-0b52-45f2-b7b0-6bc79856501f",
+          "type": "route"
+        }
+      ]
+    },
+    {
+      "uuid": "dc7645a2-6eb6-4dd6-bd3b-e1909958a8d6",
+      "name": "07 Policy",
+      "children": [
+        {
+          "uuid": "3a738ab6-1620-48e7-af2a-1034ac5ab6f8",
+          "type": "route"
+        }
+      ]
+    },
+    {
+      "uuid": "79ebcbb0-8c00-4ba1-905a-b7bac2f222ca",
+      "name": "08 Simulation",
+      "children": [
+        {
+          "uuid": "32bda806-9ece-45b1-a9e8-b25effc52989",
+          "type": "route"
+        },
+        {
+          "uuid": "71d8d5a1-7405-4bcf-b5a0-8a1aaaa42da5",
+          "type": "route"
+        },
+        {
+          "uuid": "76e429d4-5216-462b-9459-519230c7c4f6",
+          "type": "route"
+        },
+        {
+          "uuid": "d9be5a67-a805-4423-9218-2ab4c8bff89d",
+          "type": "route"
+        }
+      ]
+    }
+  ],
+  "routes": [
+    {
+      "uuid": "e9e465ed-3224-400b-b705-7282852be760",
+      "type": "http",
+      "documentation": "OAuth2-style token issue endpoint for sandbox authentication.",
+      "method": "post",
+      "endpoint": "/oauth/token",
+      "responses": [
+        {
+          "uuid": "5521b2b4-c25b-4137-b44a-6281043e7266",
+          "statusCode": 200,
+          "label": "",
+          "latency": 0,
+          "filePath": "",
+          "sendFileAsBody": false,
+          "headers": [],
+          "body": "{}",
+          "rules": [],
+          "disableTemplating": false,
+          "rulesOperator": "OR",
+          "fallbackTo404": false,
+          "default": true,
+          "databucketID": "",
+          "bodyType": "INLINE",
+          "crudKey": "id",
+          "callbacks": []
+        }
+      ],
+      "responseMode": null,
+      "streamingMode": null,
+      "streamingInterval": 0
+    },
+    {
+      "uuid": "f006de61-8a21-4f03-9814-bb75c2d4ae6e",
+      "type": "http",
+      "documentation": "Health probe endpoint.",
+      "method": "get",
+      "endpoint": "/health",
+      "responses": [
+        {
+          "uuid": "c6dc30f8-223d-41a6-9ee0-5091fa4e5088",
+          "statusCode": 200,
+          "label": "",
+          "latency": 0,
+          "filePath": "",
+          "sendFileAsBody": false,
+          "headers": [],
+          "body": "{}",
+          "rules": [],
+          "disableTemplating": false,
+          "rulesOperator": "OR",
+          "fallbackTo404": false,
+          "default": true,
+          "databucketID": "",
+          "bodyType": "INLINE",
+          "crudKey": "id",
+          "callbacks": []
+        }
+      ],
+      "responseMode": null,
+      "streamingMode": null,
+      "streamingInterval": 0
+    },
+    {
+      "uuid": "fb9e1997-7775-4209-af08-f9c156ba0506",
+      "type": "http",
+      "documentation": "",
+      "method": "get",
+      "endpoint": "/reference/insurers",
+      "responses": [
+        {
+          "uuid": "60554e9c-eb38-4040-a9ed-1d2e8d44edb6",
+          "statusCode": 200,
+          "label": "",
+          "latency": 0,
+          "filePath": "",
+          "sendFileAsBody": false,
+          "headers": [],
+          "body": "{}",
+          "rules": [],
+          "disableTemplating": false,
+          "rulesOperator": "OR",
+          "fallbackTo404": false,
+          "default": true,
+          "databucketID": "",
+          "bodyType": "INLINE",
+          "crudKey": "id",
+          "callbacks": []
+        }
+      ],
+      "responseMode": null,
+      "streamingMode": null,
+      "streamingInterval": 0
+    },
+    {
+      "uuid": "78ed7a14-aefd-494e-9f0c-4b4f9111ab15",
+      "type": "http",
+      "documentation": "",
+      "method": "get",
+      "endpoint": "/reference/addons",
+      "responses": [
+        {
+          "uuid": "dddc8440-5995-4bf2-8db9-ecf7ececd93d",
+          "statusCode": 200,
+          "label": "",
+          "latency": 0,
+          "filePath": "",
+          "sendFileAsBody": false,
+          "headers": [],
+          "body": "{}",
+          "rules": [],
+          "disableTemplating": false,
+          "rulesOperator": "OR",
+          "fallbackTo404": false,
+          "default": true,
+          "databucketID": "",
+          "bodyType": "INLINE",
+          "crudKey": "id",
+          "callbacks": []
+        }
+      ],
+      "responseMode": null,
+      "streamingMode": null,
+      "streamingInterval": 0
+    },
+    {
+      "uuid": "ec5b932a-b5fb-4219-b128-8f69c9e7045e",
+      "type": "http",
+      "documentation": "",
+      "method": "get",
+      "endpoint": "/reference/roadtax-rules",
+      "responses": [
+        {
+          "uuid": "bb6895f7-e2ed-49f7-aa25-bbfbb321350b",
+          "statusCode": 200,
+          "label": "",
+          "latency": 0,
+          "filePath": "",
+          "sendFileAsBody": false,
+          "headers": [],
+          "body": "{}",
+          "rules": [],
+          "disableTemplating": false,
+          "rulesOperator": "OR",
+          "fallbackTo404": false,
+          "default": true,
+          "databucketID": "",
+          "bodyType": "INLINE",
+          "crudKey": "id",
+          "callbacks": []
+        }
+      ],
+      "responseMode": null,
+      "streamingMode": null,
+      "streamingInterval": 0
+    },
+    {
+      "uuid": "4d21af9f-a195-4f3b-ac68-8f1da783bac6",
+      "type": "http",
+      "documentation": "",
+      "method": "get",
+      "endpoint": "/reference/error-codes",
+      "responses": [
+        {
+          "uuid": "7b56df11-5848-45a1-8f3d-c29e5eb388b8",
+          "statusCode": 200,
+          "label": "",
+          "latency": 0,
+          "filePath": "",
+          "sendFileAsBody": false,
+          "headers": [],
+          "body": "{}",
+          "rules": [],
+          "disableTemplating": false,
+          "rulesOperator": "OR",
+          "fallbackTo404": false,
+          "default": true,
+          "databucketID": "",
+          "bodyType": "INLINE",
+          "crudKey": "id",
+          "callbacks": []
+        }
+      ],
+      "responseMode": null,
+      "streamingMode": null,
+      "streamingInterval": 0
+    },
+    {
+      "uuid": "3a997b21-00ce-47b2-af1f-b7b2510db68c",
+      "type": "http",
+      "documentation": "Strict sample lookup by plate + owner ID pair.",
+      "method": "post",
+      "endpoint": "/vehicle/lookup",
+      "responses": [
+        {
+          "uuid": "5a3fdbc9-86f3-4258-9c8d-12528825c20a",
+          "statusCode": 200,
+          "label": "",
+          "latency": 0,
+          "filePath": "",
+          "sendFileAsBody": false,
+          "headers": [],
+          "body": "{}",
+          "rules": [],
+          "disableTemplating": false,
+          "rulesOperator": "OR",
+          "fallbackTo404": false,
+          "default": true,
+          "databucketID": "",
+          "bodyType": "INLINE",
+          "crudKey": "id",
+          "callbacks": []
+        }
+      ],
+      "responseMode": null,
+      "streamingMode": null,
+      "streamingInterval": 0
+    },
+    {
+      "uuid": "93953c7d-5685-4677-a99e-31334ad4ff40",
+      "type": "http",
+      "documentation": "Creates async quote job for a known vehicle reference.",
+      "method": "post",
+      "endpoint": "/quotes/jobs",
+      "responses": [
+        {
+          "uuid": "da2f7b61-c097-4656-8a55-f7eceff2152f",
+          "statusCode": 200,
+          "label": "",
+          "latency": 0,
+          "filePath": "",
+          "sendFileAsBody": false,
+          "headers": [],
+          "body": "{}",
+          "rules": [],
+          "disableTemplating": false,
+          "rulesOperator": "OR",
+          "fallbackTo404": false,
+          "default": true,
+          "databucketID": "",
+          "bodyType": "INLINE",
+          "crudKey": "id",
+          "callbacks": []
+        }
+      ],
+      "responseMode": null,
+      "streamingMode": null,
+      "streamingInterval": 0
+    },
+    {
+      "uuid": "3e37efe8-6fef-407e-91a0-cc58b559a10d",
+      "type": "http",
+      "documentation": "Query quote-job lifecycle state; add ?stage=done for deterministic completion.",
+      "method": "get",
+      "endpoint": "/quotes/jobs/:jobId",
+      "responses": [
+        {
+          "uuid": "47c3c5aa-dee8-40f9-b09d-5d9b73c115db",
+          "statusCode": 200,
+          "label": "",
+          "latency": 0,
+          "filePath": "",
+          "sendFileAsBody": false,
+          "headers": [],
+          "body": "{}",
+          "rules": [],
+          "disableTemplating": false,
+          "rulesOperator": "OR",
+          "fallbackTo404": false,
+          "default": true,
+          "databucketID": "",
+          "bodyType": "INLINE",
+          "crudKey": "id",
+          "callbacks": []
+        }
+      ],
+      "responseMode": null,
+      "streamingMode": null,
+      "streamingInterval": 0
+    },
+    {
+      "uuid": "32284700-d21a-411e-beec-b1adb3f48cf9",
+      "type": "http",
+      "documentation": "Returns insurer quote cards. Use ?ready=0 to force not-ready error.",
+      "method": "get",
+      "endpoint": "/quotes/jobs/:jobId/result",
+      "responses": [
+        {
+          "uuid": "c7feaec1-9ed1-44de-b812-6765f6e25c2d",
+          "statusCode": 200,
+          "label": "",
+          "latency": 0,
+          "filePath": "",
+          "sendFileAsBody": false,
+          "headers": [],
+          "body": "{}",
+          "rules": [],
+          "disableTemplating": false,
+          "rulesOperator": "OR",
+          "fallbackTo404": false,
+          "default": true,
+          "databucketID": "",
+          "bodyType": "INLINE",
+          "crudKey": "id",
+          "callbacks": []
+        }
+      ],
+      "responseMode": null,
+      "streamingMode": null,
+      "streamingInterval": 0
+    },
+    {
+      "uuid": "7482e467-902e-49dd-99ea-b2744ec8dd07",
+      "type": "http",
+      "documentation": "Final payable breakdown endpoint; supports digital/printed/none road-tax option checks.",
+      "method": "post",
+      "endpoint": "/quotes/:quoteId/reprice",
+      "responses": [
+        {
+          "uuid": "86bb0f82-b64f-4fd0-99c0-d4de239f2ccc",
+          "statusCode": 200,
+          "label": "",
+          "latency": 0,
+          "filePath": "",
+          "sendFileAsBody": false,
+          "headers": [],
+          "body": "{}",
+          "rules": [],
+          "disableTemplating": false,
+          "rulesOperator": "OR",
+          "fallbackTo404": false,
+          "default": true,
+          "databucketID": "",
+          "bodyType": "INLINE",
+          "crudKey": "id",
+          "callbacks": []
+        }
+      ],
+      "responseMode": null,
+      "streamingMode": null,
+      "streamingInterval": 0
+    },
+    {
+      "uuid": "62a289d5-6a02-4bcd-b81d-f561673ce920",
+      "type": "http",
+      "documentation": "Proposal creation endpoint after quote selection and repricing.",
+      "method": "post",
+      "endpoint": "/proposals",
+      "responses": [
+        {
+          "uuid": "657fb503-6a9f-47fa-9947-927d20f7a85c",
+          "statusCode": 200,
+          "label": "",
+          "latency": 0,
+          "filePath": "",
+          "sendFileAsBody": false,
+          "headers": [],
+          "body": "{}",
+          "rules": [],
+          "disableTemplating": false,
+          "rulesOperator": "OR",
+          "fallbackTo404": false,
+          "default": true,
+          "databucketID": "",
+          "bodyType": "INLINE",
+          "crudKey": "id",
+          "callbacks": []
+        }
+      ],
+      "responseMode": null,
+      "streamingMode": null,
+      "streamingInterval": 0
+    },
+    {
+      "uuid": "4a646f0b-3864-4037-9b56-1639b47965f8",
+      "type": "http",
+      "documentation": "",
+      "method": "post",
+      "endpoint": "/proposals/:proposalId/submit",
+      "responses": [
+        {
+          "uuid": "d822c96e-ebec-489e-b18f-57a158cc1482",
+          "statusCode": 200,
+          "label": "",
+          "latency": 0,
+          "filePath": "",
+          "sendFileAsBody": false,
+          "headers": [],
+          "body": "{}",
+          "rules": [],
+          "disableTemplating": false,
+          "rulesOperator": "OR",
+          "fallbackTo404": false,
+          "default": true,
+          "databucketID": "",
+          "bodyType": "INLINE",
+          "crudKey": "id",
+          "callbacks": []
+        }
+      ],
+      "responseMode": null,
+      "streamingMode": null,
+      "streamingInterval": 0
+    },
+    {
+      "uuid": "25443801-8be9-4f9b-ba1c-5a0ce5326a6a",
+      "type": "http",
+      "documentation": "Payment intent for proposal checkout.",
+      "method": "post",
+      "endpoint": "/payments/intents",
+      "responses": [
+        {
+          "uuid": "58931e2d-1e86-46a2-ad62-ebd1ae3a79b8",
+          "statusCode": 200,
+          "label": "",
+          "latency": 0,
+          "filePath": "",
+          "sendFileAsBody": false,
+          "headers": [],
+          "body": "{}",
+          "rules": [],
+          "disableTemplating": false,
+          "rulesOperator": "OR",
+          "fallbackTo404": false,
+          "default": true,
+          "databucketID": "",
+          "bodyType": "INLINE",
+          "crudKey": "id",
+          "callbacks": []
+        }
+      ],
+      "responseMode": null,
+      "streamingMode": null,
+      "streamingInterval": 0
+    },
+    {
+      "uuid": "577f7a51-0b52-45f2-b7b0-6bc79856501f",
+      "type": "http",
+      "documentation": "Confirms payment intent; supports simulated failure modes.",
+      "method": "post",
+      "endpoint": "/payments/intents/:paymentIntentId/confirm",
+      "responses": [
+        {
+          "uuid": "49ee2e09-9b5f-4147-a6c7-489890095b22",
+          "statusCode": 200,
+          "label": "",
+          "latency": 0,
+          "filePath": "",
+          "sendFileAsBody": false,
+          "headers": [],
+          "body": "{}",
+          "rules": [],
+          "disableTemplating": false,
+          "rulesOperator": "OR",
+          "fallbackTo404": false,
+          "default": true,
+          "databucketID": "",
+          "bodyType": "INLINE",
+          "crudKey": "id",
+          "callbacks": []
+        }
+      ],
+      "responseMode": null,
+      "streamingMode": null,
+      "streamingInterval": 0
+    },
+    {
+      "uuid": "3a738ab6-1620-48e7-af2a-1034ac5ab6f8",
+      "type": "http",
+      "documentation": "Issues policy when payment is complete.",
+      "method": "post",
+      "endpoint": "/policies/issue",
+      "responses": [
+        {
+          "uuid": "16ccdd06-2c44-41d1-8752-85811041f760",
+          "statusCode": 200,
+          "label": "",
+          "latency": 0,
+          "filePath": "",
+          "sendFileAsBody": false,
+          "headers": [],
+          "body": "{}",
+          "rules": [],
+          "disableTemplating": false,
+          "rulesOperator": "OR",
+          "fallbackTo404": false,
+          "default": true,
+          "databucketID": "",
+          "bodyType": "INLINE",
+          "crudKey": "id",
+          "callbacks": []
+        }
+      ],
+      "responseMode": null,
+      "streamingMode": null,
+      "streamingInterval": 0
+    },
+    {
+      "uuid": "32bda806-9ece-45b1-a9e8-b25effc52989",
+      "type": "http",
+      "documentation": "",
+      "method": "get",
+      "endpoint": "/simulate/rate-limit",
+      "responses": [
+        {
+          "uuid": "6ef437e4-5b13-46f9-b541-e077eabc0843",
+          "statusCode": 200,
+          "label": "",
+          "latency": 0,
+          "filePath": "",
+          "sendFileAsBody": false,
+          "headers": [],
+          "body": "{}",
+          "rules": [],
+          "disableTemplating": false,
+          "rulesOperator": "OR",
+          "fallbackTo404": false,
+          "default": true,
+          "databucketID": "",
+          "bodyType": "INLINE",
+          "crudKey": "id",
+          "callbacks": []
+        }
+      ],
+      "responseMode": null,
+      "streamingMode": null,
+      "streamingInterval": 0
+    },
+    {
+      "uuid": "71d8d5a1-7405-4bcf-b5a0-8a1aaaa42da5",
+      "type": "http",
+      "documentation": "",
+      "method": "get",
+      "endpoint": "/simulate/downstream-timeout",
+      "responses": [
+        {
+          "uuid": "152ed509-edd9-45db-8633-2aed6f06e4ec",
+          "statusCode": 200,
+          "label": "",
+          "latency": 0,
+          "filePath": "",
+          "sendFileAsBody": false,
+          "headers": [],
+          "body": "{}",
+          "rules": [],
+          "disableTemplating": false,
+          "rulesOperator": "OR",
+          "fallbackTo404": false,
+          "default": true,
+          "databucketID": "",
+          "bodyType": "INLINE",
+          "crudKey": "id",
+          "callbacks": []
+        }
+      ],
+      "responseMode": null,
+      "streamingMode": null,
+      "streamingInterval": 0
+    },
+    {
+      "uuid": "76e429d4-5216-462b-9459-519230c7c4f6",
+      "type": "http",
+      "documentation": "",
+      "method": "get",
+      "endpoint": "/simulate/internal-error",
+      "responses": [
+        {
+          "uuid": "fe13b169-dbfc-4a38-8d3a-68c6b088ef34",
+          "statusCode": 200,
+          "label": "",
+          "latency": 0,
+          "filePath": "",
+          "sendFileAsBody": false,
+          "headers": [],
+          "body": "{}",
+          "rules": [],
+          "disableTemplating": false,
+          "rulesOperator": "OR",
+          "fallbackTo404": false,
+          "default": true,
+          "databucketID": "",
+          "bodyType": "INLINE",
+          "crudKey": "id",
+          "callbacks": []
+        }
+      ],
+      "responseMode": null,
+      "streamingMode": null,
+      "streamingInterval": 0
+    },
+    {
+      "uuid": "d9be5a67-a805-4423-9218-2ab4c8bff89d",
+      "type": "http",
+      "documentation": "",
+      "method": "get",
+      "endpoint": "/simulate/unauthorized",
+      "responses": [
+        {
+          "uuid": "863ae13e-2478-4cab-8d5f-74cccc247a6a",
+          "statusCode": 200,
+          "label": "",
+          "latency": 0,
+          "filePath": "",
+          "sendFileAsBody": false,
+          "headers": [],
+          "body": "{}",
+          "rules": [],
+          "disableTemplating": false,
+          "rulesOperator": "OR",
+          "fallbackTo404": false,
+          "default": true,
+          "databucketID": "",
+          "bodyType": "INLINE",
+          "crudKey": "id",
+          "callbacks": []
+        }
+      ],
+      "responseMode": null,
+      "streamingMode": null,
+      "streamingInterval": 0
+    }
+  ],
+  "rootChildren": [
+    {
+      "uuid": "8610a3fc-7ce3-4a7b-bf3d-0a860a266234",
+      "type": "folder"
+    },
+    {
+      "uuid": "e8680756-8a8e-4a0d-8d9d-9135649bd2d8",
+      "type": "folder"
+    },
+    {
+      "uuid": "53e10014-cf9c-4c3f-9d78-f5b31f124c35",
+      "type": "folder"
+    },
+    {
+      "uuid": "b94a4ef4-46dc-4cdf-8cc6-cd89e6247f78",
+      "type": "folder"
+    },
+    {
+      "uuid": "175e834e-5d08-4a00-87e3-d2743144163b",
+      "type": "folder"
+    },
+    {
+      "uuid": "78fc842c-a0e0-4a15-bebf-cd5644c533a5",
+      "type": "folder"
+    },
+    {
+      "uuid": "dc7645a2-6eb6-4dd6-bd3b-e1909958a8d6",
+      "type": "folder"
+    },
+    {
+      "uuid": "79ebcbb0-8c00-4ba1-905a-b7bac2f222ca",
+      "type": "folder"
+    }
+  ],
+  "proxyMode": false,
+  "proxyHost": "",
+  "proxyRemovePrefix": false,
+  "tlsOptions": {
+    "enabled": false,
+    "type": "CERT",
+    "pfxPath": "",
+    "certPath": "",
+    "keyPath": "",
+    "caPath": "",
+    "passphrase": ""
+  },
+  "cors": true,
+  "headers": [
+    {
+      "key": "Content-Type",
+      "value": "application/json"
+    },
+    {
+      "key": "X-Mock-Provider",
+      "value": "mockoon-lajoo-insurer"
+    }
+  ],
+  "proxyReqHeaders": [],
+  "proxyResHeaders": [],
+  "data": [],
+  "callbacks": []
+}

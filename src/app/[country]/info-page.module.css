@@ -1,0 +1,93 @@
+.wrap {
+  width: 100%;
+  max-width: none;
+  margin: 0 auto;
+  padding: clamp(56px, 6vh, 72px) clamp(20px, 4vw, 36px) clamp(120px, 12vh, 150px);
+  background: linear-gradient(
+    180deg,
+    var(--color-home-gradient-start) 0%,
+    var(--color-home-gradient-mid) 48%,
+    var(--color-home-gradient-end) 100%
+  );
+}
+
+.hero {
+  text-align: center;
+  margin: 0 auto clamp(28px, 4vw, 40px);
+  max-width: 760px;
+}
+
+.kicker {
+  margin: 0;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #001a43;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.title {
+  margin: 10px 0 0;
+  font-size: clamp(34px, 5vw, 54px);
+  line-height: 1.08;
+  color: #001a43;
+  font-weight: 760;
+}
+
+.meta {
+  margin: 14px 0 0;
+  font-size: clamp(16px, 2.2vw, 21px);
+  color: #334155;
+  line-height: 1.55;
+}
+
+.grid {
+  display: grid;
+  gap: clamp(14px, 2.2vw, 20px);
+  max-width: 980px;
+  margin: 0 auto;
+}
+
+.card {
+  background: #ffffff;
+  border: 1px solid #d6e0ee;
+  border-radius: 20px;
+  padding: clamp(16px, 2.4vw, 24px);
+  box-shadow: 0 10px 26px rgba(15, 23, 42, 0.06);
+}
+
+.card h2 {
+  margin: 0;
+  font-size: clamp(20px, 2.6vw, 28px);
+  color: #0f172a;
+}
+
+.card p {
+  margin: 10px 0 0;
+  color: #334155;
+  font-size: clamp(15px, 2vw, 18px);
+  line-height: 1.55;
+}
+
+.contactList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 10px;
+}
+
+.contactItem {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  color: #334155;
+  font-size: clamp(15px, 2vw, 18px);
+  line-height: 1.55;
+}
+
+.label {
+  color: #0f172a;
+  font-weight: 650;
+  min-width: 88px;
+}
