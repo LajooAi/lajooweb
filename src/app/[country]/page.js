@@ -8,7 +8,6 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import rehypeRaw from "rehype-raw";
 import rehypeSanitize, { defaultSchema } from "rehype-sanitize";
-import EqualWidthTitle from "@/components/EqualWidthTitle";
 
 // Strict HTML sanitization schema - only allow safe tags needed for formatting
 const sanitizeSchema = {
@@ -77,8 +76,10 @@ function HeroTypeIcon({ src, alt, fallback }) {
     <Image
       src={src}
       alt={alt}
-      width={48}
-      height={48}
+      width={220}
+      height={220}
+      sizes="(min-width: 1024px) 178px, 100px"
+      quality={100}
       className="home-hero-type-img"
       onError={() => setFailedToLoad(true)}
     />
@@ -799,86 +800,44 @@ Your coverage starts immediately. Drive safe!`
         <main ref={homeMainRef} className={`hero home-main ${hasMessages ? "hero-chatting" : ""}`}>
           {!hasMessages && (
             <div className="hero-content home-hero">
-              <EqualWidthTitle
-                className="home-hero-title"
-                lineClassName="home-hero-title-line"
-                secondaryLineClassName="home-hero-title-line-second"
-                primaryText="Renew insurance"
-                secondaryText="in one simple chat with AI."
-              />
+              <h1 className="home-hero-title">
+                <span className="home-hero-title-line">Renew insurance</span>
+                <span className="home-hero-title-line home-hero-title-line-second">
+                  in one simple chat with AI.
+                </span>
+              </h1>
 
               <div className="home-hero-types" role="group" aria-label="Insurance type">
-                <button
-                  type="button"
-                  className="home-hero-type-chip"
-                  onClick={() => handleQuickStart("Renew car insurance")}
-                >
+                <div className="home-hero-type-option">
                   <HeroTypeIcon
                     src="/icons/car-insurance.png"
                     alt="Car insurance icon"
                     fallback="🚗"
                   />
-                  <span>Car Insurance</span>
-                </button>
+                  <button
+                    type="button"
+                    className="home-hero-type-chip"
+                    onClick={() => handleQuickStart("Renew car insurance")}
+                  >
+                    Car Insurance
+                  </button>
+                </div>
 
-                <button
-                  type="button"
-                  className="home-hero-type-chip"
-                  onClick={() => handleQuickStart("Renew motor insurance")}
-                >
+                <div className="home-hero-type-option">
                   <HeroTypeIcon
                     src="/icons/motor-insurance.png"
                     alt="Motor insurance icon"
                     fallback="🛵"
                   />
-                  <span>Motor Insurance</span>
-                </button>
+                  <button
+                    type="button"
+                    className="home-hero-type-chip"
+                    onClick={() => handleQuickStart("Renew motor insurance")}
+                  >
+                    Motor Insurance
+                  </button>
+                </div>
               </div>
-
-              <ul className="home-hero-benefits" aria-label="Benefits">
-                <li>
-                  <span className="home-hero-check" aria-hidden>
-                    <svg viewBox="0 0 20 20" fill="none">
-                      <path
-                        d="M16.5 5.5L8.2 14L3.5 9.4"
-                        stroke="currentColor"
-                        strokeWidth="3"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                      />
-                    </svg>
-                  </span>
-                  <span>Just chat</span>
-                </li>
-                <li>
-                  <span className="home-hero-check" aria-hidden>
-                    <svg viewBox="0 0 20 20" fill="none">
-                      <path
-                        d="M16.5 5.5L8.2 14L3.5 9.4"
-                        stroke="currentColor"
-                        strokeWidth="3"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                      />
-                    </svg>
-                  </span>
-                  <span>No forms</span>
-                </li>
-                <li>
-                  <span className="home-hero-check" aria-hidden>
-                    <svg viewBox="0 0 20 20" fill="none">
-                      <path
-                        d="M16.5 5.5L8.2 14L3.5 9.4"
-                        stroke="currentColor"
-                        strokeWidth="3"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                      />
-                    </svg>
-                  </span>
-                  <span>Instant</span>
-                </li>
-              </ul>
 
               <div className="home-hero-insurers" aria-label="Trusted insurers">
                 <div className="home-hero-insurers-track">
