@@ -3,26 +3,25 @@ import InfoFooter from "@/components/InfoFooter";
 
 export default function TermsPrivacyPage() {
   const COMPANY = "LAJOO AI SDN BHD";
+  const REGISTRATION = "202501028462 (1629874-U)";
   const EMAIL = "lajoo.ai@gmail.com";
-  const EFFECTIVE = "13 March 2026";
+  const EFFECTIVE = "13th March 2026";
   const JURISDICTION = "Malaysia";
 
   return (
     <main className="legal-wrap" id="top">
       <section className="legal-hero" aria-label="Legal page heading">
-        <p className="legal-kicker">Legal</p>
+        <p className="legal-kicker">LEGAL</p>
         <h1 className="legal-h1">Terms and Privacy Policy</h1>
         <p className="legal-meta">
-          Effective and last updated: {EFFECTIVE}
+          Effective and last updated : {EFFECTIVE}
         </p>
-        <p className="legal-meta">
-          {COMPANY} · {JURISDICTION} ·{" "}
-          <a href={`mailto:${EMAIL}`}>{EMAIL}</a>
-        </p>
+        <p className="legal-meta legal-meta-company">{COMPANY}</p>
+        <p className="legal-meta legal-meta-registration">{REGISTRATION}</p>
       </section>
 
       <nav className="legal-toc" aria-label="Table of contents">
-        <h2 className="legal-toc-title">Quick navigation</h2>
+        <h2 className="legal-toc-title">Quick Navigation</h2>
         <div className="legal-toc-grid">
           <div>
             <p className="legal-toc-group">Terms and Conditions</p>

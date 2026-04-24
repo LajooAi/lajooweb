@@ -1,0 +1,84 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - generic [ref=e3]:
+      - banner [ref=e4]:
+        - button "Open menu" [ref=e6] [cursor=pointer]:
+          - img [ref=e7]
+        - button "Start new chat" [ref=e9] [cursor=pointer]:
+          - img "LAJOO logo" [ref=e10]
+        - 'button "Open country and language selector. Current: MY EN" [ref=e12] [cursor=pointer]':
+          - generic [ref=e13]:
+            - generic [ref=e14]: MY
+            - generic [ref=e15]: ·
+            - generic [ref=e16]: EN
+      - generic [ref=e17]:
+        - main [ref=e18]:
+          - generic [ref=e86]:
+            - paragraph [ref=e89]: Renew car insurance
+            - generic [ref=e91]:
+              - paragraph [ref=e92]:
+                - text: Step
+                - strong [ref=e93]: "1"
+                - text: of
+                - strong [ref=e94]: "6"
+                - text: — Vehicle Info
+              - paragraph [ref=e95]: "To get started, please provide your:"
+              - list [ref=e96]:
+                - listitem [ref=e97]:
+                  - strong [ref=e98]: Vehicle Plate Number
+                  - text: (e.g. WXY 1234)
+                - listitem [ref=e99]:
+                  - strong [ref=e100]: Owner Identification Number
+                  - text: (NRIC / Foreign ID / Army IC / Police IC / Company Reg. No.)
+        - generic [ref=e51]:
+          - generic [ref=e53]:
+            - button "Add attachments" [ref=e55] [cursor=pointer]:
+              - img [ref=e56]
+            - textbox "Chat with LAJOO" [ref=e58]:
+              - /placeholder: Renew or ask anything
+            - button "Send message" [disabled] [ref=e59]:
+              - img [ref=e60]
+          - paragraph [ref=e63]:
+            - text: By messaging LAJOO, you agree to our
+            - link "Terms & Privacy Policy" [ref=e64] [cursor=pointer]:
+              - /url: /my/terms
+            - text: .
+    - dialog [ref=e65]:
+      - generic [ref=e66]:
+        - img "LAJOO" [ref=e67]
+        - button "Close" [ref=e68] [cursor=pointer]: ×
+      - navigation [ref=e69]:
+        - link "LAJOO" [ref=e70] [cursor=pointer]:
+          - /url: /my
+        - link "What is LAJOO ?" [ref=e71] [cursor=pointer]:
+          - /url: /my/what-is-lajoo
+        - link "FAQ" [ref=e72] [cursor=pointer]:
+          - /url: /my/faq
+        - link "Contact Us" [ref=e73] [cursor=pointer]:
+          - /url: /my/contact-us
+        - link "Terms & Privacy Policy" [ref=e74] [cursor=pointer]:
+          - /url: /my/terms
+  - button "Open Next.js Dev Tools" [ref=e80] [cursor=pointer]:
+    - img [ref=e81]
+  - alert [ref=e84]
+  - generic:
+    - dialog:
+      - generic:
+        - generic: Country
+        - button "Close": ×
+      - generic:
+        - button "MY (Malaysia) ›":
+          - generic:
+            - generic:
+              - generic: MY
+              - generic: (Malaysia)
+          - generic: ›
+      - generic: Language
+      - generic:
+        - button "EN (English) ✓":
+          - generic: EN (English)
+          - generic: ✓
+        - button "BM (Bahasa Melayu)":
+          - generic: BM (Bahasa Melayu)
+        - button "CN (Chinese 华语)":
+          - generic: CN (Chinese 华语)

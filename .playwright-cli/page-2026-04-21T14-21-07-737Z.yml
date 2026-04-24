@@ -1,0 +1,65 @@
+- generic [ref=e2]:
+  - generic [ref=e3]:
+    - banner [ref=e4]:
+      - button "Open menu" [ref=e6] [cursor=pointer]:
+        - img [ref=e7]
+      - button "Start new chat" [ref=e9] [cursor=pointer]:
+        - img "LAJOO logo" [ref=e10]
+      - 'button "Open country and language selector. Current: MY EN" [ref=e12] [cursor=pointer]':
+        - generic [ref=e13]:
+          - generic [ref=e14]: MY
+          - generic [ref=e15]: ·
+          - generic [ref=e16]: EN
+    - generic [ref=e17]:
+      - main [ref=e18]:
+        - generic [ref=e19]:
+          - heading "Renew insurance in one simple chat with AI." [level=1] [ref=e20]:
+            - generic [ref=e21]: Renew insurance
+            - generic [ref=e22]: in one simple chat with AI.
+          - group "Insurance type" [ref=e23]:
+            - generic [ref=e24]:
+              - img "Car insurance icon"
+              - button "Car Insurance" [ref=e25] [cursor=pointer]
+            - generic [ref=e26]:
+              - img "Motor insurance icon"
+              - button "Motor Insurance" [ref=e27] [cursor=pointer]
+          - generic "Trusted insurers" [ref=e28]:
+            - generic [ref=e29]:
+              - img "Allianz" [ref=e31]
+              - img "Etiqa" [ref=e33]
+              - img "Takaful" [ref=e35]
+              - img "Lonpac" [ref=e37]
+              - img "MSIG" [ref=e39]
+              - img [ref=e41]
+              - img [ref=e43]
+              - img [ref=e45]
+              - img [ref=e47]
+              - img [ref=e49]
+      - generic [ref=e51]:
+        - generic [ref=e53]:
+          - button "Add attachments" [ref=e55] [cursor=pointer]:
+            - img [ref=e56]
+          - textbox "Chat with LAJOO" [ref=e58]:
+            - /placeholder: Renew or ask anything
+          - button "Send message" [disabled] [ref=e59]:
+            - img [ref=e60]
+        - paragraph [ref=e63]:
+          - text: By messaging LAJOO, you agree to our
+          - link "Terms & Privacy Policy" [ref=e64] [cursor=pointer]:
+            - /url: /my/terms
+          - text: .
+  - dialog [ref=e65]:
+    - generic [ref=e66]:
+      - img "LAJOO" [ref=e67]
+      - button "Close" [ref=e68] [cursor=pointer]: ×
+    - navigation [ref=e69]:
+      - link "LAJOO" [ref=e70] [cursor=pointer]:
+        - /url: /my
+      - link "What is LAJOO ?" [ref=e71] [cursor=pointer]:
+        - /url: /my/what-is-lajoo
+      - link "FAQ" [ref=e72] [cursor=pointer]:
+        - /url: /my/faq
+      - link "Contact Us" [ref=e73] [cursor=pointer]:
+        - /url: /my/contact-us
+      - link "Terms & Privacy Policy" [ref=e74] [cursor=pointer]:
+        - /url: /my/terms

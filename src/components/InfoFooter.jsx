@@ -43,7 +43,7 @@ function YoutubeIcon() {
         d="M20.6 7.8c-.2-1-.9-1.8-1.9-2-1.8-.4-9.4-.4-9.4-.4s-1.8 0-3.6.2c-1 .2-1.7 1-1.9 2-.3 1.7-.3 3.4-.3 3.4s0 1.7.3 3.4c.2 1 .9 1.8 1.9 2 1.8.4 9.4.4 9.4.4s1.8 0 3.6-.2c1-.2 1.7-1 1.9-2 .3-1.7.3-3.4.3-3.4s0-1.7-.3-3.4z"
         fill="currentColor"
       />
-      <path d="M10.2 9.1v5.8l5-2.9-5-2.9z" fill="#001A43" />
+      <path d="M10.2 9.1v5.8l5-2.9-5-2.9z" fill="#000D59" />
     </svg>
   );
 }
@@ -61,7 +61,7 @@ export default function InfoFooter() {
   const country = String(params?.country || "my").toLowerCase();
 
   const pageLinks = [
-    { label: "LAJOO Homepage", href: `/${country}` },
+    { label: "Homepage", href: `/${country}` },
     { label: "What is LAJOO ?", href: `/${country}/what-is-lajoo` },
     { label: "FAQ", href: `/${country}/faq` },
     { label: "Contact Us", href: `/${country}/contact-us` },
@@ -72,14 +72,14 @@ export default function InfoFooter() {
     <footer className={styles.footer} aria-label="LAJOO footer links and contact">
       <div className={styles.container}>
         <div className={styles.sections}>
-          <section className={styles.section}>
+          <section className={`${styles.section} ${styles.brandSection}`}>
             <img src="/logo/lajoo-logo.png" alt="LAJOO" className={styles.brandLogo} />
-            <p className={styles.tagline}>AI-powered insurance renewal platform in Malaysia</p>
-            <p className={styles.company}>LAJOO AI SDN BHD</p>
+            <p className={styles.company}>LAJOO AI SDN. BHD.</p>
             <p className={styles.registration}>202501028462 (1629874-U)</p>
+            <p className={styles.tagline}>AI-powered insurance renewal platform in Malaysia</p>
           </section>
 
-          <section className={styles.section}>
+          <section className={`${styles.section} ${styles.navSection}`}>
             <nav className={styles.menu} aria-label="Footer navigation">
               {pageLinks.map((item) => (
                 <Link key={item.href} href={item.href} className={styles.menuLink}>
@@ -89,7 +89,7 @@ export default function InfoFooter() {
             </nav>
           </section>
 
-          <section className={styles.section}>
+          <section className={`${styles.section} ${styles.followSection}`}>
             <h3 className={styles.followTitle}>Follow Us</h3>
             <div className={styles.socialRow}>
               {socialLinks.map((social) => (

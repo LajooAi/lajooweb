@@ -1,0 +1,12 @@
+[     117ms] [LOG] [Fast Refresh] rebuilding @ webpack-internal:///(app-pages-browser)/./node_modules/next/dist/client/dev/hot-reloader/app/hot-reloader-app.js:196
+[     325ms] [LOG] [Fast Refresh] done in 209ms @ webpack-internal:///(app-pages-browser)/./node_modules/next/dist/client/dev/report-hmr-latency.js:13
+[     927ms] [INFO] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold @ webpack-internal:///(app-pages-browser)/./node_modules/next/dist/compiled/react-dom/cjs/react-dom-client.development.js:25630
+[     969ms] [LOG] [AddOnsSection] Render - preSelectedAddOns: [] @ webpack-internal:///(app-pages-browser)/./src/_archived_ui_components/AddOnsSection.jsx:14
+[     971ms] [LOG] [AddOnsSection] Initial state from preSelectedAddOns: [] @ webpack-internal:///(app-pages-browser)/./src/_archived_ui_components/AddOnsSection.jsx:22
+[     971ms] [LOG] [AddOnsSection] Initial state from preSelectedAddOns: [] @ webpack-internal:///(app-pages-browser)/./src/_archived_ui_components/AddOnsSection.jsx:22
+[     971ms] [LOG] [AddOnsSection] Render - preSelectedAddOns: [] @ webpack-internal:///(app-pages-browser)/./src/_archived_ui_components/AddOnsSection.jsx:14
+[     978ms] [LOG] [AddOnsSection] preSelectedAddOns changed: [] @ webpack-internal:///(app-pages-browser)/./src/_archived_ui_components/AddOnsSection.jsx:36
+[     981ms] [LOG] [AddOnsSection] Render - preSelectedAddOns: [] @ webpack-internal:///(app-pages-browser)/./src/_archived_ui_components/AddOnsSection.jsx:14
+[     981ms] [LOG] [AddOnsSection] Render - preSelectedAddOns: [] @ webpack-internal:///(app-pages-browser)/./src/_archived_ui_components/AddOnsSection.jsx:14
+[     985ms] [LOG] [AddOnsSection] Render - preSelectedAddOns: [] @ webpack-internal:///(app-pages-browser)/./src/_archived_ui_components/AddOnsSection.jsx:14
+[     985ms] [LOG] [AddOnsSection] Render - preSelectedAddOns: [] @ webpack-internal:///(app-pages-browser)/./src/_archived_ui_components/AddOnsSection.jsx:14

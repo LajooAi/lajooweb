@@ -1,0 +1,246 @@
+- generic [ref=e2]:
+  - generic [ref=e3]:
+    - banner [ref=e4]:
+      - button "Open menu" [ref=e6] [cursor=pointer]:
+        - img [ref=e7]
+      - button "Start new chat" [ref=e9] [cursor=pointer]:
+        - img "LAJOO logo" [ref=e10]
+      - 'button "Open country and language selector. Current: MY EN" [ref=e12] [cursor=pointer]':
+        - generic [ref=e13]:
+          - generic [ref=e14]: MY
+          - generic [ref=e15]: ·
+          - generic [ref=e16]: EN
+    - main [ref=e17]:
+      - generic [ref=e19]:
+        - generic [ref=e20]:
+          - heading "Renew insurance in one simple chat with AI." [level=1] [ref=e21]:
+            - generic [ref=e22]: Renew insurance
+            - generic [ref=e23]: in one simple chat with AI.
+          - img "LAJOO insurer comparison preview" [ref=e24]
+        - generic [ref=e25]:
+          - paragraph [ref=e26]:
+            - generic [ref=e27]: Just chat
+            - generic [ref=e28]: ·
+            - generic [ref=e29]: No forms
+            - generic [ref=e30]: ·
+            - generic [ref=e31]: Instant
+          - link "Renew Now" [ref=e33] [cursor=pointer]:
+            - /url: /
+          - region "Services we offer." [ref=e34]:
+            - heading "Services we offer." [level=3] [ref=e35]
+            - generic [ref=e36]:
+              - article "Car Insurance" [ref=e37]:
+                - img "Car insurance" [ref=e38]
+                - paragraph [ref=e39]: Car Insurance
+              - article "Motor Insurance" [ref=e40]:
+                - img "Motor insurance" [ref=e41]
+                - paragraph [ref=e42]: Motor Insurance
+        - region "Renew in 3 simple steps." [ref=e43]:
+          - generic [ref=e44]:
+            - heading "Renew in 3 simple steps." [level=3] [ref=e45]
+            - generic [ref=e46]:
+              - article [ref=e47]:
+                - img [ref=e49]
+                - generic [ref=e54]:
+                  - paragraph [ref=e55]: Chat
+                  - paragraph [ref=e56]: Ask anything about insurance.
+              - article [ref=e57]:
+                - img [ref=e59]
+                - generic [ref=e62]:
+                  - paragraph [ref=e63]: Compare
+                  - paragraph [ref=e64]: Compare prices with AI.
+              - article [ref=e65]:
+                - img [ref=e67]
+                - generic [ref=e72]:
+                  - paragraph [ref=e73]: Renew
+                  - paragraph [ref=e74]: Pay and get covered instantly.
+        - region "Trusted by top insurers." [ref=e75]:
+          - generic [ref=e76]:
+            - heading "Trusted by top insurers." [level=3] [ref=e77]
+            - list "Insurance partners" [ref=e78]:
+              - listitem [ref=e79]:
+                - img "Tokio Marine" [ref=e81]
+              - listitem [ref=e82]:
+                - img "Zurich" [ref=e84]
+              - listitem [ref=e85]:
+                - img "Generali" [ref=e87]
+              - listitem [ref=e88]:
+                - img "Etiqa" [ref=e90]
+              - listitem [ref=e91]:
+                - img "AXA" [ref=e93]
+              - listitem [ref=e94]:
+                - img "Takaful Ikhlas" [ref=e96]
+              - listitem [ref=e97]:
+                - img "MSIG" [ref=e99]
+              - listitem [ref=e100]:
+                - img "Allianz" [ref=e102]
+              - listitem [ref=e103]:
+                - img "Berjaya Sompo Insurance" [ref=e105]
+              - listitem [ref=e106]:
+                - img "Liberty Insurance" [ref=e108]
+              - listitem [ref=e109]:
+                - img "AmAssurance" [ref=e111]
+              - listitem [ref=e112]:
+                - img "Lonpac Insurance" [ref=e114]
+        - region "Flexible payment options." [ref=e115]:
+          - generic [ref=e116]:
+            - heading "Flexible payment options." [level=3] [ref=e117]
+            - generic [ref=e118]:
+              - article [ref=e119]:
+                - paragraph [ref=e121]:
+                  - generic [ref=e122]: Credit/Debit Card
+                - generic [ref=e123]:
+                  - img "Visa" [ref=e125]
+                  - img "Mastercard" [ref=e127]
+                  - img "UnionPay" [ref=e129]
+                  - img "American Express" [ref=e131]
+              - article [ref=e132]:
+                - paragraph [ref=e134]:
+                  - generic [ref=e135]: E-Wallet
+                - generic [ref=e136]:
+                  - img "Touch 'n Go eWallet" [ref=e138]
+                  - img "GrabPay" [ref=e140]
+                  - img "ShopeePay" [ref=e142]
+              - article [ref=e143]:
+                - paragraph [ref=e145]:
+                  - generic [ref=e146]: Online Banking
+                - img "FPX" [ref=e149]
+              - article [ref=e150]:
+                - generic [ref=e151]:
+                  - paragraph [ref=e152]:
+                    - generic [ref=e153]: Buy Now Pay Later
+                  - paragraph [ref=e154]: (3 to 6 months)
+                - generic [ref=e155]:
+                  - img "Atome" [ref=e157]
+                  - generic [ref=e158]:
+                    - generic [ref=e159]: S
+                    - generic [ref=e160]: PayLater
+                  - generic [ref=e161]:
+                    - generic [ref=e162]: PayLater
+                    - generic [ref=e163]: by Grab
+              - article [ref=e164]:
+                - generic [ref=e165]:
+                  - paragraph [ref=e166]:
+                    - generic [ref=e167]: Credit Card
+                    - generic [ref=e168]: Installment
+                  - paragraph [ref=e169]: (6 to 12 months)
+                - generic [ref=e170]:
+                  - img "Affin Bank" [ref=e172]
+                  - img "Hong Leong Bank" [ref=e174]
+                  - img "Public Bank" [ref=e176]
+                  - img "RHB" [ref=e178]
+                  - img "AmBank" [ref=e180]
+                  - img "Standard Chartered" [ref=e182]
+                  - img "UOB" [ref=e184]
+                  - img "Maybank" [ref=e186]
+                  - img "HSBC" [ref=e188]
+                  - img "CIMB" [ref=e190]
+                  - img "OCBC Bank" [ref=e192]
+        - generic [ref=e194]:
+          - generic [ref=e195]:
+            - heading "Why users love LAJOO ?" [level=3] [ref=e196]
+            - generic [ref=e197]:
+              - strong [ref=e198]: "4.9"
+              - generic [ref=e199]: ★★★★★
+            - link "11,000+ Google reviews" [ref=e200] [cursor=pointer]:
+              - /url: "#"
+            - paragraph [ref=e201]:
+              - generic [ref=e202]: Fast
+              - generic [ref=e203]: ·
+              - generic [ref=e204]: Smart
+              - generic [ref=e205]: ·
+              - generic [ref=e206]: Reliable
+          - generic [ref=e207]:
+            - article [ref=e208]:
+              - generic [ref=e211]:
+                - paragraph [ref=e212]: Ananda Vandram
+                - paragraph [ref=e213]: August 2025
+              - paragraph [ref=e214]: Amazing platform for me to renew all my car insurance road tax, super fast and convenient. Done anytime even at 2am instantly.
+              - generic [ref=e215]:
+                - img "Rating 5 out of 5" [ref=e216]: ★★★★★
+                - button "View" [ref=e217] [cursor=pointer]:
+                  - text: View
+                  - generic [ref=e218]: ">"
+            - generic "Review navigation" [ref=e219]:
+              - button "Previous review" [disabled] [ref=e220]:
+                - generic [ref=e221]: <
+              - button "Next review" [ref=e222] [cursor=pointer]:
+                - generic [ref=e223]: ">"
+        - region "AI makes renewal simple." [ref=e224]:
+          - generic [ref=e225]:
+            - heading "AI makes renewal simple." [level=3] [ref=e226]
+            - generic [ref=e227]:
+              - article [ref=e228]:
+                - img [ref=e230]
+                - generic [ref=e235]:
+                  - paragraph [ref=e236]: 11,000+
+                  - paragraph [ref=e237]: Policies renewed
+              - article [ref=e238]:
+                - img [ref=e240]
+                - generic [ref=e244]:
+                  - paragraph [ref=e245]: 3 mins
+                  - paragraph [ref=e246]: Average renewal time
+              - article [ref=e247]:
+                - img [ref=e249]
+                - generic [ref=e251]:
+                  - paragraph [ref=e252]: 24/7
+                  - paragraph [ref=e253]: Instant replies
+        - region "Ready to renew ?" [ref=e254]:
+          - generic [ref=e255]:
+            - heading "Ready to renew ?" [level=3] [ref=e256]
+            - paragraph [ref=e257]:
+              - generic [ref=e258]: Get your quote, compare and
+              - generic [ref=e259]: renew in minutes with LAJOO
+            - link "Renew Now" [ref=e260] [cursor=pointer]:
+              - /url: /
+      - generic "LAJOO footer links and contact" [ref=e261]:
+        - generic [ref=e263]:
+          - generic [ref=e264]:
+            - img "LAJOO" [ref=e265]
+            - paragraph [ref=e266]: LAJOO AI SDN. BHD.
+            - paragraph [ref=e267]: 202501028462 (1629874-U)
+            - paragraph [ref=e268]: AI-powered insurance renewal platform in Malaysia
+          - navigation "Footer navigation" [ref=e270]:
+            - link "Homepage" [ref=e271] [cursor=pointer]:
+              - /url: /my
+            - link "What is LAJOO ?" [ref=e272] [cursor=pointer]:
+              - /url: /my/what-is-lajoo
+            - link "FAQ" [ref=e273] [cursor=pointer]:
+              - /url: /my/faq
+            - link "Contact Us" [ref=e274] [cursor=pointer]:
+              - /url: /my/contact-us
+            - link "Terms & Privacy Policy" [ref=e275] [cursor=pointer]:
+              - /url: /my/terms
+          - generic [ref=e276]:
+            - heading "Follow Us" [level=3] [ref=e277]
+            - generic [ref=e278]:
+              - link "Facebook" [ref=e279] [cursor=pointer]:
+                - /url: https://www.facebook.com/
+                - img [ref=e280]
+              - link "Instagram" [ref=e282] [cursor=pointer]:
+                - /url: https://www.instagram.com/
+                - img [ref=e283]
+              - link "TikTok" [ref=e287] [cursor=pointer]:
+                - /url: https://www.tiktok.com/
+                - img [ref=e288]
+              - link "Rednote" [ref=e290] [cursor=pointer]:
+                - /url: https://www.xiaohongshu.com/
+                - generic [ref=e291]: R
+              - link "YouTube" [ref=e292] [cursor=pointer]:
+                - /url: https://www.youtube.com/
+                - img [ref=e293]
+  - dialog [ref=e296]:
+    - generic [ref=e297]:
+      - img "LAJOO" [ref=e298]
+      - button "Close" [ref=e299] [cursor=pointer]: ×
+    - navigation [ref=e300]:
+      - link "LAJOO" [ref=e301] [cursor=pointer]:
+        - /url: /my
+      - link "What is LAJOO ?" [ref=e302] [cursor=pointer]:
+        - /url: /my/what-is-lajoo
+      - link "FAQ" [ref=e303] [cursor=pointer]:
+        - /url: /my/faq
+      - link "Contact Us" [ref=e304] [cursor=pointer]:
+        - /url: /my/contact-us
+      - link "Terms & Privacy Policy" [ref=e305] [cursor=pointer]:
+        - /url: /my/terms

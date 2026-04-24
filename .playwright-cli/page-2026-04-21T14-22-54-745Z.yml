@@ -1,0 +1,65 @@
+- generic [ref=e2]:
+  - generic [ref=e3]:
+    - banner [ref=e4]:
+      - button "Open menu" [ref=e6] [cursor=pointer]:
+        - img [ref=e7]
+      - button "Start new chat" [ref=e9] [cursor=pointer]:
+        - img "LAJOO logo" [ref=e10]
+      - 'button "Open country and language selector. Current: MY EN" [ref=e12] [cursor=pointer]':
+        - generic [ref=e13]:
+          - generic [ref=e14]: MY
+          - generic [ref=e15]: ·
+          - generic [ref=e16]: EN
+    - main [ref=e17]:
+      - 'heading "Step 3/5: Road Tax - Test Page" [level=1] [ref=e18]'
+      - article [ref=e19]:
+        - generic [ref=e20]:
+          - generic [ref=e21]:
+            - heading "Takaful Ikhlas Insurance" [level=3] [ref=e22]
+            - paragraph [ref=e23]:
+              - generic [ref=e24]: "Sum Insured :"
+              - generic [ref=e25]: RM 34,000
+            - paragraph [ref=e26]:
+              - img [ref=e27]
+              - generic [ref=e29]: Full Cover
+            - paragraph [ref=e30]:
+              - generic [ref=e31]: "Price :"
+              - generic [ref=e32]: RM 995 / year
+            - paragraph [ref=e33]:
+              - generic [ref=e34]: "After NCD (20.00%) :"
+              - strong [ref=e35]: RM 796
+            - paragraph [ref=e36]:
+              - generic [ref=e37]: "+ Windscreen Protection : RM 100"
+          - img "Takaful Ikhlas Insurance" [ref=e40]
+        - generic [ref=e41]:
+          - paragraph [ref=e42]:
+            - generic [ref=e43]: "Grand Total :"
+            - strong [ref=e44]: RM 896
+          - generic [ref=e45]: Selected
+      - generic [ref=e46]:
+        - paragraph [ref=e47]: (Step 3/5) Would you like to renew your road tax too ?
+        - generic [ref=e48]:
+          - generic [ref=e50] [cursor=pointer]:
+            - generic [ref=e51]: Yes, deliver it to me
+            - generic [ref=e52]: (3-5 days)
+            - generic [ref=e53]: RM 90 + RM 10 delivery
+          - generic [ref=e56] [cursor=pointer]:
+            - generic [ref=e57]: Yes, digital only
+            - generic [ref=e58]: RM 90
+          - generic [ref=e62] [cursor=pointer]: No, just insurance
+        - button "Confirm" [ref=e64] [cursor=pointer]
+  - dialog [ref=e65]:
+    - generic [ref=e66]:
+      - img "LAJOO" [ref=e67]
+      - button "Close" [ref=e68] [cursor=pointer]: ×
+    - navigation [ref=e69]:
+      - link "LAJOO" [ref=e70] [cursor=pointer]:
+        - /url: /my
+      - link "What is LAJOO ?" [ref=e71] [cursor=pointer]:
+        - /url: /my/what-is-lajoo
+      - link "FAQ" [ref=e72] [cursor=pointer]:
+        - /url: /my/faq
+      - link "Contact Us" [ref=e73] [cursor=pointer]:
+        - /url: /my/contact-us
+      - link "Terms & Privacy Policy" [ref=e74] [cursor=pointer]:
+        - /url: /my/terms

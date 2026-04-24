@@ -5,8 +5,8 @@
 :root {
   --app-header-height: 54px;
   --chat-overlay-space: 126px;
-  --control-height-lg: 56px;
-  --icon-button-size: 42px;
+  --control-height-lg: clamp(50px, 2.8vw, 56px);
+  --icon-button-size: clamp(38px, 2.3vw, 44px);
   --touch-target-size: 44px;
 
   /* Color system */
@@ -29,6 +29,7 @@
   --color-text-muted: #64748b;
   --color-border-default: #d6e0ee;
   --color-border-strong: #c2cedf;
+  --color-border-chat-input: #d8d8d8;
   --color-success-500: #10b981;
   --color-danger-500: #dc2626;
 
@@ -62,12 +63,12 @@
 
   /* Layout tokens */
   --page-gutter: var(--space-4);
-  --container-home: 860px;
+  --container-home: clamp(620px, 54vw, 760px);
   --container-chat: 760px;
-  --container-insurers: 780px;
-  --container-input: 700px;
-  --bubble-add-col: 30px;
-  --bubble-send-col: 54px;
+  --container-insurers: clamp(560px, 52vw, 720px);
+  --container-input: clamp(500px, 44vw, 620px);
+  --bubble-add-col: clamp(26px, 1.8vw, 32px);
+  --bubble-send-col: clamp(46px, 3vw, 54px);
 
   --home-hero-padding-top: clamp(44px, 8vh, 94px);
   --home-hero-padding-bottom: clamp(116px, 13vh, 170px);
@@ -233,6 +234,15 @@ main {
   overflow-x: hidden;
 }
 
+body:not(.home-route) main {
+  display: block;
+  flex: 0 0 auto;
+  min-height: auto;
+  justify-content: flex-start;
+  align-items: stretch;
+  overflow: visible;
+}
+
 .hero-content {
   display: flex;
   flex-direction: column;
@@ -271,8 +281,8 @@ main {
   justify-content: center;
   width: 100%;
   min-width: 0;
-  gap: clamp(18px, 3vw, 34px) clamp(28px, 5vw, 86px);
-  margin-bottom: clamp(22px, 3vh, 34px);
+  gap: clamp(12px, 2vw, 20px) clamp(20px, 3vw, 44px);
+  margin-bottom: clamp(32px, 4.5vh, 52px);
 }
 
 .home-hero-type-option {
@@ -287,14 +297,14 @@ main {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: clamp(154px, 17vw, 224px);
-  height: clamp(38px, 4.2vw, 50px);
-  padding: 0 15px;
-  border: 2px solid #D8D8D8;
+  min-width: clamp(136px, 12vw, 176px);
+  height: clamp(36px, 2.8vw, 42px);
+  padding: 0 clamp(14px, 1.5vw, 18px);
+  border: 1px solid var(--color-border-chat-input);
   border-radius: 999px;
   background: #ffffff;
   color: #0A1F44;
-  font-size: clamp(16px, 1.8vw, 29px);
+  font-size: clamp(16px, 1.4vw, 22px);
   font-weight: 500;
   line-height: 1;
   white-space: nowrap;
@@ -321,8 +331,8 @@ main {
 }
 
 .home-hero-type-img {
-  width: clamp(92px, 11vw, 160px);
-  height: clamp(64px, 8vw, 116px);
+  width: clamp(88px, 7vw, 126px);
+  height: clamp(64px, 5vw, 92px);
   object-fit: contain;
   display: block;
   pointer-events: none;
@@ -371,6 +381,7 @@ main {
 }
 
 .home-hero-insurers {
+  --home-hero-insurer-track-gap: var(--space-fluid-1);
   width: 100%;
   max-width: var(--container-insurers);
   min-width: 0;
@@ -385,18 +396,32 @@ main {
   display: flex;
   align-items: center;
   width: max-content;
+  min-width: max-content;
   flex: 0 0 auto;
-  gap: var(--space-fluid-1);
+  gap: var(--home-hero-insurer-track-gap);
   white-space: nowrap;
+  will-change: transform;
+}
+
+.home-hero-insurers-track.is-ready {
   animation: insurersMarqueeLeft 18s linear infinite;
+}
+
+.home-hero-insurers-group {
+  display: flex;
+  align-items: center;
+  gap: var(--home-hero-insurer-track-gap);
+  flex: 0 0 auto;
+  min-width: max-content;
 }
 
 .home-hero-insurer-logo-wrap {
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  min-width: max-content;
   width: auto;
-  height: clamp(46px, 5vw, 62px);
+  height: clamp(40px, 4.2vw, 54px);
   padding: var(--space-2) clamp(5px, 0.8vw, 10px);
   border-radius: var(--radius-md);
   background: transparent;
@@ -404,19 +429,20 @@ main {
 }
 
 .home-hero-insurer-logo {
+  display: block;
   width: auto;
   max-width: 100%;
-  height: clamp(28px, 3.5vw, 40px);
+  height: clamp(20px, 1.8vw, 28px);
   max-height: 100%;
   object-fit: contain;
 }
 
 .home-hero-insurer-logo-wrap[data-insurer="takaful"] .home-hero-insurer-logo {
-  height: clamp(34px, 4vw, 46px);
+  height: clamp(24px, 2.2vw, 32px);
 }
 
 .home-hero-insurer-logo-wrap[data-insurer="lonpac"] .home-hero-insurer-logo {
-  height: clamp(24px, 3vw, 34px);
+  height: clamp(18px, 1.6vw, 24px);
 }
 
 @keyframes insurersMarqueeLeft {
@@ -424,7 +450,7 @@ main {
     transform: translateX(0);
   }
   100% {
-    transform: translateX(-50%);
+    transform: translateX(calc(-1 * var(--home-hero-insurers-loop-width, 0px) - var(--home-hero-insurer-track-gap)));
   }
 }
 
@@ -483,7 +509,7 @@ h2 {
   display: grid;
   grid-template-columns: auto 1fr auto;
   align-items: center;
-  border: 1px solid #D8D8D8;
+  border: 1px solid var(--color-border-chat-input);
   border-radius: var(--radius-pill);
   background: var(--color-bg-surface);
   padding: 0 var(--space-2);
@@ -643,6 +669,7 @@ h2 {
   display: flex;
   flex-direction: column;
   overflow-x: hidden;
+  padding-top: var(--app-header-height);
 }
 
 /* Mobile header */
@@ -654,10 +681,12 @@ h2 {
   padding: 0 var(--page-gutter);
   border-bottom: none;
   height: var(--app-header-height);
-  position: sticky;
+  position: fixed;
   top: 0;
+  left: 0;
+  right: 0;
   background: #0062ff;
-  z-index: 10;
+  z-index: 80;
 }
 
 @media (min-width: 1024px) {
@@ -728,7 +757,23 @@ h2 {
 
 .brand { font-weight: 850; font-size: 26px; color: var(--color-brand-500); }
 
-.drawer-close { background: none; border: none; font-size: 28px; cursor: pointer; color: #000; }
+.drawer-close {
+  background: none;
+  border: 0;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  cursor: pointer;
+  color: var(--color-text-primary);
+}
+
+.drawer-close:hover {
+  color: var(--color-brand-500);
+}
 
 .drawer-nav { display: flex; flex-direction: column; gap: 18px; margin-top: var(--space-2); }
 
@@ -774,6 +819,17 @@ body.home-route .content-col {
   overflow-x: hidden;
 }
 
+body.home-route .content-col {
+  padding-top: 0;
+}
+
+body.home-route .mobile-header {
+  position: sticky;
+  left: auto;
+  right: auto;
+  z-index: 10;
+}
+
 .home-page-shell .home-main {
   flex: 1 1 auto;
   min-height: 0;
@@ -802,20 +858,21 @@ body.home-route .content-col {
 
 .home-page-shell .hero-content.home-hero {
   justify-content: flex-start;
-  padding: var(--home-hero-chat-padding-top) 0 var(--home-hero-chat-padding-bottom);
+  padding: clamp(0px, 1.4vh, 18px) 0 clamp(10px, 1.2vh, 16px);
 }
 
 .home-page-shell .home-hero-title {
-  --hero-line-one-size: clamp(52px, 7.6vw, 94px);
+  --hero-line-one-size: clamp(42px, 5.4vw, 76px);
   --hero-line-two-size: calc(var(--hero-line-one-size) * 0.64);
   display: flex;
   flex-direction: column;
   align-items: center;
   width: fit-content;
-  max-width: 100%;
+  max-width: min(100%, 760px);
   margin-left: auto;
   margin-right: auto;
-  margin-bottom: clamp(36px, 4.8vh, 60px);
+  margin-top: clamp(-62px, -6vh, -12px);
+  margin-bottom: clamp(26px, 3.8vh, 42px);
 }
 
 .home-page-shell .home-hero-title-line {
@@ -830,7 +887,7 @@ body.home-route .content-col {
 .home-page-shell .home-hero-title-line-second {
   width: auto;
   margin-top: 0.06em;
-  font-size: var(--hero-line-two-size);
+  font-size: calc(var(--hero-line-two-size) * 1.05);
   line-height: 1.08;
   white-space: nowrap;
   color: #0A1F44;
@@ -842,8 +899,8 @@ body.home-route .content-col {
 }
 
 .home-page-shell .home-hero-types {
-  margin-top: 20px;
-  margin-bottom: clamp(30px, 4.2vh, 44px);
+  margin-top: 0;
+  margin-bottom: clamp(32px, 4.5vh, 52px);
 }
 
 .home-page-shell .home-hero-benefits {
@@ -853,10 +910,10 @@ body.home-route .content-col {
 }
 
 .home-page-shell .home-hero-insurers {
-  margin-top: calc(clamp(7px, 1.15vh, 14px) + 45px);
+  margin-top: 0;
   margin-left: auto;
   margin-right: auto;
-  margin-bottom: auto;
+  margin-bottom: 0;
 }
 
 .home-page-shell.is-chatting .home-main {
@@ -868,69 +925,42 @@ body.home-route .content-col {
   background: var(--color-chat-canvas);
 }
 
-@media (min-width: 1024px) {
-  :root {
-    --container-home: clamp(820px, 68vw, 980px);
-    --container-insurers: clamp(760px, 64vw, 940px);
-    --container-input: clamp(700px, 58vw, 840px);
-    --control-height-lg: clamp(56px, 3.2vw, 64px);
-    --icon-button-size: clamp(42px, 2.7vw, 48px);
-    --bubble-add-col: clamp(30px, 2.1vw, 38px);
-    --bubble-send-col: clamp(54px, 3.8vw, 64px);
-  }
-
+@media (min-width: 640px) {
   .home-page-shell .hero-content.home-hero {
-    padding: clamp(44px, 5.4vh, 74px) 0 clamp(12px, 1.8vh, 24px);
+    display: grid;
+    grid-template-columns: 1fr;
+    justify-items: center;
+    align-content: start;
+    row-gap: 0;
+    padding: clamp(56px, 8.5vh, 88px) 0 clamp(18px, 2.5vh, 30px);
   }
 
-  .home-hero-title {
-    font-size: clamp(56px, 4.8vw, 82px);
-    line-height: 1.1;
-    margin-bottom: clamp(28px, 3.4vh, 44px);
+  .home-page-shell .home-hero-title {
+    margin-top: 0;
+    margin-bottom: clamp(34px, 5.2vh, 58px);
   }
 
-  .home-hero-types {
-    gap: clamp(22px, 3vh, 30px) clamp(54px, 8vw, 120px);
-    margin-bottom: clamp(30px, 3.8vh, 46px);
-  }
-
-  .home-hero-type-chip {
-    min-width: clamp(176px, 13.6vw, 236px);
-    height: clamp(44px, 3.7vw, 56px);
-    padding: 0 15px;
-    font-size: clamp(22px, 1.76vw, 30px);
-    border-width: 2px;
-  }
-
-  .home-hero-type-option {
-    gap: clamp(10px, 1.4vh, 16px);
-  }
-
-  .home-hero-type-img {
-    width: clamp(124px, 9.4vw, 178px);
-    height: clamp(88px, 6.8vw, 128px);
-  }
-
-  .home-hero-benefits {
-    gap: clamp(8px, 1vh, 12px);
-    margin-bottom: clamp(24px, 3vh, 38px);
-  }
-
-  .home-hero-benefits li {
-    font-size: clamp(20px, 1.25vw, 26px);
-  }
-
-  .home-hero-check {
-    width: clamp(18px, 1.15vw, 24px);
-    height: clamp(18px, 1.15vw, 24px);
+  .home-page-shell .home-hero-types {
+    margin-top: 0;
+    margin-bottom: clamp(32px, 4.6vh, 48px);
   }
 
   .home-page-shell .home-hero-insurers {
-    margin-top: calc(clamp(8px, 1.4vh, 18px) + 45px);
+    margin-top: 0;
+    margin-bottom: 0;
+  }
+}
+
+@media (min-width: 1024px) {
+  .chat-input-wrapper {
+    border-top-left-radius: clamp(28px, 2vw, 36px);
+    border-top-right-radius: clamp(28px, 2vw, 36px);
+    overflow: hidden;
   }
 
-  .home-hero-insurer-logo {
-    height: clamp(28px, 2vw, 38px);
+  .chat-box {
+    border-top-left-radius: inherit;
+    border-top-right-radius: inherit;
   }
 
   .input-area {
@@ -993,8 +1023,7 @@ body.home-route .content-col {
   color: var(--color-text-primary);
 }
 
-.picker-back,
-.picker-x {
+.picker-back {
   background: none;
   border: 0;
   font-size: 28px;
@@ -1004,9 +1033,34 @@ body.home-route .content-col {
   padding: 0;
 }
 
+.picker-x {
+  background: none;
+  border: 0;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  cursor: pointer;
+  color: var(--color-text-primary);
+}
+
 .picker-back:hover,
 .picker-x:hover {
   color: var(--color-brand-500);
+}
+
+.rounded-close-icon {
+  width: 22px;
+  height: 22px;
+  display: block;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 
 /* Sections */
@@ -1082,16 +1136,33 @@ body.home-route .content-col {
 .row-code { color: var(--color-text-primary); }
 .row-name { color: var(--color-text-primary); opacity: .8; }
 .row-right {
-  min-width: 22px;
+  min-width: 28px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   text-align: center;
   line-height: 1;
 }
-.row-right.chevron { color: var(--color-text-secondary); font-weight: 700; font-size: 18px; }
+.picker-icon {
+  width: 20px;
+  height: 20px;
+  display: block;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.row-right.chevron {
+  color: var(--color-text-secondary);
+}
+
 .picker-row.active .row-right.chevron { color: #ffffff; }
-.row-right.tick { color: var(--color-brand-500); font-weight: 700; font-size: 18px; }
+.row-right.tick {
+  color: var(--color-brand-500);
+}
+
 .picker-row.checked .row-right.tick { color: #ffffff; }
 
 .picker-row:focus-visible { outline: none; box-shadow: inset 0 0 0 2px rgba(var(--color-brand-rgb), 0.2); }
@@ -2877,11 +2948,21 @@ body.home-route .content-col {
 }
 
 /* Mobile optimizations for keyboard handling */
-@media (max-width: 768px) {
+@media (max-width: 639px) {
   html,
   body {
     height: 100%;
     min-height: 100%;
+  }
+
+  body:not(.home-route) {
+    height: auto;
+    min-height: 100svh;
+  }
+
+  body:not(.home-route) .app-frame,
+  body:not(.home-route) .content-col {
+    min-height: 100svh;
   }
 
   body.home-route,
@@ -2899,9 +2980,20 @@ body.home-route .content-col {
     max-height: calc(100svh - var(--app-header-height));
   }
 
+  .home-page-shell.is-home {
+    overflow-y: auto;
+    overscroll-behavior-y: contain;
+    -webkit-overflow-scrolling: touch;
+  }
+
   .home-page-shell .home-main {
     padding-left: var(--page-gutter);
     padding-right: var(--page-gutter);
+  }
+
+  .home-page-shell.is-home .home-main {
+    overflow-y: visible;
+    padding-bottom: calc(var(--space-4) + env(safe-area-inset-bottom));
   }
 
   .chat-container {
@@ -2910,7 +3002,7 @@ body.home-route .content-col {
     overscroll-behavior-y: contain;
   }
 
-  .hero-content.home-hero {
+  .home-page-shell .hero-content.home-hero {
     max-width: 100%;
     min-height: 0;
     height: 100%;
@@ -2929,6 +3021,17 @@ body.home-route .content-col {
   .home-page-shell .home-hero-title {
     --hero-line-one-size: clamp(40px, 10.6vw, 52px);
     --hero-line-two-size: calc(var(--hero-line-one-size) * 0.64);
+    width: fit-content;
+    max-width: 100%;
+    margin-top: 0;
+    margin-bottom: var(--home-hero-title-gap-mobile);
+  }
+
+  .home-page-shell .home-hero-title-line,
+  .home-page-shell .home-hero-title-line-second {
+    white-space: nowrap;
+    text-wrap: initial;
+    overflow-wrap: normal;
   }
 
   .home-page-shell .home-hero-title-line {
@@ -2937,16 +3040,18 @@ body.home-route .content-col {
 
   .home-page-shell .home-hero-title-line-second {
     margin-top: clamp(6px, 1.5vw, 10px);
+    font-size: var(--hero-line-two-size);
     line-height: 1.12;
   }
 
-  .home-hero-types {
+  .home-page-shell .home-hero-types {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: clamp(12px, 3.5vw, 18px) clamp(10px, 3.2vw, 16px);
     max-width: min(100%, 430px);
     margin-left: auto;
     margin-right: auto;
-    margin-bottom: var(--home-hero-types-margin-mobile);
+    margin-top: 20px;
+    margin-bottom: clamp(30px, 4.2vh, 44px);
   }
 
   .home-hero-type-chip {
@@ -2956,7 +3061,6 @@ body.home-route .content-col {
     height: clamp(34px, 8.8vw, 42px);
     padding: 0 15px;
     font-size: clamp(13px, 3.96vw, 18px);
-    border-width: 1.5px;
   }
 
   .home-hero-type-option {
@@ -2967,7 +3071,7 @@ body.home-route .content-col {
   .home-hero-type-chip:active {
     background: #ffffff;
     color: #0A1F44;
-    border-color: #D8D8D8;
+    border-color: var(--color-border-chat-input);
     box-shadow: 0 1px 2px rgba(17, 24, 39, 0.06);
   }
 
@@ -2988,8 +3092,9 @@ body.home-route .content-col {
     margin-bottom: var(--home-hero-benefits-margin-mobile);
   }
 
-  .home-hero-insurers {
-    margin-top: var(--home-hero-insurers-margin-top-mobile);
+  .home-page-shell .home-hero-insurers {
+    --home-hero-insurer-track-gap: var(--home-hero-insurer-track-gap-mobile);
+    margin-top: calc(clamp(7px, 1.15vh, 14px) + 45px);
     margin-bottom: auto;
   }
 
@@ -3002,27 +3107,6 @@ body.home-route .content-col {
   .home-hero-insurers-track {
     animation-duration: 14s;
     gap: var(--home-hero-insurer-track-gap-mobile);
-  }
-
-  .home-hero-insurer-logo-wrap {
-    width: auto;
-    height: clamp(40px, 9vw, 50px);
-    padding: var(--home-hero-insurer-wrap-padding-mobile) var(--home-hero-insurer-wrap-padding-inline-mobile);
-  }
-
-  .home-hero-insurer-logo {
-    width: auto;
-    max-width: 100%;
-    height: clamp(24px, 5.6vw, 31px);
-    max-height: 100%;
-  }
-
-  .home-hero-insurer-logo-wrap[data-insurer="takaful"] .home-hero-insurer-logo {
-    height: clamp(28px, 6.3vw, 35px);
-  }
-
-  .home-hero-insurer-logo-wrap[data-insurer="lonpac"] .home-hero-insurer-logo {
-    height: clamp(19px, 4.5vw, 25px);
   }
 
   .hero.hero-chatting {
@@ -3044,5 +3128,210 @@ body.home-route .content-col {
   .recommended-actions button {
     padding: var(--space-3) var(--space-5);
     min-height: var(--touch-target-size);
+  }
+}
+
+@media (max-width: 420px) {
+  :root {
+    --page-gutter: 12px;
+    --control-height-lg: 54px;
+    --icon-button-size: 40px;
+    --bubble-add-col: 40px;
+    --bubble-send-col: 46px;
+  }
+
+  .chat-box {
+    padding-left: var(--page-gutter);
+    padding-right: var(--page-gutter);
+  }
+
+  .bubble {
+    column-gap: var(--space-2);
+    padding-left: 6px;
+    padding-right: 6px;
+  }
+
+  .input-area {
+    padding-left: var(--space-2);
+    padding-right: 2px;
+    font-size: 15px;
+  }
+
+  .terms-privacy p {
+    font-size: 11px;
+  }
+}
+
+@media (max-width: 639px) {
+  .home-page-shell.is-home .hero-content.home-hero {
+    padding: calc(var(--home-hero-chat-padding-top-mobile) + 18px) 0 var(--home-hero-chat-padding-bottom-mobile);
+    overflow-x: hidden;
+    overflow-y: visible;
+  }
+
+  .home-page-shell.is-home .home-hero-title {
+    --hero-line-one-size: clamp(34px, 10.6vw, 52px);
+    --hero-line-two-size: clamp(18px, 6.9vw, 31px);
+    margin: 0 auto clamp(48px, 6.2vh, 62px);
+  }
+
+  .home-page-shell.is-home .home-hero-title-line {
+    display: block;
+    font-size: var(--hero-line-one-size);
+    line-height: 1.08;
+    white-space: nowrap;
+    text-wrap: nowrap;
+    overflow-wrap: normal;
+    word-break: keep-all;
+  }
+
+  .home-page-shell.is-home .home-hero-title-line-second {
+    margin-top: clamp(10px, 2vw, 14px);
+    font-size: var(--hero-line-two-size);
+    line-height: 1.08;
+    white-space: nowrap;
+    text-wrap: nowrap;
+    overflow-wrap: normal;
+    word-break: keep-all;
+  }
+
+  .home-page-shell.is-home .home-hero-types {
+    margin-top: 8px;
+    margin-bottom: clamp(62px, 8vh, 88px);
+  }
+
+  .home-page-shell.is-home .home-hero-type-option {
+    gap: clamp(12px, 3vw, 16px);
+  }
+
+  .home-page-shell.is-home .home-hero-insurers {
+    margin-top: 0;
+    margin-bottom: auto;
+  }
+
+  .home-page-shell.is-home .home-hero-insurer-logo-wrap {
+    width: auto;
+    height: clamp(40px, 9vw, 50px);
+    padding: var(--home-hero-insurer-wrap-padding-mobile) var(--home-hero-insurer-wrap-padding-inline-mobile);
+  }
+
+  .home-page-shell.is-home .home-hero-insurer-logo {
+    width: auto;
+    max-width: 100%;
+    height: clamp(24px, 5.6vw, 31px);
+    max-height: 100%;
+  }
+
+  .home-page-shell.is-home .home-hero-insurer-logo-wrap[data-insurer="takaful"] .home-hero-insurer-logo {
+    height: clamp(28px, 6.3vw, 35px);
+  }
+
+  .home-page-shell.is-home .home-hero-insurer-logo-wrap[data-insurer="lonpac"] .home-hero-insurer-logo {
+    height: clamp(19px, 4.5vw, 25px);
+  }
+}
+
+@media (max-width: 360px) {
+  .home-page-shell.is-home .home-hero-title {
+    --hero-line-one-size: clamp(32px, 10vw, 36px);
+    --hero-line-two-size: clamp(17px, 6.4vw, 22px);
+  }
+
+  .home-page-shell.is-home .home-hero-title-line {
+    letter-spacing: -0.02em;
+  }
+
+  .home-page-shell.is-home .home-hero-title-line-second {
+    letter-spacing: -0.02em;
+  }
+}
+
+/* Tablet/desktop: keep the proven mobile composition, then scale it gently. */
+@media (min-width: 640px) {
+  :root {
+    --container-home: clamp(440px, 58vw, 640px);
+    --container-insurers: clamp(520px, 62vw, 700px);
+    --container-input: clamp(500px, 56vw, 620px);
+  }
+
+  .home-page-shell.is-home .home-main {
+    padding-left: clamp(20px, 5vw, 64px);
+    padding-right: clamp(20px, 5vw, 64px);
+  }
+
+  .home-page-shell .hero-content.home-hero {
+    width: min(100%, var(--container-home));
+    max-width: var(--container-home);
+    padding-top: clamp(72px, 10.5vh, 108px);
+    padding-bottom: clamp(14px, 2vh, 28px);
+  }
+
+  .home-page-shell .home-hero-title {
+    --hero-line-one-size: clamp(42px, 5.4vw, 58px);
+    --hero-line-two-size: clamp(27px, 3.4vw, 37px);
+    margin-bottom: clamp(42px, 5.8vh, 58px);
+  }
+
+  .home-page-shell .home-hero-types {
+    column-gap: clamp(28px, 6vw, 52px);
+    row-gap: clamp(14px, 2.5vw, 20px);
+    margin-bottom: clamp(52px, 7vh, 76px);
+  }
+
+  .home-hero-type-img {
+    width: clamp(90px, 11vw, 112px);
+    height: clamp(64px, 8vw, 82px);
+  }
+
+  .home-hero-type-chip {
+    min-width: clamp(132px, 17vw, 168px);
+    height: clamp(38px, 4.5vw, 42px);
+    font-size: clamp(16px, 1.7vw, 18px);
+  }
+
+  .home-page-shell .home-hero-insurers {
+    max-width: min(100%, var(--container-insurers));
+  }
+
+  .chat-column {
+    max-width: var(--container-input);
+  }
+
+  .chat-box {
+    padding-bottom: max(14px, env(safe-area-inset-bottom));
+  }
+}
+
+@media (min-width: 1024px) {
+  :root {
+    --container-home: clamp(600px, 46vw, 720px);
+    --container-insurers: clamp(620px, 50vw, 760px);
+    --container-input: clamp(560px, 44vw, 640px);
+  }
+
+  .home-page-shell .hero-content.home-hero {
+    padding-top: clamp(78px, 9vh, 104px);
+  }
+
+  .home-page-shell .home-hero-title {
+    --hero-line-one-size: clamp(56px, 4.4vw, 64px);
+    --hero-line-two-size: clamp(36px, 2.8vw, 42px);
+    margin-bottom: clamp(44px, 5.4vh, 60px);
+  }
+
+  .home-page-shell .home-hero-types {
+    column-gap: clamp(44px, 5vw, 68px);
+    margin-bottom: clamp(48px, 6vh, 68px);
+  }
+
+  .home-hero-type-img {
+    width: clamp(100px, 8vw, 118px);
+    height: clamp(72px, 5.8vw, 84px);
+  }
+
+  .home-hero-type-chip {
+    min-width: 172px;
+    height: 42px;
+    font-size: 18px;
   }
 }

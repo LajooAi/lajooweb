@@ -95,8 +95,10 @@ export default function Home() {
   const [showScrollButton, setShowScrollButton] = useState(false);
   const [isTurnAnchoring, setIsTurnAnchoring] = useState(false);
   const [anchorSpacerPx, setAnchorSpacerPx] = useState(0);
+  const [heroInsurerLoopWidth, setHeroInsurerLoopWidth] = useState(0);
   const threadRef = useRef(null);
   const homeMainRef = useRef(null);
+  const heroInsurerGroupRef = useRef(null);
   const inputRef = useRef(null);
   const addButtonRef = useRef(null);
   const addMenuRef = useRef(null);
@@ -118,6 +120,31 @@ export default function Home() {
   const stateStorageKey = `lajoo_state_${sessionKey}`;
   const params = useParams();
   const country = (params?.country || "my").toLowerCase();
+
+  useEffect(() => {
+    const group = heroInsurerGroupRef.current;
+    if (!group) return undefined;
+
+    const updateLoopWidth = () => {
+      setHeroInsurerLoopWidth(group.getBoundingClientRect().width);
+    };
+
+    updateLoopWidth();
+
+    if (typeof ResizeObserver === "undefined") {
+      return undefined;
+    }
+
+    const resizeObserver = new ResizeObserver(() => {
+      updateLoopWidth();
+    });
+
+    resizeObserver.observe(group);
+
+    return () => {
+      resizeObserver.disconnect();
+    };
+  }, []);
 
   const hasMessages = messages.length > 0;
   const USER_MESSAGE_TOP_OFFSET = 4;
@@ -840,22 +867,37 @@ Your coverage starts immediately. Drive safe!`
               </div>
 
               <div className="home-hero-insurers" aria-label="Trusted insurers">
-                <div className="home-hero-insurers-track">
-                  {[...HERO_INSURER_LOGOS, ...HERO_INSURER_LOGOS].map((insurer, idx) => (
-                    <span
-                      key={`${insurer.name}-${idx}`}
-                      className="home-hero-insurer-logo-wrap"
-                      data-insurer={insurer.id}
-                      aria-hidden={idx >= HERO_INSURER_LOGOS.length}
+                <div
+                  className={`home-hero-insurers-track${heroInsurerLoopWidth ? " is-ready" : ""}`}
+                  style={
+                    heroInsurerLoopWidth
+                      ? { "--home-hero-insurers-loop-width": `${heroInsurerLoopWidth}px` }
+                      : undefined
+                  }
+                >
+                  {Array.from({ length: 3 }).map((_, groupIdx) => (
+                    <div
+                      key={`insurer-group-${groupIdx}`}
+                      className="home-hero-insurers-group"
+                      aria-hidden={groupIdx > 0}
+                      ref={groupIdx === 0 ? heroInsurerGroupRef : undefined}
                     >
-                      <Image
-                        src={insurer.src}
-                        alt={insurer.name}
-                        width={132}
-                        height={42}
-                        className="home-hero-insurer-logo"
-                      />
-                    </span>
+                      {HERO_INSURER_LOGOS.map((insurer) => (
+                        <span
+                          key={`${groupIdx}-${insurer.id}`}
+                          className="home-hero-insurer-logo-wrap"
+                          data-insurer={insurer.id}
+                        >
+                          <Image
+                            src={insurer.src}
+                            alt={insurer.name}
+                            width={132}
+                            height={42}
+                            className="home-hero-insurer-logo"
+                          />
+                        </span>
+                      ))}
+                    </div>
                   ))}
                 </div>
               </div>

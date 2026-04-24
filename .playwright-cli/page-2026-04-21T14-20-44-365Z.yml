@@ -1,0 +1,93 @@
+- generic [ref=e2]:
+  - generic [ref=e3]:
+    - banner [ref=e4]:
+      - button "Open menu" [ref=e6] [cursor=pointer]:
+        - img [ref=e7]
+      - button "Start new chat" [ref=e9] [cursor=pointer]:
+        - img "LAJOO logo" [ref=e10]
+      - 'button "Open country and language selector. Current: MY EN" [ref=e12] [cursor=pointer]':
+        - generic [ref=e13]:
+          - generic [ref=e14]: MY
+          - generic [ref=e15]: ·
+          - generic [ref=e16]: EN
+    - main [ref=e17]:
+      - generic [ref=e18]:
+        - heading "Hello, feel free to contact us." [level=1] [ref=e19]:
+          - generic [ref=e20]: Hello,
+          - generic [ref=e21]: feel free to contact us.
+        - paragraph [ref=e22]: LAJOO AI should be able to answer all your questions instantly 24/7, but if you need to talk to humans we’re always here for you.
+        - generic [ref=e23]:
+          - paragraph [ref=e24]: LAJOO HUMANS
+          - paragraph [ref=e25]: 10am - 6pm
+      - region "Contact details" [ref=e26]:
+        - link "WhatsApp recommended +60162225794" [ref=e27] [cursor=pointer]:
+          - /url: https://wa.me/60162225794
+          - generic [ref=e28]:
+            - generic [ref=e29]:
+              - heading "WhatsApp" [level=2] [ref=e30]
+              - generic [ref=e31]: recommended
+            - paragraph [ref=e32]: "+60162225794"
+          - img [ref=e34]
+        - link "Call +60162225794" [ref=e38] [cursor=pointer]:
+          - /url: tel:+60162225794
+          - generic [ref=e39]:
+            - heading "Call" [level=2] [ref=e40]
+            - paragraph [ref=e41]: "+60162225794"
+          - img [ref=e43]
+        - link "Email lajoo.ai@gmail.com" [ref=e45] [cursor=pointer]:
+          - /url: mailto:lajoo.ai@gmail.com
+          - generic [ref=e46]:
+            - heading "Email" [level=2] [ref=e47]
+            - paragraph [ref=e48]: lajoo.ai@gmail.com
+          - img [ref=e50]
+      - generic "LAJOO footer links and contact" [ref=e53]:
+        - generic [ref=e55]:
+          - generic [ref=e56]:
+            - img "LAJOO" [ref=e57]
+            - paragraph [ref=e58]: LAJOO AI SDN. BHD.
+            - paragraph [ref=e59]: 202501028462 (1629874-U)
+            - paragraph [ref=e60]: AI-powered insurance renewal platform in Malaysia
+          - navigation "Footer navigation" [ref=e62]:
+            - link "Homepage" [ref=e63] [cursor=pointer]:
+              - /url: /my
+            - link "What is LAJOO ?" [ref=e64] [cursor=pointer]:
+              - /url: /my/what-is-lajoo
+            - link "FAQ" [ref=e65] [cursor=pointer]:
+              - /url: /my/faq
+            - link "Contact Us" [ref=e66] [cursor=pointer]:
+              - /url: /my/contact-us
+            - link "Terms & Privacy Policy" [ref=e67] [cursor=pointer]:
+              - /url: /my/terms
+          - generic [ref=e68]:
+            - heading "Follow Us" [level=3] [ref=e69]
+            - generic [ref=e70]:
+              - link "Facebook" [ref=e71] [cursor=pointer]:
+                - /url: https://www.facebook.com/
+                - img [ref=e72]
+              - link "Instagram" [ref=e74] [cursor=pointer]:
+                - /url: https://www.instagram.com/
+                - img [ref=e75]
+              - link "TikTok" [ref=e79] [cursor=pointer]:
+                - /url: https://www.tiktok.com/
+                - img [ref=e80]
+              - link "Rednote" [ref=e82] [cursor=pointer]:
+                - /url: https://www.xiaohongshu.com/
+                - generic [ref=e83]: R
+              - link "YouTube" [ref=e84] [cursor=pointer]:
+                - /url: https://www.youtube.com/
+                - img [ref=e85]
+  - dialog [ref=e88]:
+    - generic [ref=e89]:
+      - img "LAJOO" [ref=e90]
+      - button "Close" [ref=e91] [cursor=pointer]: ×
+    - navigation [ref=e92]:
+      - link "LAJOO" [ref=e93] [cursor=pointer]:
+        - /url: /my
+      - link "What is LAJOO ?" [ref=e94] [cursor=pointer]:
+        - /url: /my/what-is-lajoo
+      - link "FAQ" [ref=e95] [cursor=pointer]:
+        - /url: /my/faq
+      - link "Contact Us" [ref=e96] [cursor=pointer]:
+        - /url: /my/contact-us
+      - link "Terms & Privacy Policy" [ref=e97] [cursor=pointer]:
+        - /url: /my/terms

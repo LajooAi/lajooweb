@@ -1,0 +1,93 @@
+- generic [ref=e2]:
+  - generic [ref=e3]:
+    - banner [ref=e4]:
+      - button "Open menu" [ref=e6] [cursor=pointer]:
+        - img [ref=e7]
+      - button "Start new chat" [ref=e9] [cursor=pointer]:
+        - img "LAJOO logo" [ref=e10]
+      - 'button "Open country and language selector. Current: MY EN" [ref=e12] [cursor=pointer]':
+        - generic [ref=e13]:
+          - generic [ref=e14]: MY
+          - generic [ref=e15]: ·
+          - generic [ref=e16]: EN
+    - main [ref=e17]:
+      - generic [ref=e18]:
+        - paragraph [ref=e19]: FAQ
+        - heading "Frequently Asked Questions" [level=1] [ref=e20]
+      - region "FAQ list" [ref=e21]:
+        - article [ref=e22]:
+          - button "How does LAJOO work?" [expanded] [ref=e23] [cursor=pointer]:
+            - generic [ref=e24]: How does LAJOO work?
+            - img [ref=e26]
+          - paragraph [ref=e28]: Just share your plate number and renewal details in chat. LAJOO compares insurers, explains options, and helps you renew in one flow.
+        - article [ref=e29]:
+          - button "How long does renewal usually take?" [ref=e30] [cursor=pointer]:
+            - generic [ref=e31]: How long does renewal usually take?
+            - img [ref=e33]
+        - article [ref=e35]:
+          - button "Can I compare multiple insurers before paying?" [ref=e36] [cursor=pointer]:
+            - generic [ref=e37]: Can I compare multiple insurers before paying?
+            - img [ref=e39]
+        - article [ref=e41]:
+          - button "Can I renew outside office hours?" [ref=e42] [cursor=pointer]:
+            - generic [ref=e43]: Can I renew outside office hours?
+            - img [ref=e45]
+        - article [ref=e47]:
+          - button "What payment methods are supported?" [ref=e48] [cursor=pointer]:
+            - generic [ref=e49]: What payment methods are supported?
+            - img [ref=e51]
+        - article [ref=e53]:
+          - button "Do I need to prepare any documents?" [ref=e54] [cursor=pointer]:
+            - generic [ref=e55]: Do I need to prepare any documents?
+            - img [ref=e57]
+      - generic "LAJOO footer links and contact" [ref=e59]:
+        - generic [ref=e61]:
+          - generic [ref=e62]:
+            - img "LAJOO" [ref=e63]
+            - paragraph [ref=e64]: LAJOO AI SDN. BHD.
+            - paragraph [ref=e65]: 202501028462 (1629874-U)
+            - paragraph [ref=e66]: AI-powered insurance renewal platform in Malaysia
+          - navigation "Footer navigation" [ref=e68]:
+            - link "Homepage" [ref=e69] [cursor=pointer]:
+              - /url: /my
+            - link "What is LAJOO ?" [ref=e70] [cursor=pointer]:
+              - /url: /my/what-is-lajoo
+            - link "FAQ" [ref=e71] [cursor=pointer]:
+              - /url: /my/faq
+            - link "Contact Us" [ref=e72] [cursor=pointer]:
+              - /url: /my/contact-us
+            - link "Terms & Privacy Policy" [ref=e73] [cursor=pointer]:
+              - /url: /my/terms
+          - generic [ref=e74]:
+            - heading "Follow Us" [level=3] [ref=e75]
+            - generic [ref=e76]:
+              - link "Facebook" [ref=e77] [cursor=pointer]:
+                - /url: https://www.facebook.com/
+                - img [ref=e78]
+              - link "Instagram" [ref=e80] [cursor=pointer]:
+                - /url: https://www.instagram.com/
+                - img [ref=e81]
+              - link "TikTok" [ref=e85] [cursor=pointer]:
+                - /url: https://www.tiktok.com/
+                - img [ref=e86]
+              - link "Rednote" [ref=e88] [cursor=pointer]:
+                - /url: https://www.xiaohongshu.com/
+                - generic [ref=e89]: R
+              - link "YouTube" [ref=e90] [cursor=pointer]:
+                - /url: https://www.youtube.com/
+                - img [ref=e91]
+  - dialog [ref=e94]:
+    - generic [ref=e95]:
+      - img "LAJOO" [ref=e96]
+      - button "Close" [ref=e97] [cursor=pointer]: ×
+    - navigation [ref=e98]:
+      - link "LAJOO" [ref=e99] [cursor=pointer]:
+        - /url: /my
+      - link "What is LAJOO ?" [ref=e100] [cursor=pointer]:
+        - /url: /my/what-is-lajoo
+      - link "FAQ" [ref=e101] [cursor=pointer]:
+        - /url: /my/faq
+      - link "Contact Us" [ref=e102] [cursor=pointer]:
+        - /url: /my/contact-us
+      - link "Terms & Privacy Policy" [ref=e103] [cursor=pointer]:
+        - /url: /my/terms

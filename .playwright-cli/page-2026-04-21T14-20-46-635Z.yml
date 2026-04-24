@@ -1,0 +1,254 @@
+- generic [ref=e2]:
+  - generic [ref=e3]:
+    - banner [ref=e4]:
+      - button "Open menu" [ref=e6] [cursor=pointer]:
+        - img [ref=e7]
+      - button "Start new chat" [ref=e9] [cursor=pointer]:
+        - img "LAJOO logo" [ref=e10]
+      - 'button "Open country and language selector. Current: MY EN" [ref=e12] [cursor=pointer]':
+        - generic [ref=e13]:
+          - generic [ref=e14]: MY
+          - generic [ref=e15]: ·
+          - generic [ref=e16]: EN
+    - main [ref=e17]:
+      - region "Legal page heading" [ref=e18]:
+        - paragraph [ref=e19]: LEGAL
+        - heading "Terms and Privacy Policy" [level=1] [ref=e20]
+        - paragraph [ref=e21]: "Effective and last updated : 13th March 2026"
+        - paragraph [ref=e22]: LAJOO AI SDN BHD
+        - paragraph [ref=e23]: 202501028462 (1629874-U)
+      - navigation "Table of contents" [ref=e24]:
+        - heading "Quick Navigation" [level=2] [ref=e25]
+        - generic [ref=e26]:
+          - generic [ref=e27]:
+            - paragraph [ref=e28]: Terms and Conditions
+            - list [ref=e29]:
+              - listitem [ref=e30]:
+                - link "Scope and acceptance" [ref=e31] [cursor=pointer]:
+                  - /url: "#terms-scope"
+              - listitem [ref=e32]:
+                - link "Eligibility and accounts" [ref=e33] [cursor=pointer]:
+                  - /url: "#terms-eligibility"
+              - listitem [ref=e34]:
+                - link "Insurance quotes and policies" [ref=e35] [cursor=pointer]:
+                  - /url: "#terms-insurance"
+              - listitem [ref=e36]:
+                - link "Payments, renewals, and refunds" [ref=e37] [cursor=pointer]:
+                  - /url: "#terms-payments"
+              - listitem [ref=e38]:
+                - link "Acceptable use and IP" [ref=e39] [cursor=pointer]:
+                  - /url: "#terms-use"
+              - listitem [ref=e40]:
+                - link "Disclaimers and liability" [ref=e41] [cursor=pointer]:
+                  - /url: "#terms-liability"
+              - listitem [ref=e42]:
+                - link "Disputes and governing law" [ref=e43] [cursor=pointer]:
+                  - /url: "#terms-disputes"
+              - listitem [ref=e44]:
+                - link "Changes and notices" [ref=e45] [cursor=pointer]:
+                  - /url: "#terms-changes"
+          - generic [ref=e46]:
+            - paragraph [ref=e47]: Privacy Policy
+            - list [ref=e48]:
+              - listitem [ref=e49]:
+                - link "Information we collect" [ref=e50] [cursor=pointer]:
+                  - /url: "#privacy-collect"
+              - listitem [ref=e51]:
+                - link "How we use data" [ref=e52] [cursor=pointer]:
+                  - /url: "#privacy-use"
+              - listitem [ref=e53]:
+                - link "Data sharing" [ref=e54] [cursor=pointer]:
+                  - /url: "#privacy-share"
+              - listitem [ref=e55]:
+                - link "International transfers" [ref=e56] [cursor=pointer]:
+                  - /url: "#privacy-transfers"
+              - listitem [ref=e57]:
+                - link "Retention and security" [ref=e58] [cursor=pointer]:
+                  - /url: "#privacy-retention"
+              - listitem [ref=e59]:
+                - link "Cookies and analytics" [ref=e60] [cursor=pointer]:
+                  - /url: "#privacy-cookies"
+              - listitem [ref=e61]:
+                - link "Your rights" [ref=e62] [cursor=pointer]:
+                  - /url: "#privacy-rights"
+              - listitem [ref=e63]:
+                - link "Contact and complaints" [ref=e64] [cursor=pointer]:
+                  - /url: "#privacy-contact"
+      - article [ref=e65]:
+        - heading "Terms and Conditions" [level=2] [ref=e66]
+        - paragraph [ref=e67]: By using the LAJOO website, products, and services (the Services), you agree to these Terms. If you do not agree, you must stop using the Services.
+        - generic [ref=e68]:
+          - heading "1. Scope and acceptance" [level=3] [ref=e69]
+          - paragraph [ref=e70]: These Terms apply to all users of LAJOO Services, including insurance quote, policy renewal, payment, support, and communication features.
+        - generic [ref=e71]:
+          - heading "2. Eligibility and accounts" [level=3] [ref=e72]
+          - list [ref=e73]:
+            - listitem [ref=e74]: You must be at least 18 years old and legally able to contract.
+            - listitem [ref=e75]: You are responsible for account security and all activity under your account.
+            - listitem [ref=e76]: You must provide accurate, complete, and up-to-date information.
+        - generic [ref=e77]:
+          - heading "3. Insurance quotes and policies" [level=3] [ref=e78]
+          - list [ref=e79]:
+            - listitem [ref=e80]: LAJOO is a facilitator and technology platform, not an insurer.
+            - listitem [ref=e81]: Final premium, approval, coverage, terms, and exclusions are set by the insurer.
+            - listitem [ref=e82]: You must review the insurer policy wording and schedule before purchase.
+            - listitem [ref=e83]: Incomplete or inaccurate details may cause repricing, rejection, or policy issues.
+        - generic [ref=e84]:
+          - heading "4. Payments, renewals, and refunds" [level=3] [ref=e85]
+          - list [ref=e86]:
+            - listitem [ref=e87]: Charges may include premium, tax, duties, processing costs, and service fees.
+            - listitem [ref=e88]: Payment processing is handled by approved payment partners and banks.
+            - listitem [ref=e89]: Refund or cancellation outcomes follow insurer and payment-partner rules unless law says otherwise.
+            - listitem [ref=e90]: Renewal reminders are informational only; policy continuity is your responsibility.
+        - generic [ref=e91]:
+          - heading "5. Acceptable use and intellectual property" [level=3] [ref=e92]
+          - list [ref=e93]:
+            - listitem [ref=e94]: No unlawful, misleading, abusive, harmful, or fraudulent conduct.
+            - listitem [ref=e95]: No scraping, automated extraction, reverse engineering, or interference with platform security.
+            - listitem [ref=e96]: All platform content, software, brand assets, and materials belong to LAJOO AI SDN BHD or licensors.
+            - listitem [ref=e97]: We grant a limited, non-exclusive, non-transferable, revocable right to use the Services.
+        - generic [ref=e98]:
+          - heading "6. Third-party services, disclaimers, liability, and indemnity" [level=3] [ref=e99]
+          - list [ref=e100]:
+            - listitem [ref=e101]: Third-party websites, insurer portals, and payment systems are outside our direct control.
+            - listitem [ref=e102]: Services are provided on an as-is and as-available basis.
+            - listitem [ref=e103]: We do not provide legal, tax, or financial advice.
+            - listitem [ref=e104]: To the maximum extent allowed by law, we are not liable for indirect, incidental, or consequential loss.
+            - listitem [ref=e105]: You agree to indemnify LAJOO AI SDN BHD for losses arising from your misuse, breach, or unlawful conduct.
+        - generic [ref=e106]:
+          - heading "7. Suspension, termination, disputes, and governing law" [level=3] [ref=e107]
+          - list [ref=e108]:
+            - listitem [ref=e109]: We may suspend or terminate access if there is misuse, fraud risk, legal risk, or breach of Terms.
+            - listitem [ref=e110]: We may attempt good-faith resolution before formal legal action.
+            - listitem [ref=e111]: These Terms are governed by the laws of Malaysia.
+            - listitem [ref=e112]: You agree to the jurisdiction of courts in Malaysia, unless mandatory law requires otherwise.
+        - generic [ref=e113]:
+          - heading "8. Changes and notices" [level=3] [ref=e114]
+          - list [ref=e115]:
+            - listitem [ref=e116]: We may update these Terms from time to time.
+            - listitem [ref=e117]: Material updates will be posted on this page with a revised effective date.
+            - listitem [ref=e118]: Continued use of Services after updates means acceptance of the revised Terms.
+            - listitem [ref=e119]:
+              - text: For legal notices, contact us at
+              - link "lajoo.ai@gmail.com" [ref=e120] [cursor=pointer]:
+                - /url: mailto:lajoo.ai@gmail.com
+              - text: .
+        - paragraph [ref=e121]:
+          - link "Back to top" [ref=e122] [cursor=pointer]:
+            - /url: "#top"
+      - article [ref=e123]:
+        - heading "Privacy Policy" [level=2] [ref=e124]
+        - paragraph [ref=e125]: This Privacy Policy explains how we collect, use, share, store, and protect personal data when you use our Services.
+        - generic [ref=e126]:
+          - heading "1. Information we collect" [level=3] [ref=e127]
+          - list [ref=e128]:
+            - listitem [ref=e129]: "Identity and contact data: name, email, phone number, address, and IDs if required."
+            - listitem [ref=e130]: "Vehicle and insurance data: plate number, vehicle details, policy history, and claims details."
+            - listitem [ref=e131]: "Technical data: device/browser details, IP address, logs, and usage analytics."
+            - listitem [ref=e132]: "Transaction data: payment status and reference details from payment providers."
+        - generic [ref=e133]:
+          - heading "2. How we use data and legal basis" [level=3] [ref=e134]
+          - list [ref=e135]:
+            - listitem [ref=e136]: To provide quotes, policy servicing, renewals, and customer support.
+            - listitem [ref=e137]: To verify identity, detect fraud, maintain security, and prevent abuse.
+            - listitem [ref=e138]: To comply with legal, audit, and regulatory requirements.
+            - listitem [ref=e139]: To improve products and user experience under legitimate business interests.
+            - listitem [ref=e140]: To send marketing where consent exists or where legally permitted, with opt-out options.
+        - generic [ref=e141]:
+          - heading "3. How we share data" [level=3] [ref=e142]
+          - list [ref=e143]:
+            - listitem [ref=e144]: Insurers and underwriting partners, where needed to quote or issue policies.
+            - listitem [ref=e145]: Payment providers, banks, and financial processors for transaction handling.
+            - listitem [ref=e146]: Technology vendors (hosting, analytics, messaging, support) under confidentiality duties.
+            - listitem [ref=e147]: Authorities and regulators when required by law, court order, or public safety obligations.
+        - generic [ref=e148]:
+          - heading "4. International transfers" [level=3] [ref=e149]
+          - paragraph [ref=e150]: If personal data is transferred outside your country, we apply appropriate contractual, technical, and organizational safeguards.
+        - generic [ref=e151]:
+          - heading "5. Retention and security" [level=3] [ref=e152]
+          - list [ref=e153]:
+            - listitem [ref=e154]: We retain data only as long as necessary for service delivery, legal obligations, and dispute handling.
+            - listitem [ref=e155]: After retention periods, data is deleted, anonymized, or securely archived where lawful.
+            - listitem [ref=e156]: We use layered administrative, technical, and operational security controls.
+            - listitem [ref=e157]: No internet system is fully secure; users should also protect account credentials.
+        - generic [ref=e158]:
+          - heading "6. Cookies and analytics" [level=3] [ref=e159]
+          - list [ref=e160]:
+            - listitem [ref=e161]: Cookies are used for login sessions, user preferences, security, and measurement.
+            - listitem [ref=e162]: Blocking cookies may reduce functionality in parts of the Services.
+            - listitem [ref=e163]: Where required by law, consent tools will be provided for non-essential cookies.
+        - generic [ref=e164]:
+          - heading "7. Your privacy rights" [level=3] [ref=e165]
+          - list [ref=e166]:
+            - listitem [ref=e167]: Subject to applicable law, you may request access, correction, deletion, or restriction of data processing.
+            - listitem [ref=e168]: You may withdraw consent for optional processing at any time.
+            - listitem [ref=e169]: You may opt out of direct marketing communication via unsubscribe links or by contacting us.
+            - listitem [ref=e170]:
+              - text: For requests, email
+              - link "lajoo.ai@gmail.com" [ref=e171] [cursor=pointer]:
+                - /url: mailto:lajoo.ai@gmail.com
+              - text: . We may verify your identity first.
+        - generic [ref=e172]:
+          - heading "8. Children, updates, contact, and complaints" [level=3] [ref=e173]
+          - list [ref=e174]:
+            - listitem [ref=e175]: Services are not directed at children under 18, and we do not knowingly collect child data.
+            - listitem [ref=e176]: We may update this Privacy Policy and publish updates with a revised effective date.
+            - listitem [ref=e177]:
+              - text: Contact LAJOO AI SDN BHD at
+              - link "lajoo.ai@gmail.com" [ref=e178] [cursor=pointer]:
+                - /url: mailto:lajoo.ai@gmail.com
+              - text: for privacy requests or complaints.
+        - paragraph [ref=e179]:
+          - link "Back to top" [ref=e180] [cursor=pointer]:
+            - /url: "#top"
+      - generic "LAJOO footer links and contact" [ref=e181]:
+        - generic [ref=e183]:
+          - generic [ref=e184]:
+            - img "LAJOO" [ref=e185]
+            - paragraph [ref=e186]: LAJOO AI SDN. BHD.
+            - paragraph [ref=e187]: 202501028462 (1629874-U)
+            - paragraph [ref=e188]: AI-powered insurance renewal platform in Malaysia
+          - navigation "Footer navigation" [ref=e190]:
+            - link "Homepage" [ref=e191] [cursor=pointer]:
+              - /url: /my
+            - link "What is LAJOO ?" [ref=e192] [cursor=pointer]:
+              - /url: /my/what-is-lajoo
+            - link "FAQ" [ref=e193] [cursor=pointer]:
+              - /url: /my/faq
+            - link "Contact Us" [ref=e194] [cursor=pointer]:
+              - /url: /my/contact-us
+            - link "Terms & Privacy Policy" [ref=e195] [cursor=pointer]:
+              - /url: /my/terms
+          - generic [ref=e196]:
+            - heading "Follow Us" [level=3] [ref=e197]
+            - generic [ref=e198]:
+              - link "Facebook" [ref=e199] [cursor=pointer]:
+                - /url: https://www.facebook.com/
+                - img [ref=e200]
+              - link "Instagram" [ref=e202] [cursor=pointer]:
+                - /url: https://www.instagram.com/
+                - img [ref=e203]
+              - link "TikTok" [ref=e207] [cursor=pointer]:
+                - /url: https://www.tiktok.com/
+                - img [ref=e208]
+              - link "Rednote" [ref=e210] [cursor=pointer]:
+                - /url: https://www.xiaohongshu.com/
+                - generic [ref=e211]: R
+              - link "YouTube" [ref=e212] [cursor=pointer]:
+                - /url: https://www.youtube.com/
+                - img [ref=e213]
+  - dialog [ref=e216]:
+    - generic [ref=e217]:
+      - img "LAJOO" [ref=e218]
+      - button "Close" [ref=e219] [cursor=pointer]: ×
+    - navigation [ref=e220]:
+      - link "LAJOO" [ref=e221] [cursor=pointer]:
+        - /url: /my
+      - link "What is LAJOO ?" [ref=e222] [cursor=pointer]:
+        - /url: /my/what-is-lajoo
+      - link "FAQ" [ref=e223] [cursor=pointer]:
+        - /url: /my/faq
+      - link "Contact Us" [ref=e224] [cursor=pointer]:
+        - /url: /my/contact-us
+      - link "Terms & Privacy Policy" [ref=e225] [cursor=pointer]:
+        - /url: /my/terms

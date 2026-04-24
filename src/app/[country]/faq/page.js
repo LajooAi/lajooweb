@@ -1,4 +1,7 @@
-import styles from "../info-page.module.css";
+"use client";
+
+import { useState } from "react";
+import styles from "./faq.module.css";
 import InfoFooter from "@/components/InfoFooter";
 
 const faqItems = [
@@ -22,26 +25,61 @@ const faqItems = [
     answer:
       "Yes. The platform is available 24/7 so you can check options and proceed anytime.",
   },
+  {
+    question: "What payment methods are supported?",
+    answer:
+      "You can pay using cards, e-wallets, online banking, and selected installment options shown during checkout.",
+  },
+  {
+    question: "Do I need to prepare any documents?",
+    answer:
+      "Usually just your plate number and renewal details are enough to get started. LAJOO will ask for anything else only if needed.",
+  },
 ];
 
 export default function FAQPage() {
+  const [openIndex, setOpenIndex] = useState(0);
+
   return (
     <main className={styles.wrap}>
       <section className={styles.hero}>
         <p className={styles.kicker}>FAQ</p>
         <h1 className={styles.title}>Frequently Asked Questions</h1>
-        <p className={styles.meta}>
-          Quick answers to common questions about comparing, renewing, and paying with LAJOO.
-        </p>
       </section>
 
-      <section className={styles.grid} aria-label="FAQ list">
-        {faqItems.map((item) => (
-          <article key={item.question} className={styles.card}>
-            <h2>{item.question}</h2>
-            <p>{item.answer}</p>
-          </article>
-        ))}
+      <section className={styles.faqList} aria-label="FAQ list">
+        {faqItems.map((item, index) => {
+          const isOpen = index === openIndex;
+
+          return (
+            <article
+              key={item.question}
+              className={`${styles.faqItem} ${isOpen ? styles.faqItemOpen : ""}`}
+            >
+              <button
+                type="button"
+                className={styles.faqButton}
+                aria-expanded={isOpen}
+                onClick={() => setOpenIndex(isOpen ? -1 : index)}
+              >
+                <span className={styles.faqQuestion}>{item.question}</span>
+                <span className={styles.faqIconWrap} aria-hidden="true">
+                  <svg className={styles.faqIcon} viewBox="0 0 20 20" fill="none">
+                    <path
+                      d={isOpen ? "M5 12.5L10 7.5L15 12.5" : "M5 7.5L10 12.5L15 7.5"}
+                      stroke="currentColor"
+                      strokeWidth="2.2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                  </svg>
+                </span>
+              </button>
+
+              {isOpen ? <p className={styles.faqAnswer}>{item.answer}</p> : null}
+            </article>
+          );
+        })}
       </section>
 
       <InfoFooter />

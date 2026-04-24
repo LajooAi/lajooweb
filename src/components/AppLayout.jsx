@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname, useParams, useRouter } from "next/navigation";
 import { COUNTRIES } from "@/lib/localeConfig";
 import CountryLangPicker from "./CountryLangPicker";
+import RoundedCloseIcon from "./RoundedCloseIcon";
 
 export default function AppLayout({ children }) {
   const [open, setOpen] = useState(false);
@@ -19,6 +20,26 @@ export default function AppLayout({ children }) {
   const isActive = (href) => (pathname === href ? "active" : "");
 
   useEffect(() => { setOpen(false); }, [pathname]);        // close drawer on route change
+  useEffect(() => {
+    if (!pathname) return;
+    const homePath = `/${country}`;
+    if (pathname === homePath) return;
+
+    const resetScroll = () => {
+      window.scrollTo({ top: 0, left: 0, behavior: "auto" });
+      document.documentElement.scrollTop = 0;
+      document.body.scrollTop = 0;
+      document.querySelector(".content-col")?.scrollTo?.({ top: 0, left: 0, behavior: "auto" });
+      document.querySelector("main")?.scrollTo?.({ top: 0, left: 0, behavior: "auto" });
+    };
+
+    const firstFrame = requestAnimationFrame(() => {
+      resetScroll();
+      requestAnimationFrame(resetScroll);
+    });
+
+    return () => cancelAnimationFrame(firstFrame);
+  }, [pathname, country]);
   useEffect(() => {
     const onKey = (e) => e.key === "Escape" && setOpen(false);
     window.addEventListener("keydown", onKey);
@@ -92,7 +113,9 @@ export default function AppLayout({ children }) {
       <aside className={`drawer-panel ${open ? "open" : ""}`} role="dialog" aria-modal="true">
         <div className="drawer-header">
           <img src="/logo/lajoo-logo.png" alt="LAJOO" className="brand-logo" />
-          <button className="drawer-close" aria-label="Close" onClick={() => setOpen(false)}>×</button>
+          <button className="drawer-close" aria-label="Close" onClick={() => setOpen(false)}>
+            <RoundedCloseIcon />
+          </button>
         </div>
         <nav className="drawer-nav">
           <Link href={`/${country}`} className={`drawer-link ${isActive(`/${country}`)}`}>LAJOO</Link>

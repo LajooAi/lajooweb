@@ -1,0 +1,111 @@
+- generic [ref=e2]:
+  - generic [ref=e3]:
+    - banner [ref=e4]:
+      - button "Open menu" [ref=e6] [cursor=pointer]:
+        - img [ref=e7]
+      - button "Start new chat" [ref=e9] [cursor=pointer]:
+        - img "LAJOO logo" [ref=e10]
+      - 'button "Open country and language selector. Current: MY EN" [ref=e12] [cursor=pointer]':
+        - generic [ref=e13]:
+          - generic [ref=e14]: MY
+          - generic [ref=e15]: ·
+          - generic [ref=e16]: EN
+    - generic [ref=e18]:
+      - generic [ref=e19]:
+        - button [ref=e20]:
+          - img [ref=e21]
+        - heading "Complete Payment" [level=1] [ref=e23]
+      - generic [ref=e24]:
+        - generic [ref=e25]:
+          - img [ref=e26]
+          - text: Secure Checkout
+        - heading "Etiqa Car Insurance Renewal" [level=2] [ref=e29]
+        - paragraph [ref=e30]: ABC123
+        - generic [ref=e31]:
+          - generic [ref=e32]:
+            - text: Insurance Premium
+            - generic [ref=e33]: RM 920
+          - generic [ref=e34]:
+            - text: Add-ons
+            - generic [ref=e35]: RM 152
+          - generic [ref=e36]:
+            - text: Road Tax
+            - generic [ref=e37]: RM 110
+          - generic [ref=e38]:
+            - text: Total
+            - generic [ref=e39]: RM 1,182
+      - generic [ref=e40]:
+        - heading "Select Payment Method" [level=3] [ref=e41]
+        - generic [ref=e42]:
+          - button "Credit / Debit Card Visa, Mastercard, American Express Visa Mastercard Amex" [ref=e43]:
+            - generic [ref=e44]:
+              - generic [ref=e45]: Credit / Debit Card
+              - text: Visa, Mastercard, American Express
+              - generic [ref=e46]:
+                - img "Visa" [ref=e48]
+                - img "Mastercard" [ref=e50]
+                - img "Amex" [ref=e52]
+          - button "FPX Online Banking Direct bank transfer FPX Maybank CIMB Public Bank RHB Hong Leong" [ref=e53]:
+            - generic [ref=e54]:
+              - generic [ref=e55]: FPX Online Banking
+              - text: Direct bank transfer
+              - generic [ref=e56]:
+                - img "FPX" [ref=e58]
+                - img "Maybank" [ref=e60]
+                - img "CIMB" [ref=e62]
+                - img "Public Bank" [ref=e64]
+                - img "RHB" [ref=e66]
+                - img "Hong Leong" [ref=e68]
+          - button "E-Wallet Touch 'n Go, GrabPay, Boost TnG GrabPay Boost ShopeePay" [ref=e69]:
+            - generic [ref=e70]:
+              - generic [ref=e71]: E-Wallet
+              - text: Touch 'n Go, GrabPay, Boost
+              - generic [ref=e72]:
+                - img "TnG" [ref=e74]
+                - img "GrabPay" [ref=e76]
+                - img "Boost" [ref=e78]
+                - img "ShopeePay" [ref=e80]
+          - button "Credit Card Instalment0% Interest 0% interest for 6/12 months Visa Mastercard" [ref=e81]:
+            - generic [ref=e82]:
+              - generic [ref=e83]: Credit Card Instalment0% Interest
+              - text: 0% interest for 6/12 months
+              - generic [ref=e84]:
+                - img "Visa" [ref=e86]
+                - img "Mastercard" [ref=e88]
+          - button "Buy Now, Pay LaterSplit Payment Split into 3 payments Atome ShopeePay" [ref=e89]:
+            - generic [ref=e90]:
+              - generic [ref=e91]: Buy Now, Pay LaterSplit Payment
+              - text: Split into 3 payments
+              - generic [ref=e92]:
+                - img "Atome" [ref=e94]
+                - img "ShopeePay" [ref=e96]
+      - generic [ref=e97]:
+        - button "Pay RM 1,182" [disabled] [ref=e98]
+        - paragraph [ref=e99]:
+          - img [ref=e100]
+          - text: 256-bit SSL encrypted. Your payment details are secure.
+      - generic [ref=e103]:
+        - paragraph [ref=e104]:
+          - text: Powered by
+          - strong [ref=e105]: LAJOO
+        - generic [ref=e106]:
+          - link "Terms" [ref=e107] [cursor=pointer]:
+            - /url: /my/terms
+          - text: •
+          - link "Privacy" [ref=e108] [cursor=pointer]:
+            - /url: /my/terms
+  - dialog [ref=e109]:
+    - generic [ref=e110]:
+      - img "LAJOO" [ref=e111]
+      - button "Close" [ref=e112] [cursor=pointer]: ×
+    - navigation [ref=e113]:
+      - link "LAJOO" [ref=e114] [cursor=pointer]:
+        - /url: /my
+      - link "What is LAJOO ?" [ref=e115] [cursor=pointer]:
+        - /url: /my/what-is-lajoo
+      - link "FAQ" [ref=e116] [cursor=pointer]:
+        - /url: /my/faq
+      - link "Contact Us" [ref=e117] [cursor=pointer]:
+        - /url: /my/contact-us
+      - link "Terms & Privacy Policy" [ref=e118] [cursor=pointer]:
+        - /url: /my/terms

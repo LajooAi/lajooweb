@@ -1,0 +1,41 @@
+- generic [ref=e2]:
+  - complementary [ref=e3]:
+    - generic [ref=e4]:
+      - img "LAJOO" [ref=e6]
+      - navigation [ref=e7]:
+        - link "LAJOO" [ref=e8] [cursor=pointer]:
+          - /url: /my
+        - link "What is LAJOO ?" [ref=e9] [cursor=pointer]:
+          - /url: /my/what-is-lajoo
+        - link "FAQ" [ref=e10] [cursor=pointer]:
+          - /url: /my/faq
+        - link "Contact Us" [ref=e11] [cursor=pointer]:
+          - /url: /my/contact-us
+        - link "Terms & Privacy Policy" [ref=e12] [cursor=pointer]:
+          - /url: /my/terms
+  - generic [ref=e13]:
+    - banner [ref=e14]:
+      - button "Open menu" [ref=e16]:
+        - img [ref=e17]
+      - button "Start new chat" [ref=e19]:
+        - img "LAJOO logo" [ref=e20]
+      - 'button "Open country and language selector. Current: MY EN" [ref=e22]':
+        - generic [ref=e23]: MY·EN
+    - generic [ref=e25]:
+      - heading "404" [level=1] [ref=e26]
+      - heading "This page could not be found." [level=2] [ref=e28]
+  - dialog [ref=e29]:
+    - generic [ref=e30]:
+      - img "LAJOO" [ref=e31]
+      - button "Close" [ref=e32]
+    - navigation [ref=e35]:
+      - link "LAJOO" [ref=e36] [cursor=pointer]:
+        - /url: /my
+      - link "What is LAJOO ?" [ref=e37] [cursor=pointer]:
+        - /url: /my/what-is-lajoo
+      - link "FAQ" [ref=e38] [cursor=pointer]:
+        - /url: /my/faq
+      - link "Contact Us" [ref=e39] [cursor=pointer]:
+        - /url: /my/contact-us
+      - link "Terms & Privacy Policy" [ref=e40] [cursor=pointer]:
+        - /url: /my/terms

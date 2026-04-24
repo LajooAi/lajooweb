@@ -1,0 +1,108 @@
+- generic [ref=e2]:
+  - generic [ref=e3]:
+    - banner [ref=e4]:
+      - button "Open menu" [ref=e6] [cursor=pointer]:
+        - img [ref=e7]
+      - button "Start new chat" [ref=e9] [cursor=pointer]:
+        - img "LAJOO logo" [ref=e10]
+      - 'button "Open country and language selector. Current: MY EN" [ref=e12] [cursor=pointer]':
+        - generic [ref=e13]:
+          - generic [ref=e14]: MY
+          - generic [ref=e15]: ·
+          - generic [ref=e16]: EN
+    - main [ref=e17]:
+      - heading "Insurance Quote Cards - Test Page" [level=1] [ref=e18]
+      - generic [ref=e19]:
+        - paragraph [ref=e20]: (Step 1/5) Here are the best quotes for JRT 9289 :-
+        - generic [ref=e21]:
+          - article [ref=e22]:
+            - generic [ref=e23]:
+              - generic [ref=e24]:
+                - heading "Etiqa Insurance" [level=3] [ref=e25]
+                - paragraph [ref=e26]:
+                  - generic [ref=e27]: "Sum Insured :"
+                  - generic [ref=e28]: RM 35,000
+                - paragraph [ref=e29]:
+                  - img [ref=e30]
+                  - generic [ref=e32]: Full Cover
+                - paragraph [ref=e33]:
+                  - generic [ref=e34]: "Price :"
+                  - generic [ref=e35]: RM 1,090 / year
+                - paragraph [ref=e36]:
+                  - generic [ref=e37]: "After NCD (20.00%) :"
+                  - strong [ref=e38]: RM 872
+              - generic [ref=e39]:
+                - img "Etiqa Insurance" [ref=e41]
+                - button "Select" [ref=e42] [cursor=pointer]
+          - article [ref=e43]:
+            - generic [ref=e44]:
+              - generic [ref=e45]:
+                - heading "Takaful Ikhlas Insurance" [level=3] [ref=e46]
+                - paragraph [ref=e47]:
+                  - generic [ref=e48]: "Sum Insured :"
+                  - generic [ref=e49]: RM 34,000
+                - paragraph [ref=e50]:
+                  - img [ref=e51]
+                  - generic [ref=e53]: Full Cover
+                - paragraph [ref=e54]:
+                  - generic [ref=e55]: "Price :"
+                  - generic [ref=e56]: RM 995 / year
+                - paragraph [ref=e57]:
+                  - generic [ref=e58]: "After NCD (20.00%) :"
+                  - strong [ref=e59]: RM 796
+              - generic [ref=e60]:
+                - img "Takaful Ikhlas Insurance" [ref=e62]
+                - button "Select" [ref=e63] [cursor=pointer]
+          - article [ref=e64]:
+            - generic [ref=e65]:
+              - generic [ref=e66]:
+                - heading "Allianz Insurance" [level=3] [ref=e67]
+                - paragraph [ref=e68]:
+                  - generic [ref=e69]: "Sum Insured :"
+                  - generic [ref=e70]: RM 36,000
+                - paragraph [ref=e71]:
+                  - img [ref=e72]
+                  - generic [ref=e74]: Full Cover
+                - paragraph [ref=e75]:
+                  - generic [ref=e76]: "Price :"
+                  - generic [ref=e77]: RM 1,150 / year
+                - paragraph [ref=e78]:
+                  - generic [ref=e79]: "After NCD (20.00%) :"
+                  - strong [ref=e80]: RM 920
+              - generic [ref=e81]:
+                - img "Allianz Insurance" [ref=e83]
+                - button "Select" [ref=e84] [cursor=pointer]
+          - article [ref=e85]:
+            - generic [ref=e86]:
+              - generic [ref=e87]:
+                - heading "Tokio Marine Insurance" [level=3] [ref=e88]
+                - paragraph [ref=e89]:
+                  - generic [ref=e90]: "Sum Insured :"
+                  - generic [ref=e91]: RM 35,000
+                - paragraph [ref=e92]:
+                  - img [ref=e93]
+                  - generic [ref=e95]: Full Cover
+                - paragraph [ref=e96]:
+                  - generic [ref=e97]: "Price :"
+                  - generic [ref=e98]: RM 1,075 / year
+                - paragraph [ref=e99]:
+                  - generic [ref=e100]: "After NCD (20.00%) :"
+                  - strong [ref=e101]: RM 860
+              - generic [ref=e102]:
+                - img "Tokio Marine Insurance" [ref=e104]
+                - button "Select" [ref=e105] [cursor=pointer]
+  - dialog [ref=e106]:
+    - generic [ref=e107]:
+      - img "LAJOO" [ref=e108]
+      - button "Close" [ref=e109] [cursor=pointer]: ×
+    - navigation [ref=e110]:
+      - link "LAJOO" [ref=e111] [cursor=pointer]:
+        - /url: /my
+      - link "What is LAJOO ?" [ref=e112] [cursor=pointer]:
+        - /url: /my/what-is-lajoo
+      - link "FAQ" [ref=e113] [cursor=pointer]:
+        - /url: /my/faq
+      - link "Contact Us" [ref=e114] [cursor=pointer]:
+        - /url: /my/contact-us
+      - link "Terms & Privacy Policy" [ref=e115] [cursor=pointer]:
+        - /url: /my/terms

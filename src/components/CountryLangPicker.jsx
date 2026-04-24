@@ -3,8 +3,25 @@ import { useMemo, useState, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { useRouter, useParams, usePathname } from "next/navigation";
 import { COUNTRIES, DEFAULT_LANGUAGE_BY_COUNTRY } from "@/lib/localeConfig";
+import RoundedCloseIcon from "./RoundedCloseIcon";
 
 const SUPPORTED = new Set(COUNTRIES.map(c => c.code));
+
+function PickerChevronIcon() {
+  return (
+    <svg viewBox="0 0 20 20" aria-hidden="true" className="picker-icon picker-icon-chevron">
+      <path d="M7 4.5L12.5 10L7 15.5" />
+    </svg>
+  );
+}
+
+function PickerCheckIcon() {
+  return (
+    <svg viewBox="0 0 20 20" aria-hidden="true" className="picker-icon picker-icon-check">
+      <path d="M4.5 10.5L8.5 14.5L15.5 5.5" />
+    </svg>
+  );
+}
 
 export default function CountryLangPicker({ currentCountry }) {
   const [open, setOpen] = useState(false);
@@ -80,7 +97,9 @@ export default function CountryLangPicker({ currentCountry }) {
                 <button className="picker-back" aria-label="Back" onClick={() => setMode("main")}>‹</button>
               )}
               <span className="picker-title">Country</span>
-              <button className="picker-x" aria-label="Close" onClick={close}>×</button>
+              <button className="picker-x" aria-label="Close" onClick={close}>
+                <RoundedCloseIcon />
+              </button>
             </div>
 
             {mode === "main" ? (
@@ -95,7 +114,9 @@ export default function CountryLangPicker({ currentCountry }) {
                         <span className="row-name">({current.name})</span>
                       </span>
                     </span>
-                    <span className="row-right chevron">›</span>
+                    <span className="row-right chevron">
+                      <PickerChevronIcon />
+                    </span>
                   </button>
                 </div>
 
@@ -108,7 +129,9 @@ export default function CountryLangPicker({ currentCountry }) {
                       onClick={() => { setCookieLang(l.code); close(); }}
                     >
                       <span className="row-left">{l.label}</span>
-                      <span className="row-right tick">{l.code === lang ? "✓" : ""}</span>
+                      <span className="row-right tick">
+                        {l.code === lang ? <PickerCheckIcon /> : null}
+                      </span>
                     </button>
                   ))}
                 </div>
@@ -138,7 +161,9 @@ export default function CountryLangPicker({ currentCountry }) {
                         <span className="row-name">({c.name})</span>
                       </span>
                     </span>
-                    <span className="row-right chevron">›</span>
+                    <span className="row-right chevron">
+                      <PickerChevronIcon />
+                    </span>
                   </button>
                 ))}
               </div>
