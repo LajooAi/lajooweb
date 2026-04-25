@@ -21,7 +21,7 @@ export default function ContactUsPage() {
         </p>
 
         <div className={styles.humansBlock}>
-          <p className={styles.humansTitle}>L&apos;AJOO Human Live Agents&apos;</p>
+          <p className={styles.humansTitle}>LAJOO Human Live Agents</p>
           <p className={styles.humansHours}>10am - 6pm</p>
         </div>
       </section>
@@ -36,7 +36,7 @@ export default function ContactUsPage() {
           <div className={styles.contactText}>
             <div className={styles.contactHeadingRow}>
               <h2 className={styles.contactLabel}>WhatsApp</h2>
-              <span className={styles.recommended}>recommended</span>
+              <span className={styles.recommended}>best</span>
             </div>
             <p className={styles.contactValue}>{phoneNumber}</p>
           </div>
@@ -45,7 +45,7 @@ export default function ContactUsPage() {
           </span>
         </a>
 
-        <a className={`${styles.contactCard} ${styles.contactCardCall}`} href={phoneHref}>
+        <a className={styles.contactCard} href={phoneHref}>
           <div className={styles.contactText}>
             <h2 className={styles.contactLabel}>Call</h2>
             <p className={styles.contactValue}>{phoneNumber}</p>
@@ -55,7 +55,7 @@ export default function ContactUsPage() {
           </span>
         </a>
 
-        <a className={`${styles.contactCard} ${styles.contactCardEmail}`} href={`mailto:${email}`}>
+        <a className={styles.contactCard} href={`mailto:${email}`}>
           <div className={styles.contactText}>
             <h2 className={styles.contactLabel}>Email</h2>
             <p className={styles.contactValue}>{email}</p>

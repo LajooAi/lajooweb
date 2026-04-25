@@ -8,6 +8,7 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import rehypeRaw from "rehype-raw";
 import rehypeSanitize, { defaultSchema } from "rehype-sanitize";
+import EqualWidthTitle from "@/components/EqualWidthTitle";
 
 // Strict HTML sanitization schema - only allow safe tags needed for formatting
 const sanitizeSchema = {
@@ -827,12 +828,13 @@ Your coverage starts immediately. Drive safe!`
         <main ref={homeMainRef} className={`hero home-main ${hasMessages ? "hero-chatting" : ""}`}>
           {!hasMessages && (
             <div className="hero-content home-hero">
-              <h1 className="home-hero-title">
-                <span className="home-hero-title-line">Renew insurance</span>
-                <span className="home-hero-title-line home-hero-title-line-second">
-                  in one simple chat with AI.
-                </span>
-              </h1>
+              <EqualWidthTitle
+                className="home-hero-title"
+                lineClassName="home-hero-title-line"
+                secondaryLineClassName="home-hero-title-line-second"
+                primaryText="Renew insurance"
+                secondaryText="in one simple chat with AI."
+              />
 
               <div className="home-hero-types" role="group" aria-label="Insurance type">
                 <div className="home-hero-type-option">

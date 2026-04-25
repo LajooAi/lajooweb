@@ -3164,7 +3164,7 @@ body.home-route .mobile-header {
 
 @media (max-width: 639px) {
   .home-page-shell.is-home .hero-content.home-hero {
-    padding: calc(var(--home-hero-chat-padding-top-mobile) + 18px) 0 var(--home-hero-chat-padding-bottom-mobile);
+    padding: calc(var(--home-hero-chat-padding-top-mobile) - 2px) 0 var(--home-hero-chat-padding-bottom-mobile);
     overflow-x: hidden;
     overflow-y: visible;
   }
@@ -3172,7 +3172,7 @@ body.home-route .mobile-header {
   .home-page-shell.is-home .home-hero-title {
     --hero-line-one-size: clamp(34px, 10.6vw, 52px);
     --hero-line-two-size: clamp(18px, 6.9vw, 31px);
-    margin: 0 auto clamp(48px, 6.2vh, 62px);
+    margin: 0 auto calc(clamp(48px, 6.2vh, 62px) + 5px);
   }
 
   .home-page-shell.is-home .home-hero-title-line {
@@ -3202,6 +3202,11 @@ body.home-route .mobile-header {
 
   .home-page-shell.is-home .home-hero-type-option {
     gap: clamp(12px, 3vw, 16px);
+  }
+
+  .home-page-shell.is-home .home-hero-type-img {
+    width: clamp(79px, 23.1vw, 110px);
+    height: clamp(55px, 15.4vw, 79px);
   }
 
   .home-page-shell.is-home .home-hero-insurers {

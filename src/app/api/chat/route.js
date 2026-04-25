@@ -27,6 +27,11 @@ import {
   InsurerGatewayError,
 } from "@/lib/insurers/platform";
 import { extractPersonalInfo, extractVehicleInfo } from "@/utils/nlpExtractor";
+import { buildConversationDecision } from "@/server/ai/orchestrator";
+import {
+  buildAdvisorResponsePolicyInstruction,
+  shouldSuppressStepLine,
+} from "@/server/ai/responsePolicy";
 import {
   parseRecommendedInsurerFromAssistantMessage,
   isVehicleDetailsRejectionMessage,
@@ -1158,7 +1163,7 @@ function getCurrentStepPlaybook(state, context = {}) {
 
   if (isVehicleConfirmationGate(state, intent, messages, vehicleProfile)) {
     return {
-      label: 'STEP 1.5: Vehicle Verification',
+      label: 'Vehicle verification',
       goal: 'Confirm vehicle details before showing insurer options.',
       options: ['Confirm details are correct', 'Share corrected vehicle plate/owner ID', 'Tell which field is wrong'],
       nextAction: 'End with "Is this correct?" and wait for user confirmation.',
@@ -1174,7 +1179,7 @@ function getCurrentStepPlaybook(state, context = {}) {
 
   if (isStartDiscoveryTurn) {
     return {
-      label: 'STEP 1: Intro and Discovery',
+      label: 'Intro and discovery',
       goal: 'Understand what the user wants before collecting identifiers.',
       options: ['Renew insurance', 'Renew road tax', 'Policy or claims question'],
       nextAction: 'Ask what the user wants today. Do not request plate/owner ID yet unless they choose renewal flow.',
@@ -1187,7 +1192,7 @@ function getCurrentStepPlaybook(state, context = {}) {
     if (!state.plateNumber) missingIdentifiers.push('Vehicle Plate Number');
     if (!state.nricNumber) missingIdentifiers.push('Owner Identification Number');
     return {
-      label: 'STEP 1: Vehicle Info',
+      label: 'Vehicle info',
       goal: 'Collect missing vehicle identifiers so quotes can be generated.',
       options: missingIdentifiers.length > 0 ? missingIdentifiers.map(item => `Provide ${item}`) : ['Provide vehicle identifiers'],
       nextAction: missingIdentifiers.length === 1
@@ -1199,7 +1204,7 @@ function getCurrentStepPlaybook(state, context = {}) {
 
   if (state.step === FLOW_STEPS.QUOTES) {
     return {
-      label: 'STEP 2: Choose Insurer',
+      label: 'Choose insurer',
       goal: 'Get the user to choose one insurer so we can continue to add-ons.',
       options: ['Takaful Ikhlas (RM 796)', 'Etiqa Insurance (RM 872)', 'Allianz Insurance (RM 920)', 'Recommend for me'],
       nextAction: 'Ask the user to pick one insurer option.',
@@ -1209,7 +1214,7 @@ function getCurrentStepPlaybook(state, context = {}) {
 
   if (state.step === FLOW_STEPS.ADDONS) {
     return {
-      label: 'STEP 3: Add-ons',
+      label: 'Add-ons',
       goal: 'Confirm add-on selection before moving to road tax.',
       options: ['Windscreen (RM 100)', 'Special Perils (RM 50)', 'E-hailing (RM 500)', 'Skip all add-ons'],
       nextAction: 'Ask which add-on(s) they want, or if they want to skip.',
@@ -1219,7 +1224,7 @@ function getCurrentStepPlaybook(state, context = {}) {
 
   if (state.step === FLOW_STEPS.ROADTAX) {
     return {
-      label: 'STEP 4: Road Tax Upsell',
+      label: 'Road tax',
       goal: 'Confirm whether user adds road tax in this order.',
       options: ['12-month digital road tax (RM 90)', 'No road tax'],
       nextAction: 'Ask for a clear yes/no road tax decision.',
@@ -1230,7 +1235,7 @@ function getCurrentStepPlaybook(state, context = {}) {
   if (state.step === FLOW_STEPS.PERSONAL_DETAILS) {
     const missingDetails = getMissingPersonalDetailLabels(state);
     return {
-      label: 'STEP 5: Your Details',
+      label: 'Your details',
       goal: 'Collect required personal details before OTP.',
       options: missingDetails.length > 0 ? missingDetails.map(item => `Provide ${item}`) : ['Confirm details are correct'],
       nextAction: missingDetails.length > 0
@@ -1242,7 +1247,7 @@ function getCurrentStepPlaybook(state, context = {}) {
 
   if (state.step === FLOW_STEPS.OTP) {
     return {
-      label: 'STEP 5: OTP Verification',
+      label: 'OTP verification',
       goal: 'Verify OTP before payment step.',
       options: ['Enter OTP now', 'Correct personal details if needed'],
       nextAction: 'Ask user to key in OTP.',
@@ -1252,7 +1257,7 @@ function getCurrentStepPlaybook(state, context = {}) {
 
   if (state.step === FLOW_STEPS.PAYMENT) {
     return {
-      label: 'STEP 6: Payment',
+      label: 'Payment',
       goal: 'Guide user to complete payment.',
       options: ['Open payment link', 'Choose payment method'],
       nextAction: 'Prompt user to proceed with payment link.',
@@ -1267,16 +1272,16 @@ function buildStepContractInstruction(state, context = {}) {
   const playbook = getCurrentStepPlaybook(state, context);
   if (!playbook) return null;
   const optionsList = playbook.options.map((opt, idx) => `${idx + 1}. ${opt}`).join('\n');
-  return `STEP AWARENESS CONTRACT (MANDATORY)
-Current step: ${playbook.label}
+  return `INTERNAL FLOW CHECKPOINT (MANDATORY)
+Current checkpoint: ${playbook.label}
 Goal to close now: ${playbook.goal}
 Options available right now:
 ${optionsList}
 Required next action in this reply: ${playbook.nextAction}
 ${playbook.sideQuestionPolicy}
 
-Rule: After answering side questions, return to this step and ask for the next action.
-Rule: Do not move to another step unless user clearly confirms an available option.`;
+Rule: After answering side questions, return to this checkpoint and ask for the next action.
+Rule: Do not move to another checkpoint unless user clearly confirms an available option.`;
 }
 
 function getStepCloseRule(state, context = {}) {
@@ -2196,7 +2201,7 @@ function buildSystemPrompt(state, vehicleProfile, promptVariant = 'A', liveKnowl
     ? liveKnowledgeSnapshot.map((line) => `- ${line}`).join('\n')
     : '- No live insurer fact loaded this turn. Use verified facts only and avoid guessing.';
 
-  return `You are LAJOO, a smart car insurance assistant in Malaysia.
+  return `You are LAJOO, a professional Malaysian motor insurance renewal consultant inside a chat interface.
 
 ## COMMUNICATION STYLE
 - Be minimal — say less, mean more
@@ -2249,7 +2254,7 @@ ${ncdGuidanceLine}
 
 ## FORMATTING RULES
 - **Price format**: ALWAYS "RM xxx" with space (RM 796, not RM796)
-- **Step indicators**: Show Step **X** of **6** — Title at transitions only (bold the step numbers only), including Step 2 above the quote list.
+- **Progress wording**: Keep the flow internally, but do not over-expose "Step X of 6". Use natural consultant wording in normal replies. Only show explicit progress headers when a deterministic transaction/selection block requires it.
 - **Summary box**: Keep a compact "Order Summary (plate)" block with 5 key lines (Policy Effective, Sum Insured, Insurer, Add-ons, Road tax), then bold "Total: RM xxx"
 - **Quote cards**: Each quote on separate lines with logo, features, strikethrough price
 - **Vehicle info**: Use this exact 7-line label format:
@@ -2645,9 +2650,18 @@ export async function POST(request) {
     updateUserPreferencesFromMessage(state, latestMessage);
     updateExperimentTracking(state, intent, stepBeforeMutation);
     lowConfidenceNeedsClarification = shouldUseClarifyingTurn(intent, state);
+    const conversationDecision = buildConversationDecision({
+      message: latestMessage,
+      intent,
+      state,
+      messages,
+      stepBeforeMutation,
+    });
 
     console.log('=== LAJOO API ===');
     console.log('Intent:', intent.intent);
+    console.log('Conversation mode:', conversationDecision.mode);
+    console.log('Conversation action:', conversationDecision.action);
     console.log('Step:', state.step);
     console.log('Prompt variant:', state?.experiment?.promptVariant || 'A');
     console.log('Experiment mode:', state?.experiment?.experimentMode || 'off');
@@ -2796,6 +2810,10 @@ Please re-enter your **vehicle plate** and **owner identification number** to co
         content: String(msg.content || ""),
       })),
     ];
+    const advisorPolicyInstruction = buildAdvisorResponsePolicyInstruction(conversationDecision, state);
+    if (advisorPolicyInstruction) {
+      openAiMessages.push({ role: "system", content: advisorPolicyInstruction });
+    }
     const stepStyleInstruction = buildStepStyleInstruction(state);
     if (stepStyleInstruction) {
       openAiMessages.push({ role: "system", content: stepStyleInstruction });
@@ -3804,9 +3822,11 @@ This summary box must appear in EVERY response from now on until payment is comp
     }
 
     // Enforce visible step indicator on all renewal stages if AI omits it.
-    const postProcessContext = { intent, messages, vehicleProfile, lowConfidenceNeedsClarification };
+    const postProcessContext = { intent, messages, vehicleProfile, lowConfidenceNeedsClarification, conversationDecision };
     if (!forcedAssistantResponse) {
-      const expectedStepLine = getExpectedStepLine(intent, state, messages);
+      const expectedStepLine = shouldSuppressStepLine(conversationDecision)
+        ? null
+        : getExpectedStepLine(intent, state, messages);
       aiResponse = normalizePriceFormatSpacing(aiResponse);
       aiResponse = stripDisallowedStep2IntroLine(aiResponse);
       aiResponse = stripVehicleDetailBullets(aiResponse);

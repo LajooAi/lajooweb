@@ -118,7 +118,7 @@
 .contactHeadingRow {
   display: flex;
   align-items: center;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   gap: 8px;
 }
 
@@ -133,10 +133,12 @@
 
 .recommended {
   display: inline-flex;
+  flex: 0 0 auto;
   align-items: center;
   justify-content: center;
+  min-width: 44px;
   min-height: 24px;
-  padding: 0 12px;
+  padding: 0 10px;
   border-radius: 999px;
   background: #ffea00;
   color: #000000;
@@ -221,31 +223,25 @@
   }
 
   .contactLabel {
-    font-size: 20px;
-  }
-
-  .contactCardWhatsapp .contactLabel {
     font-size: 22px;
   }
 
   .recommended {
+    min-width: 42px;
     min-height: 22px;
     padding: 0 10px;
     font-size: 9.5px;
   }
 
   .contactCardWhatsapp .recommended {
+    min-width: 43px;
     min-height: 23px;
-    padding: 0 11px;
+    padding: 0 10px;
     font-size: 10.35px;
   }
 
   .contactValue {
     margin-top: 4px;
-    font-size: 12.65px;
-  }
-
-  .contactCardWhatsapp .contactValue {
     font-size: 13.9px;
   }
 

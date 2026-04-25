@@ -483,17 +483,7 @@ export default function WhatIsLajooPage() {
         <div className="reviews-block__inner">
           <div className="reviews-summary">
             <h3 className="reviews-title">
-              Why users love{" "}
-              <span className="reviews-title__accent" aria-label="LAJOO">
-                <span className="reviews-title__accent-text">LAJOO</span>
-                <img
-                  className="reviews-title__accent-logo"
-                  src="/logo/lajoo-logo-black.png"
-                  alt=""
-                  loading="lazy"
-                />
-              </span>{" "}
-              ?
+              Why users love us ?
             </h3>
             <div className="reviews-rating-line">
               <strong>4.9</strong>

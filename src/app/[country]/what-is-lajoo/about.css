@@ -2629,3 +2629,357 @@
     font-size: clamp(18px, 1.8vw, 24px);
   }
 }
+
+@media (min-width: 641px) and (max-width: 768px) {
+  .about-h1 {
+    --about-line-one-size: clamp(54px, 8.7vw, 58px);
+    --about-line-two-size: calc(var(--about-line-one-size) * 0.58);
+  }
+
+  .steps-panel__inner {
+    width: min(100%, 450px);
+  }
+
+  .steps-panel__grid {
+    width: min(100%, 430px);
+    padding: 12px;
+    gap: 12px;
+    border-radius: 18px;
+  }
+
+  .step-card {
+    --step-icon-size: 68px;
+    min-height: 112px;
+    padding: 18px 20px;
+    column-gap: 18px;
+    border-radius: 16px;
+  }
+
+  .step-text {
+    gap: 8px;
+  }
+
+  .step-title {
+    font-size: 28px;
+    line-height: 1.02;
+  }
+
+  .step-subtitle {
+    font-size: 18px;
+    line-height: 1.2;
+  }
+
+  .trusted-insurers-inner {
+    width: min(100%, 540px);
+    padding-right: 0;
+    padding-left: 0;
+  }
+
+  .payment-options-section {
+    width: min(100%, 450px);
+  }
+
+  .reviews-block__inner {
+    width: min(100%, 480px);
+  }
+
+  .reviews-carousel {
+    width: min(100%, 450px);
+  }
+
+  .review-card {
+    min-height: 330px;
+    padding: 30px 28px 28px;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .review-card__footer {
+    margin-top: auto;
+  }
+
+  .ai-simple-section {
+    width: min(100%, 400px);
+  }
+
+  .ai-simple-inner {
+    width: min(100%, 390px);
+  }
+
+  .ai-simple-title {
+    max-width: none;
+    text-align: center;
+  }
+
+  .ai-simple-card {
+    width: min(100%, 380px);
+    min-height: 86px;
+    padding: 12px 16px;
+    gap: 14px;
+  }
+
+  .ai-simple-card__icon {
+    width: 54px;
+    height: 54px;
+  }
+
+  .ai-simple-card__value {
+    font-size: 30px;
+  }
+
+  .ai-simple-card__label {
+    font-size: 17px;
+  }
+
+  .reviews-title__accent,
+  .renew-cta-copy__accent {
+    display: inline-flex;
+    align-items: center;
+    vertical-align: middle;
+  }
+
+  .reviews-title__accent-text,
+  .renew-cta-copy__accent-text {
+    display: none;
+  }
+
+  .reviews-title__accent-logo,
+  .renew-cta-copy__accent-logo {
+    display: block;
+    width: auto;
+    transform: translateY(0.03em);
+  }
+
+  .reviews-title__accent-logo {
+    height: 0.92em;
+  }
+
+  .renew-cta-copy__accent-logo {
+    height: 0.94em;
+  }
+}
+
+@media (min-width: 769px) and (max-width: 1023px) {
+  .steps-panel__inner {
+    width: min(100%, 540px);
+  }
+
+  .steps-panel__grid {
+    width: min(100%, 470px);
+    padding: 14px;
+    gap: 12px;
+    border-radius: 18px;
+  }
+
+  .step-card {
+    --step-icon-size: 66px;
+    min-height: 104px;
+    padding: 16px 20px;
+    column-gap: 18px;
+    border-radius: 16px;
+  }
+
+  .step-text {
+    gap: 8px;
+  }
+
+  .step-title {
+    font-size: 27px;
+    line-height: 1.02;
+  }
+
+  .step-subtitle {
+    font-size: 17px;
+    line-height: 1.22;
+  }
+
+  .trusted-insurers-inner {
+    width: min(100%, 720px);
+    padding-right: 0;
+    padding-left: 0;
+  }
+
+  .trusted-insurer-cell {
+    min-height: 124px;
+    padding: 14px 10px;
+  }
+
+  .trusted-insurer-logo-frame {
+    width: min(100%, 150px);
+    height: 58px;
+  }
+
+  .payment-options-section {
+    width: min(100%, 560px);
+  }
+
+  .payment-options-panel {
+    padding: 16px;
+    gap: 12px;
+  }
+
+  .payment-option-row {
+    min-height: 68px;
+    padding: 12px 16px;
+  }
+
+  .payment-option-row--bank-grid {
+    min-height: 104px;
+  }
+
+  .reviews-block__inner {
+    width: min(100%, 560px);
+  }
+
+  .reviews-summary {
+    width: min(100%, 420px);
+  }
+
+  .reviews-title {
+    font-size: 30px;
+    line-height: 1.05;
+    margin-bottom: 8px;
+  }
+
+  .reviews-rating-line strong {
+    font-size: 30px;
+  }
+
+  .reviews-rating-line span {
+    font-size: 24px;
+  }
+
+  .reviews-link {
+    font-size: 16px;
+  }
+
+  .reviews-benefits {
+    font-size: 18px;
+  }
+
+  .reviews-carousel {
+    width: min(100%, 520px);
+  }
+
+  .review-card {
+    min-height: clamp(320px, 38vw, 390px);
+    padding: clamp(28px, 3.3vw, 34px) 32px clamp(26px, 3vw, 30px);
+    display: flex;
+    flex-direction: column;
+    border-radius: 26px;
+  }
+
+  .review-card__head {
+    margin-bottom: clamp(22px, 2.8vw, 30px);
+  }
+
+  .review-card__author {
+    font-size: 22px;
+  }
+
+  .review-card__body {
+    font-size: 17px;
+    line-height: 1.4;
+    font-weight: 500;
+  }
+
+  .review-card__footer {
+    margin-top: auto;
+    padding-top: clamp(18px, 2.4vw, 24px);
+  }
+
+  .review-card__view {
+    font-weight: 500;
+  }
+
+  .ai-simple-section {
+    width: min(100%, 500px);
+    margin: 54px auto;
+  }
+
+  .ai-simple-inner {
+    width: min(100%, 430px);
+    gap: 22px;
+  }
+
+  .ai-simple-title {
+    max-width: none;
+    text-align: center;
+    font-size: 32px;
+  }
+
+  .ai-simple-grid {
+    align-items: center;
+    gap: 12px;
+  }
+
+  .ai-simple-card {
+    width: min(100%, 390px);
+    min-height: 88px;
+    padding: 12px 16px;
+    gap: 14px;
+    border-radius: 18px;
+  }
+
+  .ai-simple-card__icon {
+    width: 56px;
+    height: 56px;
+  }
+
+  .ai-simple-card__value {
+    font-size: 31px;
+  }
+
+  .ai-simple-card__label {
+    font-size: 17px;
+  }
+
+  .renew-cta-inner {
+    max-width: 620px;
+    padding: 40px 24px 44px;
+  }
+
+  .renew-cta-title {
+    font-size: 34px;
+  }
+
+  .renew-cta-copy {
+    max-width: 500px;
+    font-size: 22px;
+    line-height: 1.42;
+  }
+
+  .renew-cta-button {
+    min-width: 210px;
+    height: 62px;
+    padding: 0 28px;
+    font-size: 24px;
+  }
+
+  .reviews-title__accent,
+  .renew-cta-copy__accent {
+    display: inline-flex;
+    align-items: center;
+    vertical-align: middle;
+  }
+
+  .reviews-title__accent-text,
+  .renew-cta-copy__accent-text {
+    display: none;
+  }
+
+  .reviews-title__accent-logo,
+  .renew-cta-copy__accent-logo {
+    display: block;
+    width: auto;
+    transform: translateY(0.03em);
+  }
+
+  .reviews-title__accent-logo {
+    height: 0.92em;
+  }
+
+  .renew-cta-copy__accent-logo {
+    height: 0.94em;
+  }
+}

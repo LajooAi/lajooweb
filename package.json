@@ -14,7 +14,7 @@
     "db:seed:insurers": "node scripts/import-insurer-facts.mjs",
     "db:import:pdf": "node scripts/import-policy-pdf.mjs",
     "db:import:pdf:batch": "node scripts/import-policy-pdf-batch.mjs",
-    "test:assistant": "node --test tests/assistant-intent.test.mjs tests/flow-guards.test.mjs",
+    "test:assistant": "node --test tests/assistant-intent.test.mjs tests/flow-guards.test.mjs tests/orchestrator.test.mjs",
     "eval:intent": "node scripts/run-intent-eval.mjs",
     "eval:chaos": "node scripts/run-chaos-conversation-eval.mjs --runs 400 --seed 42",
     "eval:chaos:quick": "node scripts/run-chaos-conversation-eval.mjs --runs 150 --seed 42",
