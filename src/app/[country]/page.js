@@ -112,6 +112,7 @@ export default function Home() {
   const anchorStableCountRef = useRef(0);
   const anchorHoldUntilRef = useRef(0);
   const keepTurnAnchoredRef = useRef(false);
+  const userInterruptedAnchoringRef = useRef(false);
   const lastRequestRef = useRef(null); // Store last request for retry
   const conversationStateRef = useRef(null); // Server state round-tripped each turn
   const processedPaymentsRef = useRef(new Set()); // Avoid duplicate payment success messages
@@ -186,6 +187,22 @@ export default function Home() {
     setShowScrollButton(!isNearBottom);
   }, []);
 
+  const interruptTurnAnchoring = useCallback(() => {
+    if (!isStreaming || !pendingScrollRef.current) return;
+
+    userInterruptedAnchoringRef.current = true;
+    stopTurnAnchoring(false);
+  }, [isStreaming, stopTurnAnchoring]);
+
+  const handleWheel = useCallback((event) => {
+    if (Math.abs(event.deltaY) < 1) return;
+    interruptTurnAnchoring();
+  }, [interruptTurnAnchoring]);
+
+  const handleTouchMove = useCallback(() => {
+    interruptTurnAnchoring();
+  }, [interruptTurnAnchoring]);
+
   // Scroll to bottom
   const scrollToBottom = useCallback(() => {
     if (!threadRef.current) return;
@@ -207,24 +224,26 @@ export default function Home() {
     const messageRect = userMessageEl.getBoundingClientRect();
     const deltaToTarget = messageRect.top - containerRect.top - USER_MESSAGE_TOP_OFFSET;
     const targetScrollTop = Math.max(0, container.scrollTop + deltaToTarget);
-    let maxScrollTop = Math.max(0, container.scrollHeight - container.clientHeight);
+    const spacerEl = container.querySelector(".chat-anchor-spacer");
+    const currentSpacer = spacerEl
+      ? spacerEl.getBoundingClientRect().height
+      : anchorSpacerPxRef.current;
+    const scrollHeightWithoutSpacer = Math.max(0, container.scrollHeight - currentSpacer);
+    const maxScrollTopWithoutSpacer = scrollHeightWithoutSpacer - container.clientHeight;
 
-    // If target is currently unreachable, add temporary bottom spacer so the turn can anchor.
-    const neededExtra = targetScrollTop - maxScrollTop;
-    if (neededExtra > 0) {
-      const desiredSpacer = Math.ceil(
-        Math.min(
-          Math.max(anchorSpacerPxRef.current, neededExtra),
-          container.clientHeight * 2.5
-        )
-      );
-      if (desiredSpacer > anchorSpacerPxRef.current + 2) {
-        anchorSpacerPxRef.current = desiredSpacer;
-        setAnchorSpacerPx(desiredSpacer);
-      }
-      maxScrollTop = Math.max(0, container.scrollHeight - container.clientHeight);
+    // Add only the temporary spacer still needed to make the latest user turn
+    // reachable at the top. As the assistant response grows, this shrinks back.
+    const neededExtra = Math.max(0, targetScrollTop - maxScrollTopWithoutSpacer);
+    const desiredSpacer = Math.ceil(Math.min(neededExtra, container.clientHeight * 2.5));
+    if (Math.abs(desiredSpacer - currentSpacer) > 2) {
+      anchorSpacerPxRef.current = desiredSpacer;
+      setAnchorSpacerPx(desiredSpacer);
     }
 
+    const maxScrollTop = Math.max(
+      0,
+      scrollHeightWithoutSpacer + desiredSpacer - container.clientHeight
+    );
     const boundedScrollTop = Math.min(maxScrollTop, targetScrollTop);
 
     if (Math.abs(container.scrollTop - boundedScrollTop) > 0.5) {
@@ -267,10 +286,14 @@ export default function Home() {
           success && holdElapsed && anchorStableCountRef.current >= 2;
 
         if (stableEnough) {
-          pendingScrollRef.current = null;
-          scrollToUserMessageRef.current = false;
-          setIsTurnAnchoring(false);
-          anchorStableCountRef.current = 0;
+          if (!isStreaming) {
+            stopTurnAnchoring(false);
+            return;
+          }
+
+          // Keep re-aligning throughout the active turn so streamed content and
+          // viewport changes cannot pull the latest user message down.
+          timerId = setTimeout(() => attemptScroll(attempts + 1), 90);
           return;
         }
 
@@ -405,6 +428,7 @@ export default function Home() {
     pendingScrollRef.current = userMessage.id;
     scrollToUserMessageRef.current = true;
     keepTurnAnchoredRef.current = true;
+    userInterruptedAnchoringRef.current = false;
     setIsTurnAnchoring(true);
     anchorSpacerPxRef.current = 0;
     setAnchorSpacerPx(0);
@@ -450,6 +474,7 @@ export default function Home() {
     setInputText("");
     setError(null);
     stopTurnAnchoring(true);
+    userInterruptedAnchoringRef.current = false;
     conversationStateRef.current = null;
     localStorage.removeItem(`lajoo_chat_${sessionKey}`);
     localStorage.removeItem(stateStorageKey);
@@ -736,12 +761,31 @@ Your coverage starts immediately. Drive safe!`
     } finally {
       setIsStreaming(false);
       requestAnimationFrame(() => {
-        // Final alignment pass once the stream is complete.
-        if (pendingScrollRef.current) {
-          executeScrollToUserMessage(pendingScrollRef.current);
+        const messageId = pendingScrollRef.current;
+
+        if (!messageId) {
+          stopTurnAnchoring(userInterruptedAnchoringRef.current);
+          userInterruptedAnchoringRef.current = false;
+          return;
         }
-        // Release lock but keep computed spacer so the anchored turn doesn't drop back down.
-        stopTurnAnchoring(false);
+
+        // Final alignment pass once the stream is complete.
+        const aligned = executeScrollToUserMessage(messageId);
+        if (aligned) {
+          // Release the lock but keep only the spacer still required for the
+          // latest user turn to remain anchored near the top.
+          stopTurnAnchoring(false);
+          userInterruptedAnchoringRef.current = false;
+          return;
+        }
+
+        requestAnimationFrame(() => {
+          if (pendingScrollRef.current) {
+            executeScrollToUserMessage(pendingScrollRef.current);
+          }
+          stopTurnAnchoring(false);
+          userInterruptedAnchoringRef.current = false;
+        });
       });
     }
   };
@@ -766,6 +810,7 @@ Your coverage starts immediately. Drive safe!`
     pendingScrollRef.current = userMessage.id;
     scrollToUserMessageRef.current = true;
     keepTurnAnchoredRef.current = true;
+    userInterruptedAnchoringRef.current = false;
     setIsTurnAnchoring(true);
     anchorSpacerPxRef.current = 0;
     setAnchorSpacerPx(0);
@@ -911,6 +956,8 @@ Your coverage starts immediately. Drive safe!`
               className="chat-container"
               ref={threadRef}
               onScroll={handleScroll}
+              onWheel={handleWheel}
+              onTouchMove={handleTouchMove}
             >
               <div className={`chat-feed ${isTurnAnchoring ? "chat-feed-anchor-turn" : ""}`}>
                 {messages.map((msg) => {
