@@ -4208,7 +4208,7 @@
 }
 
 .ai-simple-grid {
-  width: min(366px, calc(100vw - 42px));
+  width: min(388px, calc(100vw - 58px));
   margin: 0 auto;
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -4239,10 +4239,10 @@
 }
 
 .ai-simple-card__icon {
-  width: 64px;
-  height: 64px;
-  min-width: 64px;
-  min-height: 64px;
+  width: 58px;
+  height: 58px;
+  min-width: 58px;
+  min-height: 58px;
   border-radius: 0;
   background: transparent;
   color: currentColor;
@@ -4285,7 +4285,7 @@
 .ai-simple-card__value {
   margin: 0;
   color: currentColor;
-  font-size: 36px;
+  font-size: 35px;
   font-weight: 500;
   line-height: 0.95;
   letter-spacing: 0;
@@ -4295,12 +4295,13 @@
 .ai-simple-card__label {
   margin: 0;
   color: currentColor;
-  font-size: 18px;
+  font-size: clamp(13px, 3.15vw, 16px);
   font-weight: 500;
   line-height: 1.1;
   letter-spacing: 0;
   text-align: left;
   text-transform: lowercase;
+  white-space: nowrap;
 }
 
 .renew-cta-band {
@@ -4433,4 +4434,15 @@
 .renew-cta-inner {
   padding-top: 60px;
   padding-bottom: 60px;
+}
+
+.about-wrap > footer {
+  width: 100vw;
+  margin-right: calc(50% - 50vw);
+  margin-left: calc(50% - 50vw);
+}
+
+.about-wrap > footer > div {
+  padding-right: 29px;
+  padding-left: 29px;
 }

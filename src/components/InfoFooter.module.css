@@ -38,7 +38,7 @@
 .company {
   margin: 18px 0 0;
   color: #000000;
-  font-size: 23px;
+  font-size: 21.16px;
   font-weight: 400;
   line-height: 1.2;
   letter-spacing: 0;
@@ -47,7 +47,7 @@
 .registration {
   margin: 4px 0 0;
   color: #000000;
-  font-size: 23px;
+  font-size: 21.16px;
   font-weight: 400;
   line-height: 1.2;
   letter-spacing: 0;
@@ -67,10 +67,11 @@
   border-radius: 8px;
   background: #eaf2ff;
   color: #000000;
-  font-size: 23px;
+  font-size: 21.16px;
   font-weight: 500;
   line-height: 1.22;
   letter-spacing: 0;
+  white-space: nowrap;
 }
 
 .navSection {
@@ -86,7 +87,7 @@
 .menuLink {
   color: #000000;
   text-decoration: none;
-  font-size: 24px;
+  font-size: 19.146px;
   font-weight: 700;
   line-height: 1.2;
   letter-spacing: 0;
@@ -107,7 +108,7 @@
 .followTitle {
   margin: 0 0 13px;
   color: #363636;
-  font-size: 25px;
+  font-size: 19.7px;
   font-weight: 500;
   line-height: 1.18;
   letter-spacing: 0;
@@ -159,10 +160,11 @@
 .copyright {
   margin: 36px 0 0;
   color: #363636;
-  font-size: 21px;
+  font-size: 19.16px;
   font-weight: 500;
   line-height: 1.25;
   letter-spacing: 0;
+  white-space: nowrap;
 }
 
 @media (max-width: 680px) {
@@ -181,7 +183,7 @@
   .company,
   .registration,
   .tagline {
-    font-size: clamp(17px, 4vw, 23px);
+    font-size: clamp(15.5px, 3.6vw, 21.16px);
   }
 
   .menu {
@@ -189,11 +191,11 @@
   }
 
   .menuLink {
-    font-size: clamp(19px, 4.9vw, 24px);
+    font-size: clamp(18px, 4.3vw, 19.146px);
   }
 
   .followTitle {
-    font-size: clamp(20px, 5vw, 25px);
+    font-size: clamp(18px, 4.4vw, 19.7px);
   }
 
   .socialRow {
@@ -208,7 +210,7 @@
 
   .copyright {
     margin-top: 32px;
-    font-size: clamp(16px, 4vw, 21px);
+    font-size: clamp(14px, 3.5vw, 19.16px);
   }
 }
 
