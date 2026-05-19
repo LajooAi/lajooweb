@@ -1,8 +1,15 @@
 import "./about.css";
 import Link from "next/link";
+import Image from "next/image";
 import InfoFooter from "@/components/InfoFooter";
 import EqualWidthTitle from "@/components/EqualWidthTitle";
 import ReviewsCarousel from "./ReviewsCarousel";
+
+export const metadata = {
+  formatDetection: {
+    telephone: false,
+  },
+};
 
 const trustedInsurerLogos = [
   {
@@ -13,11 +20,11 @@ const trustedInsurerLogos = [
     height: "81%",
   },
   {
-    key: "zurich",
-    name: "Zurich",
-    src: "/partners/zurich.svg",
-    width: "75%",
-    height: "79%",
+    key: "allianz",
+    name: "Allianz",
+    src: "/partners/allianz.svg",
+    width: "88%",
+    height: "48%",
   },
   {
     key: "generali",
@@ -34,18 +41,18 @@ const trustedInsurerLogos = [
     height: "57%",
   },
   {
-    key: "axa",
-    name: "AXA",
-    src: "/partners/axa.svg",
-    width: "64%",
-    height: "86%",
-  },
-  {
     key: "takaful",
     name: "Takaful Ikhlas",
     src: "/partners/takaful.svg",
     width: "57%",
     height: "95%",
+  },
+  {
+    key: "lonpac",
+    name: "Lonpac Insurance",
+    src: "/partners/lonpac.svg",
+    width: "86%",
+    height: "46%",
   },
   {
     key: "msig",
@@ -55,11 +62,18 @@ const trustedInsurerLogos = [
     height: "51%",
   },
   {
-    key: "allianz",
-    name: "Allianz",
-    src: "/partners/allianz.svg",
-    width: "88%",
-    height: "48%",
+    key: "zurich",
+    name: "Zurich",
+    src: "/partners/zurich.svg",
+    width: "75%",
+    height: "79%",
+  },
+  {
+    key: "axa",
+    name: "AXA",
+    src: "/partners/axa.svg",
+    width: "64%",
+    height: "86%",
   },
   {
     key: "bsompo",
@@ -81,13 +95,6 @@ const trustedInsurerLogos = [
     src: "/partners/amassurance.svg",
     width: "75%",
     height: "64%",
-  },
-  {
-    key: "lonpac",
-    name: "Lonpac Insurance",
-    src: "/partners/lonpac.svg",
-    width: "86%",
-    height: "46%",
   },
 ];
 
@@ -124,6 +131,13 @@ const flexiblePaymentRows = [
     ],
   },
   {
+    key: "banking",
+    title: "Online Banking",
+    marks: [
+      { key: "fpx", type: "image", name: "FPX", src: "/payments/fpx.svg", width: "72px", height: "28px" },
+    ],
+  },
+  {
     key: "ewallet",
     title: "E-Wallet",
     marks: [
@@ -151,13 +165,6 @@ const flexiblePaymentRows = [
         width: "76px",
         height: "28px",
       },
-    ],
-  },
-  {
-    key: "banking",
-    title: "Online Banking",
-    marks: [
-      { key: "fpx", type: "image", name: "FPX", src: "/payments/fpx.svg", width: "72px", height: "28px" },
     ],
   },
   {
@@ -240,99 +247,15 @@ const aiRenewalStats = [
     value: "24/7",
     label: "Instant replies",
   },
+  {
+    key: "chat",
+    kind: "chat",
+    value: "1 chat",
+    label: "To renew",
+  },
 ];
 
-function StepIcon({ kind }) {
-  if (kind === "chat") {
-    return (
-      <svg viewBox="0 0 64 64" aria-hidden="true" focusable="false">
-        <path
-          d="M16 18h32a4 4 0 0 1 4 4v20a4 4 0 0 1-4 4H28l-12 9V22a4 4 0 0 1 4-4Z"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="4"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        />
-        <circle cx="27" cy="32" r="2.8" fill="currentColor" />
-        <circle cx="36" cy="32" r="2.8" fill="currentColor" />
-        <circle cx="45" cy="32" r="2.8" fill="currentColor" />
-      </svg>
-    );
-  }
-
-  if (kind === "compare") {
-    return (
-      <svg viewBox="0 0 64 64" aria-hidden="true" focusable="false">
-        <rect x="15" y="16" width="20" height="32" rx="3" fill="currentColor" />
-        <path
-          d="M41 10v44M41 18h10a2 2 0 0 1 2 2v24a2 2 0 0 1-2 2H41"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="4"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        />
-      </svg>
-    );
-  }
-
-  return (
-    <svg viewBox="0 0 64 64" aria-hidden="true" focusable="false">
-      <path
-        d="M32 12a20 20 0 1 1-14.2 5.8"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="4"
-        strokeLinecap="round"
-      />
-      <path
-        d="M18 10h13L23 18"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="4"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-      <path
-        d="M32 24l9 4v7c0 6.3-4 11.9-9 13-5-1.1-9-6.7-9-13v-7l9-4Z"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="4"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-      <path
-        d="m28.5 35 2.8 2.8 4.7-5.2"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="4"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  );
-}
-
 export default function WhatIsLajooPage() {
-  const steps = [
-    {
-      kind: "chat",
-      title: "Chat",
-      subtitle: "Ask anything about insurance.",
-    },
-    {
-      kind: "compare",
-      title: "Compare",
-      subtitle: "Compare prices with AI.",
-    },
-    {
-      kind: "renew",
-      title: "Renew",
-      subtitle: "Pay and get covered instantly.",
-    },
-  ];
-
   const reviews = [
     {
       text: "Amazing platform for me to renew all my car insurance road tax, super fast and convenient. Done anytime even at 2am instantly.",
@@ -361,87 +284,203 @@ export default function WhatIsLajooPage() {
               lineClassName="about-h1-line"
               secondaryLineClassName="about-h1-line-second"
               primaryText="Renew insurance"
-              secondaryText="in one simple chat with AI."
+              secondaryText="in one simple AI chat."
             />
-            <img
-              className="about-hero-photo"
-              src="/images/what-is-lajoo-step2.png"
-              alt="LAJOO insurer comparison preview"
-              loading="lazy"
-            />
+            <div className="about-chat-demo" aria-label="LAJOO chat example">
+              <div className="about-chat-bubble about-chat-bubble--lajoo about-chat-bubble--input">
+                <span>Enter your <strong>Plate Number &amp; IC.</strong></span>
+              </div>
+
+              <div className="about-chat-bubble about-chat-bubble--user about-chat-bubble--plate">
+                <span>LAJ 1470</span>
+                <span className="about-chat-id-number" aria-label="701470-14-7070">
+                  {"701470\u200c-\u200c14\u200c-\u200c7070"}
+                </span>
+              </div>
+
+              <div className="about-chat-bubble about-chat-bubble--lajoo about-chat-bubble--vehicle">
+                <span>Found your vehicle ! 🚙</span>
+                <strong>2017 Perodua Myvi</strong>
+                <span>NCD 20% - Comprehensive</span>
+              </div>
+
+              <div className="about-chat-bubble about-chat-bubble--lajoo about-chat-bubble--quote about-chat-bubble--takaful">
+                <Image src="/partners/takaful.svg" alt="" width={52} height={43} aria-hidden="true" />
+                <span>
+                  <strong>Takaful Ikhlas - RM 670</strong>
+                  <span>Sum Insured : RM 33,000</span>
+                </span>
+              </div>
+
+              <div className="about-chat-bubble about-chat-bubble--lajoo about-chat-bubble--quote about-chat-bubble--etiqa">
+                <Image src="/partners/etiqa.svg" alt="" width={52} height={29} aria-hidden="true" />
+                <span>
+                  <strong>Etiqa Insurance - RM 710</strong>
+                  <span>Sum Insured : RM 34,000</span>
+                </span>
+              </div>
+
+              <div className="about-chat-bubble about-chat-bubble--lajoo about-chat-bubble--quote about-chat-bubble--allianz">
+                <Image src="/partners/allianz.svg" alt="" width={52} height={24} aria-hidden="true" />
+                <span>
+                  <strong>Allianz Insurance - RM 770</strong>
+                  <span>Sum Insured : RM 37,000</span>
+                </span>
+              </div>
+
+              <div className="about-chat-bubble about-chat-bubble--user about-chat-bubble--question">
+                Which is the best ?
+              </div>
+
+              <div className="about-chat-analyzing" aria-label="Analyzing">
+                <span aria-hidden="true" />
+                <span>Analyzing...</span>
+              </div>
+            </div>
+
+            <div className="about-hero-promises" aria-label="LAJOO benefits">
+              <p>Ask any question.</p>
+              <p>Instant reply 24/7.</p>
+              <p>Done in minutes.</p>
+            </div>
+
+            <div className="cta-row about-hero-cta">
+              <Link className="cta-primary" href="/">
+                <span>Renew Now</span>
+                <span aria-hidden="true">→</span>
+              </Link>
+            </div>
           </div>
 
           <div className="hero-bottom">
-            <p className="about-meta about-meta--inline-benefits" aria-label="Just chat, no forms, instant">
-              <span className="about-benefit">Just chat</span>
-              <span className="about-benefit-divider" aria-hidden="true">·</span>
-              <span className="about-benefit">No forms</span>
-              <span className="about-benefit-divider" aria-hidden="true">·</span>
-              <span className="about-benefit">Instant</span>
-            </p>
-            <div className="cta-row">
-              <Link className="cta-primary" href="/">
-                Renew Now
-              </Link>
-            </div>
-
             <section className="services-offer" aria-labelledby="services-offer-title">
               <h3 id="services-offer-title" className="services-offer__title">
                 Services we offer.
               </h3>
 
               <div className="services-offer__grid">
-                <article className="service-card" aria-label="Car Insurance">
-                  <img
-                    className="service-card__image service-card__image--car"
-                    src="/icons/car-insurance.png"
-                    alt="Car insurance"
-                    loading="lazy"
-                  />
-                  <p className="service-card__label">Car Insurance</p>
+                <article className="service-card service-card--car" aria-label="Car Insurance">
+                  <div className="service-card__content">
+                    <p className="service-card__label">
+                      <span className="service-card__product">Car</span>
+                      <span className="service-card__insurance">Insurance &amp; Road Tax</span>
+                    </p>
+                    <img
+                      className="service-card__image service-card__image--car"
+                      src="/icons/car-insurance.png"
+                      alt="Car insurance"
+                      loading="lazy"
+                    />
+                  </div>
+                  <span className="service-card__line" aria-hidden="true" />
                 </article>
 
-                <article className="service-card" aria-label="Motor Insurance">
-                  <img
-                    className="service-card__image service-card__image--motor"
-                    src="/icons/motor-insurance.png"
-                    alt="Motor insurance"
-                    loading="lazy"
-                  />
-                  <p className="service-card__label">Motor Insurance</p>
+                <article className="service-card service-card--motor" aria-label="Motor Insurance">
+                  <div className="service-card__content">
+                    <p className="service-card__label">
+                      <span className="service-card__product">Motor</span>
+                      <span className="service-card__insurance">Insurance &amp; Road Tax</span>
+                    </p>
+                    <img
+                      className="service-card__image service-card__image--motor"
+                      src="/icons/motor-insurance.png"
+                      alt="Motor insurance"
+                      loading="lazy"
+                    />
+                  </div>
+                  <span className="service-card__line" aria-hidden="true" />
                 </article>
+              </div>
+              <div className="about-road-stripes" aria-hidden="true">
+                <span className="about-road-stripes__mark" />
+                <span className="about-road-stripes__mark" />
+                <span className="about-road-stripes__mark" />
               </div>
             </section>
           </div>
 
-          <section className="steps-panel" id="steps" aria-labelledby="steps-title">
-            <div className="steps-panel__inner">
-              <h3 id="steps-title" className="steps-panel__title">
-                Renew in 3 simple steps.
-              </h3>
-
-              <div className="steps-panel__grid">
-                {steps.map((step) => (
-                  <article key={step.title} className="step-card">
-                    <div className="step-icon" aria-hidden="true">
-                      <StepIcon kind={step.kind} />
-                    </div>
-                    <div className="step-text">
-                      <p className="step-title">{step.title}</p>
-                      <p className="step-subtitle">{step.subtitle}</p>
-                    </div>
-                  </article>
-                ))}
-              </div>
-            </div>
-          </section>
-
       <section className="trusted-insurers-section" aria-labelledby="trusted-insurers-title">
         <div className="trusted-insurers-inner">
           <h3 id="trusted-insurers-title" className="trusted-insurers-title">
-            Trusted by top insurers.
+            Trusted insurers.
           </h3>
           <TrustedInsurerGrid logos={trustedInsurerLogos} />
+          <div className="about-road-stripes" aria-hidden="true">
+            <span className="about-road-stripes__mark" />
+            <span className="about-road-stripes__mark" />
+            <span className="about-road-stripes__mark" />
+          </div>
+        </div>
+      </section>
+
+      <section className="understand-section" aria-labelledby="understand-title">
+        <div className="understand-inner">
+          <h3 id="understand-title" className="understand-title">
+            <span className="understand-title__line">
+              <span className="understand-title__accent understand-title__accent--understand">Understand</span> first, then
+            </span>
+            <span className="understand-title__line">
+              <span className="understand-title__accent understand-title__accent--renew">Renew</span> with confidence.
+            </span>
+          </h3>
+
+          <div className="understand-road-scene" aria-label="Road usage illustration" />
+
+          <p className="understand-copy understand-copy--first">
+            <span>LAJOO helps you understand what you&apos;re paying for and</span>
+            <span>how you are covered.</span>
+          </p>
+
+          <div className="understand-example">
+            <ul className="understand-points" aria-label="Examples of what LAJOO understands">
+              <li className="understand-point">
+                <span className="understand-point__icon" aria-hidden="true">
+                  <UnderstandingPointIcon kind="vehicle" />
+                </span>
+                <span className="understand-point__copy">
+                  <strong>Your vehicle</strong>
+                  <span>Car or motor details.</span>
+                </span>
+              </li>
+              <li className="understand-point">
+                <span className="understand-point__icon" aria-hidden="true">
+                  <UnderstandingPointIcon kind="coverage" />
+                </span>
+                <span className="understand-point__copy">
+                  <strong>Your coverage needs</strong>
+                  <span>What protection add-ons matter.</span>
+                </span>
+              </li>
+              <li className="understand-point">
+                <span className="understand-point__icon" aria-hidden="true">
+                  <UnderstandingPointIcon kind="usage" />
+                </span>
+                <span className="understand-point__copy">
+                  <strong>Your usage</strong>
+                  <span>How you normally drive or ride.</span>
+                </span>
+              </li>
+              <li className="understand-point">
+                <span className="understand-point__icon" aria-hidden="true">
+                  <UnderstandingPointIcon kind="budget" />
+                </span>
+                <span className="understand-point__copy">
+                  <strong>Your budget</strong>
+                  <span>Which package fits you best.</span>
+                </span>
+              </li>
+            </ul>
+          </div>
+
+          <div className="understand-compare-card">
+            <p>Lajoo then compares and recommends the best for you.</p>
+          </div>
+
+          <div className="about-road-stripes understand-road-stripes" aria-hidden="true">
+            <span className="about-road-stripes__mark" />
+            <span className="about-road-stripes__mark" />
+            <span className="about-road-stripes__mark" />
+          </div>
         </div>
       </section>
 
@@ -476,6 +515,22 @@ export default function WhatIsLajooPage() {
               </article>
             ))}
           </div>
+
+          <div className="understand-unsure-card payment-options-ask-card">
+            <span className="understand-unsure-card__icon" aria-hidden="true">
+              <Image
+                src="/icons/understand-chat.svg"
+                alt=""
+                width={56}
+                height={56}
+                aria-hidden="true"
+                unoptimized
+              />
+            </span>
+            <span className="understand-unsure-card__copy">
+              <strong>Ask LAJOO anything before you pay.</strong>
+            </span>
+          </div>
         </div>
       </section>
 
@@ -483,7 +538,7 @@ export default function WhatIsLajooPage() {
         <div className="reviews-block__inner">
           <div className="reviews-summary">
             <h3 className="reviews-title">
-              Why users love us ?
+              Loved by Malaysians.
             </h3>
             <div className="reviews-rating-line">
               <strong>4.9</strong>
@@ -508,7 +563,7 @@ export default function WhatIsLajooPage() {
       <section className="ai-simple-section" aria-labelledby="ai-simple-title">
         <div className="ai-simple-inner">
           <h3 id="ai-simple-title" className="ai-simple-title">
-            <span className="ai-simple-title__accent">AI</span> makes renewal simple.
+            Simple renewal, proven.
           </h3>
 
           <div className="ai-simple-grid">
@@ -530,25 +585,15 @@ export default function WhatIsLajooPage() {
       <section className="renew-cta-band" aria-labelledby="renew-cta-title">
         <div className="renew-cta-inner">
           <h3 id="renew-cta-title" className="renew-cta-title">
-            Ready to renew ?
+            Renew in minutes.
           </h3>
           <p className="renew-cta-copy">
-            <span className="renew-cta-copy__line">Get your quote, compare and</span>
-            <span className="renew-cta-copy__line">
-              renew in minutes with{" "}
-              <span className="renew-cta-copy__accent" aria-label="LAJOO">
-                <span className="renew-cta-copy__accent-text">LAJOO</span>
-                <img
-                  className="renew-cta-copy__accent-logo"
-                  src="/logo/lajoo-logo-white.png"
-                  alt=""
-                  loading="lazy"
-                />
-              </span>
-            </span>
+            <span className="renew-cta-copy__line">No forms. No waiting.</span>
+            <span className="renew-cta-copy__line">{"Just chat and you're done."}</span>
           </p>
           <Link className="renew-cta-button" href="/">
-            Renew Now
+            <span>Renew Now</span>
+            <span aria-hidden="true">→</span>
           </Link>
         </div>
       </section>
@@ -627,67 +672,18 @@ function TrustedInsurerGrid({ logos = [] }) {
   );
 }
 
-function AiSimpleIcon({ kind }) {
-  if (kind === "policies") {
-    return (
-      <svg viewBox="0 0 64 64" aria-hidden="true" focusable="false">
-        <path
-          d="M20 12h20l8 8v28a4 4 0 0 1-4 4H20a4 4 0 0 1-4-4V16a4 4 0 0 1 4-4Z"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="4"
-          strokeLinejoin="round"
-        />
-        <path
-          d="M40 12v10h10M24 26h16M24 34h12"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="4"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        />
-        <circle cx="43" cy="43" r="9" fill="none" stroke="currentColor" strokeWidth="4" />
-        <path
-          d="m39.5 43 2.6 2.6 5.1-5.6"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="4"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        />
-      </svg>
-    );
-  }
-
-  if (kind === "time") {
-    return (
-      <svg viewBox="0 0 64 64" aria-hidden="true" focusable="false">
-        <path
-          d="M20 18h-6M20 32h-8M20 46h-6"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="4"
-          strokeLinecap="round"
-        />
-        <circle cx="38" cy="32" r="18" fill="none" stroke="currentColor" strokeWidth="4" />
-        <path
-          d="M38 22v11l8 7"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="4"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        />
-      </svg>
-    );
-  }
-
+function UnderstandingPointIcon({ kind }) {
+  const iconSrc = `/icons/understand-${kind}.svg`;
   return (
-    <svg viewBox="0 0 64 64" aria-hidden="true" focusable="false">
-      <path
-        d="M11 24h18l-7 12h12l-5 12 20-24H33l5-12-27 34"
-        fill="currentColor"
-      />
-    </svg>
+    <Image src={iconSrc} alt="" width={56} height={56} aria-hidden="true" unoptimized />
+  );
+}
+
+function AiSimpleIcon({ kind }) {
+  return (
+    <span
+      className={`ai-simple-card__icon-glyph ai-simple-card__icon-glyph--${kind}`}
+      aria-hidden="true"
+    />
   );
 }

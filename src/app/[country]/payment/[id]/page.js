@@ -82,9 +82,10 @@ export default function PaymentPage() {
   const plate = searchParams.get("plate") || "JRT 9289";
   const insurance = parseAmount(searchParams.get("insurance"), 920);
   const addons = parseAmount(searchParams.get("addons"), 152);
+  const tax = parseAmount(searchParams.get("tax"), 0);
   const roadtax = parseAmount(searchParams.get("roadtax"), 110);
-  const totalFromParams = parseAmount(searchParams.get("total"), insurance + addons + roadtax);
-  const computedTotal = insurance + addons + roadtax;
+  const totalFromParams = parseAmount(searchParams.get("total"), insurance + addons + tax + roadtax);
+  const computedTotal = insurance + addons + tax + roadtax;
   const total = computedTotal > 0 ? computedTotal : totalFromParams;
 
   const handlePayment = async () => {
@@ -106,6 +107,7 @@ export default function PaymentPage() {
         plate,
         insurance,
         addons,
+        tax,
         roadtax,
         paymentMethod: selectedMethod,
       }
@@ -160,6 +162,12 @@ export default function PaymentPage() {
               <div className="breakdown-row">
                 <span>Add-ons</span>
                 <span>RM {addons.toLocaleString()}</span>
+              </div>
+            )}
+            {tax > 0 && (
+              <div className="breakdown-row">
+                <span>Tax / Stamp Duty</span>
+                <span>RM {tax.toLocaleString()}</span>
               </div>
             )}
             {roadtax > 0 && (

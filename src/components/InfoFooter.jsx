@@ -48,12 +48,24 @@ function YoutubeIcon() {
   );
 }
 
+function XIcon() {
+  return (
+    <svg className={styles.iconSvg} viewBox="0 0 24 24" aria-hidden="true">
+      <path
+        fill="currentColor"
+        d="M13.8 10.7 20.7 3h-1.6l-6 6.6L8.3 3H2.8l7.2 10-7.2 8h1.6l6.3-7 5 7h5.5l-7.4-10.3Zm-2.2 2.4-.7-1-5.8-7.8h2.4l4.7 6.4.7 1 6.1 8.2h-2.4l-5-6.8Z"
+      />
+    </svg>
+  );
+}
+
 const socialLinks = [
   { label: "Facebook", href: "https://www.facebook.com/", icon: <FacebookIcon /> },
   { label: "Instagram", href: "https://www.instagram.com/", icon: <InstagramIcon /> },
   { label: "TikTok", href: "https://www.tiktok.com/", icon: <TikTokIcon /> },
   { label: "Rednote", href: "https://www.xiaohongshu.com/", icon: <span className={styles.rednoteGlyph}>R</span> },
   { label: "YouTube", href: "https://www.youtube.com/", icon: <YoutubeIcon /> },
+  { label: "X", href: "https://x.com/", icon: <XIcon /> },
 ];
 
 export default function InfoFooter() {
@@ -76,7 +88,7 @@ export default function InfoFooter() {
             <img src="/logo/lajoo-logo.png" alt="LAJOO" className={styles.brandLogo} />
             <p className={styles.company}>LAJOO AI SDN. BHD.</p>
             <p className={styles.registration}>202501028462 (1629874-U)</p>
-            <p className={styles.tagline}>AI-powered insurance renewal platform in Malaysia</p>
+            <p className={styles.tagline}>Helping Malaysians renew insurance with AI.</p>
           </section>
 
           <section className={`${styles.section} ${styles.navSection}`}>
@@ -106,6 +118,8 @@ export default function InfoFooter() {
               ))}
             </div>
           </section>
+
+          <p className={styles.copyright}>© 2026 LAJOO AI Sdn. Bhd. All rights reserved.</p>
         </div>
       </div>
     </footer>

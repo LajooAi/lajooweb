@@ -67,12 +67,103 @@ function getPolicyEffectiveRangeDisplay(options = {}) {
 
 const PRINTED_ROAD_TAX_EFFECTIVE_DATE = '1 Feb 2026';
 const PRINTED_ROAD_TAX_POLICY_NOTE = `Please note that from ${PRINTED_ROAD_TAX_EFFECTIVE_DATE}, printed road tax is only for Foreign ID or Company vehicles.`;
-const ADDONS_CLOSE_QUESTION = 'Based on your situation, which would you like? You can type 1, 2, 3, or a combo like 1 and 3. Or reply skip.';
+const ADDONS_CLOSE_QUESTION = 'Based on your situation, which would you like? You can type 1, 2, 3, 8, or a combo like 1 and 8. Or reply skip.';
+const SST_RATE = 0.08;
+const STAMP_DUTY_AMOUNT = 10;
+const WINDSCREEN_PREMIUM_RATE = 0.15;
+const DEFAULT_WINDSCREEN_COVERAGE = 2000;
 const PERSONAL_DETAIL_EXAMPLES = {
   Email: 'name@email.com',
   'Phone number': '0123456789',
   Address: 'No 12, Jalan Setia 1, 47000 Shah Alam, Selangor',
 };
+
+const ADD_ON_CATALOG = [
+  {
+    id: 'windscreen',
+    number: 1,
+    name: 'Windscreen',
+    price: null,
+    hasCoverageInput: true,
+    defaultCoverage: DEFAULT_WINDSCREEN_COVERAGE,
+    recommended: true,
+    info: 'Covers windscreen, window, and glass damage up to your selected coverage amount.',
+  },
+  {
+    id: 'flood',
+    number: 2,
+    name: 'Special Perils (Flood & others)',
+    summaryName: 'Inclusion of Special Perils',
+    price: 150,
+    recommended: true,
+    info: 'Covers flood and selected natural disaster damage, subject to insurer terms.',
+  },
+  {
+    id: 'ehailing',
+    number: 3,
+    name: 'E-hailing (Grab & others)',
+    price: 2000,
+    info: 'Required if the vehicle is used for e-hailing or ride-sharing work.',
+  },
+  {
+    id: 'all_drivers',
+    number: 4,
+    name: 'All Drivers',
+    price: 30,
+    info: 'Lets additional drivers be covered, subject to policy wording.',
+  },
+  {
+    id: 'legal_liability_passengers',
+    number: 5,
+    name: 'Legal Liability To Passengers',
+    price: 20,
+    info: 'Covers selected legal liability to passengers, subject to policy wording.',
+  },
+  {
+    id: 'lltp_negligence',
+    number: 6,
+    name: 'LLTP for Negligence Acts',
+    price: 7,
+    info: 'Additional passenger liability protection for negligence-related situations.',
+  },
+  {
+    id: 'strike_riot',
+    number: 7,
+    name: 'Strike riot and civil commotion',
+    price: 450,
+    info: 'Covers selected damage caused by strike, riot, or civil commotion events.',
+  },
+  {
+    id: 'betterment_waiver',
+    number: 8,
+    name: 'Betterment waiver',
+    price: 350,
+    info: 'Helps reduce unexpected betterment charges when new parts replace old parts.',
+  },
+  {
+    id: 'ncd_relief',
+    number: 9,
+    name: 'Current year NCD relief',
+    price: 250,
+    info: 'Helps protect the current year NCD benefit, subject to insurer terms.',
+  },
+  {
+    id: 'body_painting',
+    number: 10,
+    name: 'Full vehicle body painting',
+    price: 180,
+    info: 'Adds selected body painting protection, subject to insurer acceptance.',
+  },
+  {
+    id: 'personal_accident',
+    number: 11,
+    name: 'Personal accident for all',
+    price: 50,
+    info: 'Adds selected personal accident protection for covered persons.',
+  },
+];
+
+const ADD_ON_BY_ID = Object.fromEntries(ADD_ON_CATALOG.map((addOn) => [addOn.id, addOn]));
 
 const INSURER_UI_META = {
   TAKAFUL: {
@@ -167,17 +258,138 @@ function formatOwnerId(ownerId) {
   return raw;
 }
 
+function maskOwnerId(ownerId) {
+  const raw = String(ownerId || '').replace(/\s+/g, '').replace(/-/g, '');
+  if (/^\d{12}$/.test(raw)) {
+    return `${raw.slice(0, 6)}-${raw.slice(6, 8)}-&bull;&bull;&bull;&bull;`;
+  }
+  if (raw.length > 4) {
+    return `${raw.slice(0, Math.max(0, raw.length - 4))}&bull;&bull;&bull;&bull;`;
+  }
+  return raw || '-';
+}
+
 function effectiveDateIso(daysFromNow = 30) {
   const d = new Date();
   d.setDate(d.getDate() + daysFromNow);
   return d.toISOString().slice(0, 10);
 }
 
-function calculateCurrentGrandTotal(state) {
+function roundCurrency(value) {
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric)) return 0;
+  return Math.round((numeric + Number.EPSILON) * 100) / 100;
+}
+
+function formatMoneyTwoDecimals(value) {
+  return Number(value || 0).toLocaleString('en-MY', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+}
+
+function calculateWindscreenPremium(coverageAmount) {
+  return roundCurrency(Number(coverageAmount || 0) * WINDSCREEN_PREMIUM_RATE);
+}
+
+function extractWindscreenCoverageAmount(text, { allowBareAmount = false } = {}) {
+  const raw = String(text || '');
+  const candidates = [];
+
+  const addCandidate = (value) => {
+    const numeric = Number(String(value || '').replace(/,/g, ''));
+    if (Number.isFinite(numeric) && numeric >= 100 && numeric <= 100000) {
+      candidates.push(numeric);
+    }
+  };
+
+  const contextualPatterns = [
+    /windscreen[\s\S]{0,40}?(?:rm\s*)?(\d[\d,]*(?:\.\d{1,2})?)/gi,
+    /(?:coverage|cover)[\s\S]{0,20}?(?:rm\s*)?(\d[\d,]*(?:\.\d{1,2})?)/gi,
+    /(?:rm\s*)(\d[\d,]*(?:\.\d{1,2})?)[\s\S]{0,30}?(?:coverage|cover|windscreen)/gi,
+  ];
+
+  for (const pattern of contextualPatterns) {
+    for (const match of raw.matchAll(pattern)) {
+      addCandidate(match[1]);
+    }
+  }
+
+  if (allowBareAmount) {
+    for (const match of raw.matchAll(/(?:rm\s*)?(\d{3,6}(?:,\d{3})*(?:\.\d{1,2})?|\d{3,6}(?:\.\d{1,2})?)/gi)) {
+      addCandidate(match[1]);
+    }
+  }
+
+  return candidates.length > 0 ? candidates[0] : null;
+}
+
+function getAddOnCatalogItem(id) {
+  return ADD_ON_BY_ID[id] || null;
+}
+
+function buildAddOnObject(addOnId, options = {}) {
+  const item = getAddOnCatalogItem(addOnId);
+  if (!item) return null;
+
+  if (item.hasCoverageInput) {
+    const coverageAmount = Number(options.coverageAmount || item.defaultCoverage || DEFAULT_WINDSCREEN_COVERAGE);
+    return {
+      id: item.id,
+      name: item.name,
+      coverageAmount,
+      price: calculateWindscreenPremium(coverageAmount),
+    };
+  }
+
+  return {
+    id: item.id,
+    name: item.summaryName || item.name,
+    price: Number(item.price || 0),
+  };
+}
+
+function buildAddOnsFromSelection(addOnIds = [], options = {}) {
+  const uniqueIds = [...new Set(addOnIds)].filter(Boolean);
+  return uniqueIds
+    .map((id) => buildAddOnObject(id, options))
+    .filter(Boolean);
+}
+
+function buildWindscreenCoveragePrompt(summaryBox, pendingAddOnIds = []) {
+  const pendingOtherAddOns = pendingAddOnIds
+    .filter((id) => id !== 'windscreen')
+    .map((id) => getAddOnCatalogItem(id)?.name)
+    .filter(Boolean);
+  const pendingLine = pendingOtherAddOns.length
+    ? `I will keep **${pendingOtherAddOns.join(', ')}** selected too.`
+    : '';
+
+  return `${summaryBox}
+
+${formatStepLine(3, 'Add-ons')}
+
+For **Windscreen**, I need to know how much coverage you want first.
+
+Examples:
+- RM 500 coverage = RM 75.00
+- RM 1,000 coverage = RM 150.00
+- RM 2,000 coverage = RM 300.00
+
+${pendingLine ? `${pendingLine}\n\n` : ''}Reply with the windscreen coverage amount, for example **RM 2,000**.`;
+}
+
+function calculateSummaryAmounts(state) {
   const insurance = Number(state?.selectedQuote?.priceAfter || 0);
   const addOns = (state?.selectedAddOns || []).reduce((sum, item) => sum + Number(item?.price || 0), 0);
   const roadTax = Number(state?.selectedRoadTax?.price || 0);
-  return insurance + addOns + roadTax;
+  const tax = insurance > 0 ? roundCurrency((insurance + addOns) * SST_RATE + STAMP_DUTY_AMOUNT) : 0;
+  const total = roundCurrency(insurance + addOns + tax + roadTax);
+  return { insurance, addOns, roadTax, tax, total };
+}
+
+function calculateCurrentGrandTotal(state) {
+  return calculateSummaryAmounts(state).total;
 }
 
 function insurerMetaFromGatewayQuote(quote) {
@@ -705,50 +917,169 @@ function updateLastRecommendedInsurerMemory(state, assistantReply) {
   state.lastRecommendedInsurer = recommendedInsurer || null;
 }
 
+function getQuoteForSummary(state) {
+  const selectedInsurer = String(state?.selectedQuote?.insurer || '').toLowerCase();
+  if (!selectedInsurer) return null;
+  return getQuotesFromState(state).find((q) =>
+    String(q?.insurer?.displayName || '').toLowerCase() === selectedInsurer
+  ) || null;
+}
+
+function getInsurerLogoForSummary(insurerName) {
+  const lower = String(insurerName || '').toLowerCase();
+  if (lower.includes('takaful') || lower.includes('ikhlas')) return '/partners/takaful.svg';
+  if (lower.includes('etiqa')) return '/partners/etiqa.svg';
+  if (lower.includes('allianz')) return '/partners/allianz.svg';
+  return '';
+}
+
+function getInsurerDisplayForSummary(insurerName) {
+  const lower = String(insurerName || '').toLowerCase();
+  if (lower.includes('takaful') || lower.includes('ikhlas')) return 'Takaful Ikhlas Insurance Bhd';
+  if (lower.includes('etiqa')) return 'Etiqa Insurance';
+  if (lower.includes('allianz')) return 'Allianz Insurance';
+  return insurerName || 'Selected insurer';
+}
+
+function getInsuranceSectionTitle(insurerName) {
+  const lower = String(insurerName || '').toLowerCase();
+  return lower.includes('takaful') || lower.includes('ikhlas') ? 'Insurance/Takaful' : 'Insurance';
+}
+
+function getSummaryVehicleLine(state) {
+  const profile = state?.vehicleInfo || {};
+  const plate = formatPlateNumberForDisplay(profile.plateNumber || state?.plateNumber || '-');
+  const baseModelDisplay = [profile.year, profile.make, profile.model].filter(Boolean).join(' ');
+  const engineSize = Number.isFinite(Number(profile.engineCC)) && Number(profile.engineCC) > 0
+    ? `${(Number(profile.engineCC) / 1000).toFixed(1).replace(/\.0$/, '')}L`
+    : '';
+  const modelDisplay = baseModelDisplay
+    ? [baseModelDisplay, engineSize].filter(Boolean).join(' ')
+    : 'Vehicle';
+  return `${plate} · ${modelDisplay}`;
+}
+
+function getSummaryAddOnName(addOn) {
+  const raw = String(addOn?.name || addOn?.shortName || 'Add-on');
+  const lower = raw.toLowerCase();
+  if (lower.includes('special perils') || lower.includes('flood')) return 'Inclusion of Special Perils';
+  if (lower.includes('windscreen')) {
+    const coverage = Number(addOn?.coverageAmount || 0);
+    return coverage > 0
+      ? `Windscreen Coverage RM ${formatMoneyTwoDecimals(coverage)}`
+      : 'Windscreen Coverage';
+  }
+  if (lower.includes('e-hailing') || lower.includes('ehailing')) return 'E-hailing Cover';
+  return raw;
+}
+
+function buildSummaryCardData(state) {
+  if (!state?.selectedQuote) return null;
+
+  const quote = getQuoteForSummary(state);
+  const insurerName = state.selectedQuote?.insurer || quote?.insurer?.displayName || 'Selected insurer';
+  const coverType = state?.vehicleInfo?.coverType || state?.selectedQuote?.coverType || quote?.coverType || 'Comprehensive';
+  const sumInsured = Number(state?.selectedQuote?.sumInsured || quote?.sumInsured || 0);
+  const priceBefore = Number(state?.selectedQuote?.priceBefore || quote?.pricing?.basePremium || state?.selectedQuote?.priceAfter || 0);
+  const ncdPercent = Number(state?.selectedQuote?.ncdPercent ?? quote?.pricing?.ncdPercent ?? 0);
+  const amounts = calculateSummaryAmounts(state);
+  const addOns = Array.isArray(state.selectedAddOns)
+    ? state.selectedAddOns.map((addOn) => ({
+        name: getSummaryAddOnName(addOn),
+        price: Number(addOn?.price || 0),
+      }))
+    : [];
+  const selectedRoadTax = state.selectedRoadTax || null;
+
+  return {
+    logoUrl: getInsurerLogoForSummary(insurerName),
+    insurerName: getInsurerDisplayForSummary(insurerName),
+    vehicleLine: getSummaryVehicleLine(state),
+    sumInsured,
+    policyPeriod: getPolicyEffectiveRangeDisplay({ month: 'long' }),
+    coverType,
+    insuranceTitle: getInsuranceSectionTitle(insurerName),
+    premiumDescription: `Premium RM ${formatMoneyTwoDecimals(priceBefore)} - NCD ${formatNcdPercent(ncdPercent) || '0'}%`,
+    insurancePrice: amounts.insurance,
+    addOns,
+    addOnsSelected: addOns.length > 0,
+    addOnsConfirmed: !!state.addOnsConfirmed,
+    taxDescription: `SST (8%) + Stamp Duty (RM ${formatMoneyTwoDecimals(STAMP_DUTY_AMOUNT)})`,
+    taxPrice: amounts.tax,
+    roadTaxSelected: !!selectedRoadTax && Number(selectedRoadTax?.price || 0) > 0,
+    roadTaxDescription: selectedRoadTax
+      ? (selectedRoadTax.name === 'No Road Tax' ? 'Not included' : selectedRoadTax.name)
+      : 'Not selected yet',
+    roadTaxPrice: amounts.roadTax,
+    total: amounts.total,
+  };
+}
+
+function buildAddOnsCardData(state) {
+  if (!state?.selectedQuote) return null;
+  const selectedAddOns = Array.isArray(state.selectedAddOns) ? state.selectedAddOns : [];
+  const selectedIds = selectedAddOns.map((addOn) => String(addOn?.id || '').toLowerCase()).filter(Boolean);
+  const selectedWindscreen = selectedAddOns.find((addOn) => String(addOn?.id || addOn?.name || '').toLowerCase().includes('windscreen'));
+
+  return {
+    selectedIds,
+    defaultWindscreenCoverage: Number(selectedWindscreen?.coverageAmount ?? 0),
+    options: ADD_ON_CATALOG.map((item) => ({
+      id: item.id,
+      number: item.number,
+      name: item.name,
+      price: item.hasCoverageInput
+        ? calculateWindscreenPremium(selectedWindscreen?.coverageAmount ?? 0)
+        : Number(item.price || 0),
+      hasCoverageInput: !!item.hasCoverageInput,
+      defaultCoverage: item.defaultCoverage || null,
+      recommended: !!item.recommended,
+      info: item.info,
+    })),
+  };
+}
+
 /** Build the quote summary box from current state */
 function buildSummaryBox(state) {
   const insurer = state.selectedQuote?.insurer || 'Not selected';
-  const insurerPrice = state.selectedQuote?.priceAfter || 0;
+  const insurerPrice = Number(state.selectedQuote?.priceAfter || 0);
   const plateDisplay = formatPlateNumberForDisplay(state?.vehicleInfo?.plateNumber || state?.plateNumber);
-  const policyEffectiveDisplay = getPolicyEffectiveRangeDisplay();
-  const insurerQuote = getQuotesFromState(state).find((q) => q.insurer.displayName === insurer);
+  const policyEffectiveDisplay = getPolicyEffectiveRangeDisplay({ month: 'long' });
+  const insurerQuote = getQuoteForSummary(state);
   const coverType = state?.vehicleInfo?.coverType || state?.selectedQuote?.coverType || 'Comprehensive';
   const sumInsured = state?.selectedQuote?.sumInsured || insurerQuote?.sumInsured || null;
+  const priceBefore = Number(state?.selectedQuote?.priceBefore || insurerQuote?.pricing?.basePremium || insurerPrice || 0);
+  const ncdPercent = Number(state?.selectedQuote?.ncdPercent ?? insurerQuote?.pricing?.ncdPercent ?? 0);
+  const amounts = calculateSummaryAmounts(state);
 
-  // Resolve logo from insurer name
-  const logoMap = {
-    'Takaful Ikhlas': '/partners/takaful.svg',
-    'Etiqa Insurance': '/partners/etiqa.svg',
-    'Allianz Insurance': '/partners/allianz.svg',
-  };
-  const logo = logoMap[insurer] || '';
+  const logo = getInsurerLogoForSummary(insurer);
   const insurerLine = insurerPrice
-    ? `![${insurer}](${logo}) ${insurer} — RM ${insurerPrice.toLocaleString()}`
+    ? `![${insurer}](${logo}) ${insurer} — RM ${formatMoneyTwoDecimals(insurerPrice)}`
     : 'Not selected';
 
   const addOnsBlock = state.selectedAddOns.length > 0
-    ? `**Add-ons:**  \n${state.selectedAddOns.map(a => `${a.name} — RM ${Number(a.price || 0).toLocaleString()}`).join('  \n')}`
-    : '**Add-ons:** Not selected';
-  const addOnsTotal = state.selectedAddOns.reduce((sum, a) => sum + (a.price || 0), 0);
+    ? `**Add-ons:**  \n${state.selectedAddOns.map(a => `${a.name} — RM ${formatMoneyTwoDecimals(a.price || 0)}`).join('  \n')}`
+    : state.addOnsConfirmed
+      ? '**Add-ons:** None — RM 0.00'
+      : '**Add-ons:** Not selected yet — RM 0.00';
 
   const roadTaxLine = state.selectedRoadTax && state.selectedRoadTax.price > 0
-    ? `${state.selectedRoadTax.name} - RM ${state.selectedRoadTax.price}`
-    : state.selectedRoadTax ? state.selectedRoadTax.name : 'Not selected';
-  const roadTaxTotal = state.selectedRoadTax?.price || 0;
-
-  const total = insurerPrice + addOnsTotal + roadTaxTotal;
+    ? `${state.selectedRoadTax.name} - RM ${formatMoneyTwoDecimals(state.selectedRoadTax.price)}`
+    : state.selectedRoadTax ? `${state.selectedRoadTax.name} - RM 0.00` : 'Not selected yet — RM 0.00';
 
 return `<span style="font-size:1.12em;display:block">**✓ Renewal Summary** (${plateDisplay})</span>
 
-**Policy Effective:** ${policyEffectiveDisplay}  
+**Policy Period:** ${policyEffectiveDisplay}  
 **Sum Insured:** ${sumInsured ? `RM ${sumInsured.toLocaleString()}` : 'N/A'}  
 **Cover Type:** ${coverType}
 
-**Insurer:** ${insurerLine}  
+**${getInsuranceSectionTitle(insurer)}:** ${insurerLine}  
+Premium RM ${formatMoneyTwoDecimals(priceBefore)} - NCD ${formatNcdPercent(ncdPercent) || '0'}%  
 ${addOnsBlock}  
+**Tax:** SST (8%) + Stamp Duty (RM ${formatMoneyTwoDecimals(STAMP_DUTY_AMOUNT)}) — RM ${formatMoneyTwoDecimals(amounts.tax)}  
 **Road Tax:** ${roadTaxLine}
 
-**Total:** &nbsp;<u>RM ${total.toLocaleString()}</u>`;
+**Total:** &nbsp;<u>RM ${formatMoneyTwoDecimals(amounts.total)}</u>`;
 }
 
 /** Build the 3-quote cards block */
@@ -777,9 +1108,9 @@ ${features}
 
 /** Build the add-ons menu */
 function buildAddOnsMenu() {
-  return `1. **Windscreen** — RM ${ADDONS.WINDSCREEN.price}
-2. **Special Perils (Flood & Natural Disaster)** — RM ${ADDONS.FLOOD.price}
-3. **E-hailing** — RM ${ADDONS.EHAILING.price}
+  return `1. **Windscreen** — choose coverage amount
+2. **Special Perils (Flood & Natural Disaster)** — RM ${formatMoneyTwoDecimals(ADD_ON_BY_ID.flood.price)}
+3. **E-hailing** — RM ${formatMoneyTwoDecimals(ADD_ON_BY_ID.ehailing.price)}
 
 E-hailing add-on is compulsory for vehicles used for e-hailing services like Grab and others.`;
 }
@@ -801,28 +1132,50 @@ function buildRoadTaxMenu(state) {
 /** Build the vehicle info block from a profile */
 function buildVehicleBlock(profile) {
   if (!profile) return '';
-  const modelDisplay = [profile.year, profile.make, profile.model].filter(Boolean).join(' ') || '-';
+  const plateDisplay = formatPlateNumberForDisplay(profile.plateNumber);
   const engineCc = Number.isFinite(Number(profile.engineCC))
     ? Number(profile.engineCC).toLocaleString()
     : String(profile.engineCC || '-');
-  const postcode = profile?.address?.postcode || '-';
+  const engineSize = Number.isFinite(Number(profile.engineCC))
+    ? (Number(profile.engineCC) / 1000).toFixed(1).replace(/\.0$/, '')
+    : '';
+  const baseModelDisplay = [profile.year, profile.make, profile.model].filter(Boolean).join(' ') || '-';
+  const modelDisplay = engineSize && !String(baseModelDisplay).includes(engineSize)
+    ? `${baseModelDisplay} ${engineSize} (Auto-${engineCc}cc)`
+    : `${baseModelDisplay} (Auto-${engineCc}cc)`;
+  const quoteSums = Array.isArray(profile.quoteOptions)
+    ? profile.quoteOptions
+        .map((quote) => Number(quote?.sumInsured || quote?.coverage?.sum_insured || 0))
+        .filter((value) => Number.isFinite(value) && value > 0)
+    : [];
+  const marketMin = Number.isFinite(Number(profile.marketValueMin)) && Number(profile.marketValueMin) > 0
+    ? Number(profile.marketValueMin)
+    : Math.min(...quoteSums);
+  const marketMax = Number.isFinite(Number(profile.marketValueMax)) && Number(profile.marketValueMax) > 0
+    ? Number(profile.marketValueMax)
+    : Math.max(...quoteSums);
+  const marketValue = Number.isFinite(marketMin) && Number.isFinite(marketMax)
+    ? `RM ${marketMin.toLocaleString()} - RM ${marketMax.toLocaleString()}`
+    : '-';
+  const ownerId = maskOwnerId(profile.ownerNRIC || profile.ownerNRICFormatted);
   const ncd = Number.isFinite(Number(profile.ncdPercent))
     ? `${Number(profile.ncdPercent)}%`
     : String(profile.ncdPercent || '-');
   const coverageType = String(profile.coverType || '-');
   const policyPeriod = getPolicyEffectiveRangeDisplay({ month: 'long' });
 
-  return `<span style="display:block"><strong>Vehicle Registration Number:</strong> ${profile.plateNumber}</span>
-<span style="display:block"><strong>Model:</strong> ${modelDisplay}</span>
-<span style="display:block"><strong>Engine Type:</strong> Automatic - ${engineCc}cc</span>
-<span style="display:block"><strong>Postcode:</strong> ${postcode}</span>
-<span style="display:block"><strong>No Claim Discount (NCD):</strong> ${ncd}</span>
-<span style="display:block"><strong>Coverage Type:</strong> ${coverageType}</span>
-<span style="display:block"><strong>Policy Period:</strong> ${policyPeriod}</span>`;
+  return `<span style="display:block;font-size:18px;font-weight:800;color:#000000">${plateDisplay}</span>
+<span style="display:block;font-weight:700">${modelDisplay}</span>
+<span style="display:block;height:0;width:350px;max-width:100%;border-top:1px solid #e5e7eb;margin:5px 0 7px"></span>
+<span style="display:block;font-weight:400"><strong>Policy Period :</strong> ${policyPeriod}</span>
+<span style="display:block;font-weight:400"><strong>Market Value :</strong> ${marketValue}</span>
+<span style="display:block;font-weight:400"><strong>Owner IC :</strong> ${ownerId}</span>
+<span style="display:block;font-weight:400"><strong>Coverage Type:</strong> ${coverageType}</span>
+<span style="display:block;font-weight:400"><strong>No Claim Discount (NCD):</strong> ${ncd}</span>`;
 }
 
 function buildVehicleFoundReply(profile) {
-  return `Found your vehicle! 🚗
+  return `Found your vehicle!
 
 ${buildVehicleBlock(profile)}
 
@@ -848,14 +1201,17 @@ Please let me know which field is incorrect, or share the corrected **vehicle pl
 /** Build the payment link */
 function buildPaymentLink(state) {
   const tx = ensureTransactionState(state);
-  const insurerPrice = Number(state?.selectedQuote?.priceAfter || 0);
-  const addOnsTotal = (state?.selectedAddOns || []).reduce((sum, a) => sum + Number(a?.price || 0), 0);
-  const roadTaxTotal = Number(state?.selectedRoadTax?.price || 0);
-  const total = insurerPrice + addOnsTotal + roadTaxTotal;
+  const {
+    insurance: insurerPrice,
+    addOns: addOnsTotal,
+    roadTax: roadTaxTotal,
+    tax: taxTotal,
+    total,
+  } = calculateSummaryAmounts(state);
   const insurer = encodeURIComponent(state.selectedQuote?.insurer || '');
   const plate = encodeURIComponent(state.plateNumber || '');
   const payId = tx.paymentIntentId || `PAY-${Date.now()}`;
-  return `[**Pay RM ${total.toLocaleString()} Now ->**](/my/payment/${payId}?total=${total}&insurer=${insurer}&plate=${plate}&insurance=${insurerPrice}&addons=${addOnsTotal}&roadtax=${roadTaxTotal})`;
+  return `[**Pay RM ${formatMoneyTwoDecimals(total)} Now ->**](/my/payment/${payId}?total=${total}&insurer=${insurer}&plate=${plate}&insurance=${insurerPrice}&addons=${addOnsTotal}&tax=${taxTotal}&roadtax=${roadTaxTotal})`;
 }
 
 function buildPaymentStepBlock(summaryBox, paymentLink) {
@@ -1007,7 +1363,7 @@ function ensureStepLineIfMissing(response, stepLine) {
 
   // If summary exists, place step right above the summary block as fallback.
   const summaryStartMatch = text.match(/(?:^|\n)\s*(?:<span[^>]*>\s*)?(?:\*{0,2})?✓?\s*renewal summary(?:\*{0,2})?[^\n]*(?:<\/span>)?/i)
-    || text.match(/(?:^|\n)\s*(?:\*{0,2})?Policy Effective:\s*/i);
+    || text.match(/(?:^|\n)\s*(?:\*{0,2})?Policy (?:Effective|Period):\s*/i);
   if (summaryStartMatch) {
     const hasLeadingNewline = summaryStartMatch[0].startsWith('\n');
     const insertPos = summaryStartMatch.index + (hasLeadingNewline ? 1 : 0);
@@ -1031,9 +1387,10 @@ function ensureStepLineIfMissing(response, stepLine) {
 }
 
 const PAYMENT_LINK_REGEX = /\/my\/payment\/[a-z0-9-]+/i;
-const SUMMARY_BLOCK_REGEX = /(?:^✓\s*(?:\*\*)?renewal summary(?:\*\*)?\s*[—-]\s*[^\n]+|(?:^|\n)\*\*Policy Effective:\*\*|(?:^|\n)(?:💰\s*)?(?:\*\*)?Total:?(?:\*\*)?\s*(?:&nbsp;)?\s*(?:<u>)?\s*RM\s*\d[\d,]*)/im;
+const SUMMARY_BLOCK_REGEX = /(?:^✓\s*(?:\*\*)?renewal summary(?:\*\*)?\s*[—-]\s*[^\n]+|(?:^|\n)\*\*Policy (?:Effective|Period):\*\*|(?:^|\n)(?:💰\s*)?(?:\*\*)?Total:?(?:\*\*)?\s*(?:&nbsp;)?\s*(?:<u>)?\s*RM\s*\d[\d,]*)/im;
 const CANONICAL_SUMMARY_MARKER_REGEX = /<span style="font-size:1\.12em[^"]*">\*\*✓ Renewal Summary\*\*/i;
 const SUMMARY_SECTION_REGEX = /(?:^|\n)\s*(?:<span[^>]*>\s*)?(?:\*{0,2})?✓?\s*renewal summary(?:\*{0,2})?[^\n]*(?:<\/span>)?[\s\S]*?(?:\n\s*(?:\*{0,2})?(?:💰\s*)?total:?(?:\*{0,2})?\s*(?:&nbsp;)?\s*(?:<u>)?\s*rm[^\n]*)/im;
+const ADDONS_SECTION_REGEX = /(?:^|\n)\s*(?:\*{0,2})?step\s+(?:\*{0,2})?3(?:\*{0,2})?\s+of\s+(?:\*{0,2})?6(?:\*{0,2})?\s*[—-]\s*add-ons(?:\*{0,2})?[\s\S]*?(?:\n\s*based on your situation,[^\n]*reply skip\.?)/im;
 
 function ensurePaymentLinkIfMissing(response, paymentLink, shouldInject) {
   if (!shouldInject || !paymentLink) return response;
@@ -1062,7 +1419,7 @@ function ensureSummaryLayoutConsistency(response, summaryBox, shouldCanonicalize
   if (!response || typeof response !== 'string') return response;
 
   const text = String(response).trim();
-  const hasSummarySignal = /renewal summary|policy effective:|sum insured:|cover type:|add-ons:|road tax:|(?:💰\s*)?total:/i.test(text);
+  const hasSummarySignal = /renewal summary|policy (?:effective|period):|sum insured:|cover type:|add-ons:|road tax:|(?:💰\s*)?total:/i.test(text);
   if (!hasSummarySignal) return text;
 
   if (text.includes(summaryBox) || CANONICAL_SUMMARY_MARKER_REGEX.test(text)) {
@@ -1216,7 +1573,12 @@ function getCurrentStepPlaybook(state, context = {}) {
     return {
       label: 'Add-ons',
       goal: 'Confirm add-on selection before moving to road tax.',
-      options: ['Windscreen (RM 100)', 'Special Perils (RM 50)', 'E-hailing (RM 500)', 'Skip all add-ons'],
+      options: [
+        'Windscreen (choose coverage amount)',
+        `Special Perils (RM ${formatMoneyTwoDecimals(ADD_ON_BY_ID.flood.price)})`,
+        `E-hailing (RM ${formatMoneyTwoDecimals(ADD_ON_BY_ID.ehailing.price)})`,
+        'Skip all add-ons',
+      ],
       nextAction: 'Ask which add-on(s) they want, or if they want to skip.',
       sideQuestionPolicy: 'After answering side questions, return to add-on selection.',
     };
@@ -1839,7 +2201,7 @@ function normalizePriceFormatSpacing(text) {
 }
 
 const DISALLOWED_STEP2_INTRO_LINE_REGEX = /^\s*(?:let['’]?s|lets)\s+compare\s+your\s+options[:.!?]?\s*$/i;
-const VEHICLE_FIELD_LABEL_FRAGMENT = '(?:Vehicle\\s*Reg\\.?\\s*Num|Vehicle\\s*Registration\\s*Number|Registration\\s*Number|Vehicle|Model|Engine\\s*Type|Engine|Postcode|No\\s*Claim\\s*Discount\\s*\\(NCD\\)|NCD|Coverage\\s*Type|Cover\\s*Type|Policy\\s*Period|Policy\\s*Effective)';
+const VEHICLE_FIELD_LABEL_FRAGMENT = '(?:Vehicle\\s*Reg\\.?\\s*Num|Vehicle\\s*Registration\\s*Number|Registration\\s*Number|Vehicle|Model|Engine\\s*Type|Engine|Postcode|Market\\s*Value|Owner\\s*IC|Owner\\s*Identification|No\\s*Claim\\s*Discount\\s*\\(NCD\\)|NCD|Coverage\\s*Type|Cover\\s*Type|Policy\\s*Period|Policy\\s*Effective)';
 const REPEAT_MEMORY_WINDOW_TURNS = 3;
 const REPEAT_MEMORY_MAX_SENTENCES = 8;
 const REPEAT_SENTENCE_MIN_WORDS = 4;
@@ -1931,7 +2293,7 @@ function shouldIgnoreSentenceForRepeatCheck(sentence) {
   if (/^\d+\.\s+/.test(line)) return true;
   if (/\/my\/payment\/|https?:\/\//i.test(line)) return true;
   if (/rm\s*\d/i.test(line)) return true;
-  if (/^(policy effective|sum insured|cover type|insurer|add-ons|road tax|total)\s*:/i.test(line)) return true;
+  if (/^(policy effective|policy period|sum insured|cover type|insurer|insurance\/takaful|insurance|add-ons|tax|road tax|total)\s*:/i.test(line)) return true;
   if (/^(which option would you like to go with|which insurer would you like to go with)/i.test(line)) return true;
   if (/^would you like to add\b/i.test(line)) return true;
   if (/^please key in the otp\b/i.test(line)) return true;
@@ -2037,7 +2399,7 @@ function evaluateResponseQuality(response, state, context = {}) {
   }
   if (
     state.step === FLOW_STEPS.OTP &&
-    /renewal summary|policy effective|sum insured|cover type|add-ons:|road tax:/i.test(text)
+    /renewal summary|policy effective|policy period|sum insured|cover type|add-ons:|road tax:/i.test(text)
   ) {
     issues.push('otp_response_should_not_include_summary');
   }
@@ -2149,7 +2511,7 @@ function buildDynamicPricingPromptSections(state) {
     })
     .join("\n");
 
-  const addOnsLine = `Windscreen ${formatRmAmount(ADDONS.WINDSCREEN.price)} | Flood ${formatRmAmount(ADDONS.FLOOD.price)} | E-hailing ${formatRmAmount(ADDONS.EHAILING.price)}`;
+  const addOnsLine = `Windscreen price depends on coverage amount | Flood/Special Perils ${formatRmAmount(ADD_ON_BY_ID.flood.price)} | E-hailing ${formatRmAmount(ADD_ON_BY_ID.ehailing.price)}`;
   return {
     insuranceLines: insuranceLines || "- Pricing will be shown after vehicle verification and quote retrieval.",
     addOnsLine,
@@ -2166,8 +2528,8 @@ function buildDynamicRecommendationRubric(state) {
    - Budget → recommend the lowest premium quote
    - Easy claims / Highway → recommend insurer with stronger assistance/service features
    - Max coverage → recommend quote with higher sum insured
-   - Flood-prone → Add Special Perils (${formatRmAmount(ADDONS.FLOOD.price)})
-   - Outdoor parking → Add Windscreen (${formatRmAmount(ADDONS.WINDSCREEN.price)})`;
+   - Flood-prone → Add Special Perils (${formatRmAmount(ADD_ON_BY_ID.flood.price)})
+   - Outdoor parking → Add Windscreen (price depends on selected coverage amount)`;
   }
 
   const cheapest = quotes[0];
@@ -2182,8 +2544,8 @@ function buildDynamicRecommendationRubric(state) {
    - Budget → ${lineFor(cheapest)}
    - Easy claims / Highway → ${lineFor(balanced)}
    - Max coverage → ${lineFor(mostComprehensive)}
-   - Flood-prone → Add Special Perils (${formatRmAmount(ADDONS.FLOOD.price)})
-   - Outdoor parking → Add Windscreen (${formatRmAmount(ADDONS.WINDSCREEN.price)})`;
+   - Flood-prone → Add Special Perils (${formatRmAmount(ADD_ON_BY_ID.flood.price)})
+   - Outdoor parking → Add Windscreen (price depends on selected coverage amount)`;
 }
 
 function buildSystemPrompt(state, vehicleProfile, promptVariant = 'A', liveKnowledgeSnapshot = []) {
@@ -2255,16 +2617,17 @@ ${ncdGuidanceLine}
 ## FORMATTING RULES
 - **Price format**: ALWAYS "RM xxx" with space (RM 796, not RM796)
 - **Progress wording**: Keep the flow internally, but do not over-expose "Step X of 6". Use natural consultant wording in normal replies. Only show explicit progress headers when a deterministic transaction/selection block requires it.
-- **Summary box**: Keep a compact "Order Summary (plate)" block with 5 key lines (Policy Effective, Sum Insured, Insurer, Add-ons, Road tax), then bold "Total: RM xxx"
+- **Summary box**: Keep a compact "Order Summary (plate)" block with key lines (Policy Period, Sum Insured, Insurance, Add-ons, Tax, Road tax), then bold "Total: RM xxx"
 - **Quote cards**: Each quote on separate lines with logo, features, strikethrough price
-- **Vehicle info**: Use this exact 7-line label format:
-  **Vehicle Registration Number:** ...
-  **Model:** ...
-  **Engine Type:** ...
-  **Postcode:** ...
-  **No Claim Discount (NCD):** ...
-  **Coverage Type:** ...
-  **Policy Period:** ...
+- **Vehicle info**: Use this exact compact profile format:
+  Plate number on its own line, bold, 18px, #000000
+  Year Make Model Engine (Auto-cc), bold
+  light grey divider line
+  Bold label only: Policy Period : ...
+  Bold label only: Market Value : ...
+  Bold label only: Owner IC : masked with &bull;&bull;&bull;&bull;
+  Bold label only: Coverage Type: ...
+  Bold label only: No Claim Discount (NCD): ...
 - One emoji per message max
 
 ## FLOW RULES
@@ -2363,11 +2726,14 @@ async function executeFunction(functionName, args) {
 
     case "get_available_addons":
       return {
-        addons: [
-          { id: 'windscreen', name: 'Windscreen Protection', price: ADDONS.WINDSCREEN.price, description: ADDONS.WINDSCREEN.description },
-          { id: 'flood', name: 'Special Perils (Flood)', price: ADDONS.FLOOD.price, description: ADDONS.FLOOD.description },
-          { id: 'ehailing', name: 'E-hailing Cover', price: ADDONS.EHAILING.price, description: ADDONS.EHAILING.description },
-        ],
+        addons: ADD_ON_CATALOG.map((addOn) => ({
+          id: addOn.id,
+          name: addOn.name,
+          price: addOn.hasCoverageInput ? null : addOn.price,
+          defaultCoverage: addOn.defaultCoverage || null,
+          defaultPrice: addOn.hasCoverageInput ? calculateWindscreenPremium(addOn.defaultCoverage) : null,
+          description: addOn.info,
+        })),
       };
 
     case "get_roadtax_options":
@@ -2539,17 +2905,42 @@ export async function POST(request) {
       }
     }
 
-    if (intent.intent === USER_INTENTS.SELECT_ADDON && intent.data) {
-      const addOnMap = {
-        windscreen: { name: 'Windscreen', price: 100 },
-        flood: { name: 'Special Perils (Flood)', price: 50 },
-        ehailing: { name: 'E-hailing Cover', price: 500 },
-      };
-      const addOns = (intent.data.addOns || []).map(key => addOnMap[key]).filter(Boolean);
-      if (intent.data.confirmed) {
+    if (state.pendingAction?.type === 'collect_windscreen_coverage') {
+      const coverageAmount = extractWindscreenCoverageAmount(latestMessage, { allowBareAmount: true });
+      const pendingAddOnIds = Array.isArray(state.pendingAction.addOnIds)
+        ? state.pendingAction.addOnIds
+        : ['windscreen'];
+      const skipWindscreen = /\b(skip|no|none|without|cancel)\b/i.test(latestMessage);
+
+      if (coverageAmount || skipWindscreen) {
+        const finalAddOnIds = skipWindscreen
+          ? pendingAddOnIds.filter((id) => id !== 'windscreen')
+          : pendingAddOnIds;
+        const addOns = buildAddOnsFromSelection(finalAddOnIds, { coverageAmount: coverageAmount || DEFAULT_WINDSCREEN_COVERAGE });
         state.selectAddOns(addOns);
+        forcedAssistantResponse = buildRoadTaxStepBlock(buildSummaryBox(state), state);
       } else {
-        state.preSelectAddOns(addOns);
+        forcedAssistantResponse = buildWindscreenCoveragePrompt(buildSummaryBox(state), pendingAddOnIds);
+      }
+    }
+
+    if (intent.intent === USER_INTENTS.SELECT_ADDON && intent.data && !forcedAssistantResponse) {
+      const addOnIds = Array.isArray(intent.data.addOns) ? intent.data.addOns : [];
+      const coverageAmount = intent.data.windscreenCoverage ||
+        extractWindscreenCoverageAmount(latestMessage, { allowBareAmount: addOnIds.includes('windscreen') });
+      if (addOnIds.includes('windscreen') && !coverageAmount) {
+        state.setPendingAction({
+          type: 'collect_windscreen_coverage',
+          addOnIds,
+        });
+        forcedAssistantResponse = buildWindscreenCoveragePrompt(buildSummaryBox(state), addOnIds);
+      } else {
+        const addOns = buildAddOnsFromSelection(addOnIds, { coverageAmount });
+        if (intent.data.confirmed) {
+          state.selectAddOns(addOns);
+        } else {
+          state.preSelectAddOns(addOns);
+        }
       }
     }
 
@@ -3206,7 +3597,7 @@ Then add ONE practical recommendation tied to the user's concern (avoiding unexp
 If relevant, mention the currently selected insurer is **${state.selectedQuote?.insurer || 'current option'}** and offer to switch before proceeding.
 
 Then return to add-ons with one clear close question:
-"Would you like **Windscreen (RM 100)**, **Special Perils (RM 50)**, **E-hailing (RM 500)**, or **skip add-ons**?"
+"Would you like **Windscreen** (choose coverage amount), **Special Perils (RM 150.00)**, **E-hailing (RM 2,000.00)**, or **skip add-ons**?"
 
 Style requirements:
 - Helpful and advisor-like, not pushy.
@@ -3219,11 +3610,11 @@ Style requirements:
           role: "system",
           content: `User wants to know which add-ons they need. Explain ALL 3 add-ons clearly using numbered lines that match selection numbers:
 
-1. **Windscreen** (RM 100) — covers glass damage. Useful if you drive often, especially in city traffic or highways where debris can hit your windscreen.
+1. **Windscreen** — covers glass damage. Price depends on coverage amount: RM 500 coverage costs RM 75.00, RM 1,000 costs RM 150.00, RM 2,000 costs RM 300.00.
 
-2. **Special Perils** (RM 50) — covers flood and natural disaster damage. Recommended if your area is flood-prone or has landslides.
+2. **Special Perils** (RM 150.00) — covers flood and natural disaster damage. Recommended if your area is flood-prone or has landslides.
 
-3. **E-hailing** (RM 500) — required if you drive for Grab, inDrive, or any ride-sharing service. Skip this if you don't do e-hailing.
+3. **E-hailing** (RM 2,000.00) — required if you drive for Grab, inDrive, or any ride-sharing service. Skip this if you don't do e-hailing.
 
 Then ask: "${ADDONS_CLOSE_QUESTION}"
 
@@ -3238,7 +3629,7 @@ Do NOT combine into one paragraph. Keep the same 1/2/3 numbering so user can rep
 
 ${addOnsMenu}
 
-Which would you like? You can reply with **1**, **2**, **3**, or a combo like **1 and 3**. Or skip if you don't need any.
+Which would you like? You can reply with **1**, **2**, **3**, **8**, or a combo like **1 and 8**. Or skip if you don't need any.
 Do NOT auto-skip or assume. Wait for explicit confirmation before moving to road tax.`,
           });
         } else {
@@ -3251,7 +3642,7 @@ If the question relates to insurer choice/policy value, add one consultative sal
 Then naturally tie it back: "I can add that for you right now" or "Since we're already here, want me to include it?"
 Avoid repeating stock phrasing from prior turns.
 Do NOT paste the full add-ons menu unless user asks to see options again.
-Use a compact reminder line instead: "You can add windscreen (RM 100), special perils (RM 50), or e-hailing (RM 500) — or skip."
+Use a compact reminder line instead: "You can add windscreen (choose coverage amount), special perils (RM 150.00), or e-hailing (RM 2,000.00) — or skip."
 End with one clear question.`,
           });
         }
@@ -3571,7 +3962,7 @@ Do NOT alter the payment link URL or amounts.`,
           role: "system",
           content: `User reply is playful/unclear at add-ons. Keep it human and practical:
 1) acknowledge briefly,
-2) give one default suggestion: **Windscreen (RM 100)** for most drivers,
+2) give one default suggestion: **Windscreen** for most drivers, then ask for the coverage amount if they choose it,
 3) ask one clear action: "Add windscreen, add flood too, or skip all?"`,
         });
       } else if (state.step === FLOW_STEPS.ROADTAX) {
@@ -3667,13 +4058,13 @@ If the needed insurer detail is missing in PostgreSQL, say so clearly and ask on
 Then add one short consultative bridge that gives confidence to continue with LAJOO now (non-pushy).
 If appropriate, offer to compare or switch insurer before continuing add-ons.
 End with exactly one clear add-ons close question:
-"Would you like **Windscreen (RM 100)**, **Special Perils (RM 50)**, **E-hailing (RM 500)**, or **skip add-ons**?"`,
+"Would you like **Windscreen** (choose coverage amount), **Special Perils (RM 150.00)**, **E-hailing (RM 2,000.00)**, or **skip add-ons**?"`,
           });
         } else {
         openAiMessages.push({
           role: "system",
           content: `User response is unclear at add-ons step. Reply naturally in one short line, then ask one clear next-step question.
-Use compact options only: "Windscreen (RM 100), special perils (RM 50), e-hailing (RM 500), or skip?"
+Use compact options only: "Windscreen (choose coverage amount), special perils (RM 150.00), e-hailing (RM 2,000.00), or skip?"
 Do NOT paste the full add-ons menu unless user explicitly asks to see the options.`,
         });
         }
@@ -3898,6 +4289,12 @@ This summary box must appear in EVERY response from now on until payment is comp
     }
 
     updateLastRecommendedInsurerMemory(state, aiResponse);
+    const summaryCard = state.selectedQuote && SUMMARY_SECTION_REGEX.test(aiResponse)
+      ? buildSummaryCardData(state)
+      : null;
+    const addOnsCard = state.selectedQuote && ADDONS_SECTION_REGEX.test(aiResponse)
+      ? buildAddOnsCardData(state)
+      : null;
 
     const captureReason = getIntentCaptureReason({
       intent,
@@ -3935,6 +4332,8 @@ This summary box must appear in EVERY response from now on until payment is comp
             type: "done",
             reply: aiResponse,
             state: state.toJSON(),
+            summaryCard,
+            addOnsCard,
           })}\n\n`
         ));
 

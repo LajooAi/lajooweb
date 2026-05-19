@@ -1167,13 +1167,33 @@ export function detectUserIntent(message, currentState) {
     if (hasWindscreen) mentionedAddOns.push('windscreen');
     if (/flood|disaster|perils|special perils/i.test(msg)) mentionedAddOns.push('flood');
     if (/e.?hailing|grab|ride.?sharing|ride.?share/i.test(msg)) mentionedAddOns.push('ehailing');
-    if (/both|all/i.test(msg)) {
+    if (/all drivers?/i.test(msg)) mentionedAddOns.push('all_drivers');
+    if (/legal liability to passengers?|llp\b/i.test(msg)) mentionedAddOns.push('legal_liability_passengers');
+    if (/lltp|negligence/i.test(msg)) mentionedAddOns.push('lltp_negligence');
+    if (/strike|riot|civil commotion/i.test(msg)) mentionedAddOns.push('strike_riot');
+    if (/betterment/i.test(msg)) mentionedAddOns.push('betterment_waiver');
+    if (/ncd relief|current year ncd/i.test(msg)) mentionedAddOns.push('ncd_relief');
+    if (/body painting|paint/i.test(msg)) mentionedAddOns.push('body_painting');
+    if (/personal accident/i.test(msg)) mentionedAddOns.push('personal_accident');
+    if (/\bboth\b|\ball (?:three|main|add.?ons?)\b/i.test(msg)) {
       mentionedAddOns.push('windscreen', 'flood', 'ehailing');
     }
 
-    // Number-based selection: "1", "1 and 3", "1,3", "1 3", "1 & 2"
-    const numberMap = { '1': 'windscreen', '2': 'flood', '3': 'ehailing' };
-    const numberMatches = msg.match(/\b[1-3]\b/g);
+    // Number-based selection: "1", "1 and 3", "1,3", "1 3", "1 & 2", "8"
+    const numberMap = {
+      '1': 'windscreen',
+      '2': 'flood',
+      '3': 'ehailing',
+      '4': 'all_drivers',
+      '5': 'legal_liability_passengers',
+      '6': 'lltp_negligence',
+      '7': 'strike_riot',
+      '8': 'betterment_waiver',
+      '9': 'ncd_relief',
+      '10': 'body_painting',
+      '11': 'personal_accident',
+    };
+    const numberMatches = msg.match(/\b(?:[1-9]|1[01])\b/g);
     if (numberMatches && mentionedAddOns.length === 0) {
       const unique = [...new Set(numberMatches)];
       for (const n of unique) {
@@ -1190,9 +1210,13 @@ export function detectUserIntent(message, currentState) {
       }
     }
 
+    // Check for EXPLICIT selection intent (not just mentioning)
+    // "I want windscreen", "add windscreen", "yes windscreen", "ok windscreen", "windscreen please", "i'll take windscreen"
+    const hasSelectionIntent = /\b(add|want|yes|ok|okay|take|get|include|confirm|i'll take|i will take|give me|with)\b/i.test(msg);
+
     // Check if this is a QUESTION about add-ons (not a selection)
     // "what is windscreen?", "do I need flood?", "tell me about special perils"
-    const isQuestion = /\?|what is|what's|do i need|should i|tell me|explain|clarify|which one|which insurer|recommend|need this|worth it|necessary|how does|what does|betterment|zero betterment/i.test(msg);
+    const isQuestion = !hasSelectionIntent && /\?|what is|what's|do i need|should i|tell me|explain|clarify|which one|which insurer|recommend|need this|worth it|necessary|how does|what does|betterment|zero betterment/i.test(msg);
 
     // Cross-topic insurance/policy questions can happen mid-step.
     // Answer first, then route back to add-ons (handled in route.js).
@@ -1208,12 +1232,8 @@ export function detectUserIntent(message, currentState) {
       return { intent: USER_INTENTS.ASK_QUESTION, confidence: 0.9 };
     }
 
-    // Check for EXPLICIT selection intent (not just mentioning)
-    // "I want windscreen", "add windscreen", "yes windscreen", "ok windscreen", "windscreen please", "i'll take windscreen"
-    const hasSelectionIntent = /\b(add|want|yes|ok|okay|take|get|include|i'll take|i will take|give me|with)\b/i.test(msg);
-
     // Also accept direct confirmations like "windscreen" alone or "windscreen and flood"
-    const isDirectSelection = mentionedAddOns.length > 0 && /^(windscreen|flood|special perils|e.?hailing|both|all)(\s*(and|,|\+)\s*(windscreen|flood|special perils|e.?hailing))*\.?$/i.test(msg.trim());
+    const isDirectSelection = mentionedAddOns.length > 0 && /^(windscreen|flood|special perils|e.?hailing|betterment waiver|all drivers|personal accident|both|all)(\s*(and|,|\+)\s*(windscreen|flood|special perils|e.?hailing|betterment waiver|all drivers|personal accident))*\.?$/i.test(msg.trim());
 
     if (mentionedAddOns.length > 0 && (hasSelectionIntent || isDirectSelection)) {
       // User explicitly wants to add these

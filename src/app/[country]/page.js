@@ -57,6 +57,579 @@ const parseStepIndicator = (text) => {
 const isSummaryTitleLine = (text) => /^summary$/i.test(text.trim()) || /^✓\s*renewal summary\b/i.test(text.trim());
 const isSummaryDividerLine = (text) => /^[\-_─—–]{8,}$/.test(text.trim());
 const isSummaryTotalLine = (text) => /^(?:💰\s*)?total:\s*rm\s*\d[\d,]*/i.test(text.trim());
+const quoteBlockRegex = /<span[^>]*>\s*<img\s+src="([^"]+)"\s+alt="([^"]+)"[^>]*\/>\s*<strong>([^<]+)<\/strong>\s*—\s*<strong>RM\s*([\d,]+)<\/strong>\s*<\/span>\s*\n<span[^>]*>Sum Insured:\s*RM\s*([\d,]+)<\/span>\s*\n([\s\S]*?)\n<span[^>]*>~~RM\s*([\d,]+)~~\s*→\s*RM\s*([\d,]+)(?:\s*\(([^)]*)\))?<\/span>/g;
+const summarySectionRegex = /(?:^|\n)\s*(?:<span[^>]*>\s*)?(?:\*{0,2})?✓?\s*renewal summary(?:\*{0,2})?[^\n]*(?:<\/span>)?[\s\S]*?(?:\n\s*(?:\*{0,2})?(?:💰\s*)?total:?(?:\*{0,2})?\s*(?:&nbsp;)?\s*(?:<u>)?\s*rm[^\n]*)/i;
+const addOnsSectionRegex = /(?:^|\n)\s*(?:\*{0,2})?step\s+(?:\*{0,2})?3(?:\*{0,2})?\s+of\s+(?:\*{0,2})?6(?:\*{0,2})?\s*[—-]\s*add-ons(?:\*{0,2})?[\s\S]*?(?:\n\s*based on your situation,[^\n]*reply skip\.?)/i;
+const WINDSCREEN_PREMIUM_RATE = 0.15;
+
+const getQuoteSelectionText = (insurerName = "") => {
+  const lower = insurerName.toLowerCase();
+  if (lower.includes("takaful")) return "Takaful";
+  if (lower.includes("etiqa")) return "Etiqa";
+  if (lower.includes("allianz")) return "Allianz";
+  return insurerName;
+};
+
+const getInsurerKey = (insurerName = "") => {
+  const lower = insurerName.toLowerCase();
+  if (lower.includes("takaful")) return "takaful";
+  if (lower.includes("etiqa")) return "etiqa";
+  if (lower.includes("allianz")) return "allianz";
+  return "default";
+};
+
+const formatQuoteMoney = (value = "") => {
+  const numeric = Number(String(value).replace(/[^\d.]/g, ""));
+  if (!Number.isFinite(numeric)) return String(value || "-");
+  return numeric.toLocaleString("en-MY", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+};
+
+const formatWholeMoney = (value = "") => {
+  const numeric = Number(String(value).replace(/[^\d.]/g, ""));
+  if (!Number.isFinite(numeric)) return String(value || "-");
+  return numeric.toLocaleString("en-MY", {
+    maximumFractionDigits: 0,
+  });
+};
+
+const hasSummarySignal = (content = "") =>
+  /renewal summary|policy (?:effective|period):|sum insured:|cover type:|add-ons:|road tax:|(?:💰\s*)?total:/i.test(content);
+
+const parseAssistantSummaryPresentation = (content = "", summaryCard = null) => {
+  if (!summaryCard || !hasSummarySignal(content)) return null;
+  const match = content.match(summarySectionRegex);
+  if (!match) return null;
+
+  const rawMatch = match[0] || "";
+  const leadingNewline = rawMatch.startsWith("\n") ? 1 : 0;
+  const summaryStart = match.index + leadingNewline;
+  const summaryEnd = match.index + rawMatch.length;
+
+  return {
+    before: content.slice(0, summaryStart).trim(),
+    summary: summaryCard,
+    after: content.slice(summaryEnd).trim(),
+  };
+};
+
+const parseAssistantAddOnsPresentation = (content = "", addOnsCard = null) => {
+  if (!addOnsCard || !/step\s+(?:\*{0,2})?3(?:\*{0,2})?\s+of\s+(?:\*{0,2})?6(?:\*{0,2})?\s*[—-]\s*add-ons/i.test(content)) return null;
+  const match = content.match(addOnsSectionRegex);
+  if (!match) return null;
+
+  const rawMatch = match[0] || "";
+  const leadingNewline = rawMatch.startsWith("\n") ? 1 : 0;
+  const addOnsStart = match.index + leadingNewline;
+  const addOnsEnd = match.index + rawMatch.length;
+
+  return {
+    before: content.slice(0, addOnsStart).trim(),
+    addOns: addOnsCard,
+    after: content.slice(addOnsEnd).trim(),
+  };
+};
+
+const withSummaryDisplayState = (summary, followingContent = "") => {
+  if (!summary) return null;
+  const hasReachedPostAddOnsStep = /step\s+(?:\*{0,2})?[4-6](?:\*{0,2})?\s+of\s+(?:\*{0,2})?6/i.test(followingContent);
+  return {
+    ...summary,
+    addOnsConfirmed: !!summary.addOnsConfirmed || hasReachedPostAddOnsStep,
+  };
+};
+
+function AssistantSummaryCard({ summary }) {
+  if (!summary) return null;
+
+  const addOns = Array.isArray(summary.addOns) ? summary.addOns : [];
+  const hasAddOns = addOns.length > 0;
+  const hasConfirmedNoAddOns = !hasAddOns && summary.addOnsConfirmed;
+
+  return (
+    <article className="assistant-summary-card" aria-label="Renewal summary">
+      <header className="assistant-summary-header">
+        {summary.logoUrl && (
+          <Image
+            src={summary.logoUrl}
+            alt={summary.insurerName || "Insurer"}
+            width={42}
+            height={42}
+            className="assistant-summary-logo"
+          />
+        )}
+        <div className="assistant-summary-heading">
+          <h3>{summary.insurerName}</h3>
+          <p>{summary.vehicleLine}</p>
+        </div>
+      </header>
+
+      <div className="assistant-summary-meta">
+        <p>
+          <strong>Sum insured : </strong>
+          <span>RM {formatWholeMoney(summary.sumInsured)}</span>
+        </p>
+        <p>
+          <strong>Policy Period : </strong>
+          <span>{summary.policyPeriod}</span>
+        </p>
+        <p>
+          <strong>Cover Type : </strong>
+          <span>{summary.coverType}</span>
+        </p>
+      </div>
+
+      <div className="assistant-summary-divider" />
+
+      <section className="assistant-summary-section">
+        <h4>{summary.insuranceTitle || "Insurance"}</h4>
+        <div className="assistant-summary-line">
+          <span>{summary.premiumDescription}</span>
+          <strong>RM {formatQuoteMoney(summary.insurancePrice)}</strong>
+        </div>
+      </section>
+
+      <section className="assistant-summary-section">
+        <h4>Add-ons</h4>
+        {hasAddOns ? (
+          addOns.map((addOn) => (
+            <div className="assistant-summary-line" key={`${addOn.name}-${addOn.price}`}>
+              <span>{addOn.name}</span>
+              <strong>RM {formatQuoteMoney(addOn.price)}</strong>
+            </div>
+          ))
+        ) : (
+          <div className="assistant-summary-line">
+            <span className={hasConfirmedNoAddOns ? undefined : "assistant-summary-not-selected"}>
+              {hasConfirmedNoAddOns ? "None" : "Not selected yet"}
+            </span>
+            <strong>RM 0.00</strong>
+          </div>
+        )}
+      </section>
+
+      <section className="assistant-summary-section">
+        <h4>Tax</h4>
+        <div className="assistant-summary-line">
+          <span>{summary.taxDescription}</span>
+          <strong>RM {formatQuoteMoney(summary.taxPrice)}</strong>
+        </div>
+      </section>
+
+      <section className="assistant-summary-section">
+        <h4>Road Tax</h4>
+        <div className="assistant-summary-line">
+          <span className={!summary.roadTaxSelected ? "assistant-summary-not-selected" : undefined}>
+            {summary.roadTaxDescription || "Not selected yet"}
+          </span>
+          <strong>RM {formatQuoteMoney(summary.roadTaxPrice)}</strong>
+        </div>
+      </section>
+
+      <div className="assistant-summary-divider assistant-summary-divider-total" />
+
+      <div className="assistant-summary-total">
+        <span>Grand Total</span>
+        <strong>RM {formatQuoteMoney(summary.total)}</strong>
+      </div>
+    </article>
+  );
+}
+
+const parseMoneyInput = (value) => {
+  const numeric = Number(String(value || "").replace(/[^\d.]/g, ""));
+  return Number.isFinite(numeric) ? numeric : 0;
+};
+
+function AddOnInfoButton({ label, info, activeInfoId, setActiveInfoId, id }) {
+  const isOpen = activeInfoId === id;
+  return (
+    <span className="assistant-addons-info-wrap">
+      <button
+        type="button"
+        className="assistant-addons-info"
+        aria-label={`About ${label}`}
+        aria-expanded={isOpen}
+        onClick={() => setActiveInfoId(isOpen ? null : id)}
+      >
+        i
+      </button>
+      {isOpen && (
+        <span className="assistant-addons-tooltip" role="tooltip">
+          {info}
+        </span>
+      )}
+    </span>
+  );
+}
+
+function AssistantAddOnsSelector({ addOnsCard, onConfirm, onSkip }) {
+  const options = Array.isArray(addOnsCard?.options) ? addOnsCard.options : [];
+  const initialSelected = Array.isArray(addOnsCard?.selectedIds) ? addOnsCard.selectedIds : [];
+  const defaultCoverage = Number(addOnsCard?.defaultWindscreenCoverage ?? 0);
+  const [selectedIds, setSelectedIds] = useState(initialSelected);
+  const [windscreenCoverageInput, setWindscreenCoverageInput] = useState(formatQuoteMoney(defaultCoverage));
+  const [activeInfoId, setActiveInfoId] = useState(null);
+
+  useEffect(() => {
+    if (!activeInfoId || typeof document === "undefined") return undefined;
+
+    const handleOutsidePointerDown = (event) => {
+      const target = event.target;
+      if (target?.closest?.(".assistant-addons-info-wrap")) return;
+      setActiveInfoId(null);
+    };
+
+    const outsideEvents = ["pointerdown", "mousedown", "touchstart", "click"];
+    outsideEvents.forEach((eventName) => {
+      document.addEventListener(eventName, handleOutsidePointerDown, true);
+    });
+    return () => {
+      outsideEvents.forEach((eventName) => {
+        document.removeEventListener(eventName, handleOutsidePointerDown, true);
+      });
+    };
+  }, [activeInfoId]);
+
+  const windscreenCoverage = Math.max(0, parseMoneyInput(windscreenCoverageInput));
+  const windscreenPrice = windscreenCoverage * WINDSCREEN_PREMIUM_RATE;
+  const hasSelection = selectedIds.length > 0;
+
+  const toggleAddOn = (id) => {
+    setSelectedIds((prev) =>
+      prev.includes(id)
+        ? prev.filter((item) => item !== id)
+        : [...prev, id]
+    );
+  };
+
+  const handleCoverageBlur = () => {
+    const coverage = parseMoneyInput(windscreenCoverageInput) || defaultCoverage;
+    setWindscreenCoverageInput(formatQuoteMoney(coverage));
+  };
+
+  const handleConfirm = () => {
+    if (!hasSelection) return;
+    onConfirm?.({
+      selectedIds,
+      options,
+      windscreenCoverage,
+    });
+  };
+
+  return (
+    <section className="assistant-addons-card" aria-label="Add-ons selection">
+      <p className="assistant-addons-title">
+        Would you like some <strong>add-ons</strong> ?
+      </p>
+
+      <div className="assistant-addons-list">
+        {options.map((option) => {
+          const isSelected = selectedIds.includes(option.id);
+          const isWindscreen = option.hasCoverageInput;
+          const price = isWindscreen ? windscreenPrice : Number(option.price || 0);
+
+          return (
+            <div className="assistant-addons-row" key={option.id}>
+              <div className="assistant-addons-left">
+                <span className="assistant-addons-number">{option.number}.</span>
+                <span className="assistant-addons-name">{option.name}</span>
+                {isWindscreen && (
+                  <span className="assistant-addons-coverage">
+                    <span>RM</span>
+                    <input
+                      type="text"
+                      inputMode="decimal"
+                      value={windscreenCoverageInput}
+                      aria-label="Windscreen coverage amount"
+                      onChange={(event) => setWindscreenCoverageInput(event.target.value)}
+                      onBlur={handleCoverageBlur}
+                    />
+                  </span>
+                )}
+                {option.recommended && (
+                  <span className="assistant-addons-star" aria-hidden="true">★</span>
+                )}
+                <AddOnInfoButton
+                  id={option.id}
+                  label={option.name}
+                  info={option.info}
+                  activeInfoId={activeInfoId}
+                  setActiveInfoId={setActiveInfoId}
+                />
+              </div>
+
+              <strong className={`assistant-addons-price${isSelected ? " is-selected" : ""}`}>
+                RM {formatQuoteMoney(price)}
+              </strong>
+
+              <button
+                type="button"
+                className={`assistant-addons-check${isSelected ? " is-selected" : ""}`}
+                aria-label={`${isSelected ? "Remove" : "Select"} ${option.name}`}
+                aria-pressed={isSelected}
+                onClick={() => toggleAddOn(option.id)}
+              >
+                {isSelected && <span aria-hidden="true">✓</span>}
+              </button>
+            </div>
+          );
+        })}
+      </div>
+
+      <div className="assistant-addons-actions">
+        <button type="button" className="assistant-addons-skip" onClick={onSkip}>
+          Skip &gt;&gt;
+        </button>
+        <button
+          type="button"
+          className={`assistant-addons-confirm${hasSelection ? " is-active" : ""}`}
+          disabled={!hasSelection}
+          onClick={handleConfirm}
+        >
+          Confirm
+        </button>
+      </div>
+
+      <div className="assistant-addons-help">
+        <p>Which would you like ? You can either skip or :</p>
+        <ul>
+          <li>Tick the boxes above to select.</li>
+          <li>Type 1, 2, 3, 8 to select.</li>
+          <li>Simply tell me which you want.</li>
+        </ul>
+        <p>Or ask me for recommendations.</p>
+      </div>
+    </section>
+  );
+}
+
+const quoteDetailBenefits = {
+  default: [
+    "Comprehensive own damage protection",
+    "Third-party liability protection",
+    "Optional add-ons can be included before payment",
+  ],
+  takaful: [
+    "Comprehensive own damage protection",
+    "Third-party liability protection",
+    "Optional windscreen and flood add-ons available",
+  ],
+  etiqa: [
+    "Comprehensive own damage protection",
+    "Third-party liability protection",
+    "Optional road tax renewal can be added",
+  ],
+  allianz: [
+    "Comprehensive own damage protection",
+    "Third-party liability protection",
+    "Optional windscreen and special perils add-ons available",
+  ],
+};
+
+const quoteDocumentLinks = [
+  {
+    label: "Product Disclosure Sheet",
+    url: "/sample-documents/product-disclosure-sheet.pdf",
+  },
+  {
+    label: "Certificate Wording",
+    url: "/sample-documents/certificate-wording.pdf",
+  },
+];
+
+const parseAssistantQuotePresentation = (content = "") => {
+  if (
+    !/great,\s*here'?s what we have/i.test(content) ||
+    !/which option would you like to go with/i.test(content)
+  ) {
+    return null;
+  }
+
+  quoteBlockRegex.lastIndex = 0;
+  const quotes = [];
+  let firstQuoteStart = -1;
+  let lastQuoteEnd = -1;
+  let match;
+
+  while ((match = quoteBlockRegex.exec(content)) !== null) {
+    if (firstQuoteStart === -1) firstQuoteStart = match.index;
+    lastQuoteEnd = quoteBlockRegex.lastIndex;
+
+    const [, logoUrl, logoAlt, insurer, finalPrice, sumInsured, featuresBlock, basePrice, priceAfter, ncdText] = match;
+    const features = [...featuresBlock.matchAll(/<span[^>]*>\s*✓\s*([^<]+)<\/span>/g)]
+      .map((featureMatch) => featureMatch[1].trim())
+      .filter(Boolean);
+    const ncdPercent = (ncdText || "").match(/[\d.]+%/)?.[0] || "";
+
+    quotes.push({
+      id: getInsurerKey(insurer),
+      insurer,
+      logoUrl,
+      logoAlt,
+      finalPrice,
+      sumInsured,
+      features,
+      basePrice,
+      priceAfter,
+      ncdPercent,
+      selectionText: getQuoteSelectionText(insurer),
+    });
+  }
+
+  if (quotes.length < 2 || firstQuoteStart === -1 || lastQuoteEnd === -1) {
+    return null;
+  }
+
+  return {
+    before: content.slice(0, firstQuoteStart).trim(),
+    quotes,
+    after: content.slice(lastQuoteEnd).trim(),
+  };
+};
+
+function AssistantQuoteCards({ quotes = [], onSelectQuote }) {
+  const [expandedQuotes, setExpandedQuotes] = useState({});
+  const [pdfModal, setPdfModal] = useState(null);
+
+  useEffect(() => {
+    if (!pdfModal) return undefined;
+    const handleEscape = (event) => {
+      if (event.key === "Escape") {
+        setPdfModal(null);
+      }
+    };
+    window.addEventListener("keydown", handleEscape);
+    return () => window.removeEventListener("keydown", handleEscape);
+  }, [pdfModal]);
+
+  const toggleQuoteDetails = (quoteKey) => {
+    setExpandedQuotes((prev) => ({
+      ...prev,
+      [quoteKey]: !prev[quoteKey],
+    }));
+  };
+
+  return (
+    <>
+      <div className="assistant-quote-card-stack" aria-label="Insurance quote options">
+        {quotes.map((quote) => {
+          const quoteKey = quote.id || quote.insurer;
+          const isExpanded = !!expandedQuotes[quoteKey];
+          const detailBenefits = quoteDetailBenefits[quote.id] || quoteDetailBenefits.default;
+
+          return (
+            <article className="assistant-quote-card" key={quoteKey}>
+              <div className="assistant-quote-main">
+                <h3 className="assistant-quote-title">{quote.insurer}</h3>
+                <p className="assistant-quote-line assistant-quote-sum">
+                  <span>Sum Insured : </span>
+                  <span>RM {quote.sumInsured}</span>
+                </p>
+                {quote.features.map((feature) => (
+                  <p className="assistant-quote-feature" key={`${quote.id}-${feature}`}>
+                    <span className="assistant-quote-check" aria-hidden="true">✓</span>
+                    <span>{feature}</span>
+                  </p>
+                ))}
+                <button
+                  type="button"
+                  className="assistant-quote-view-details"
+                  aria-expanded={isExpanded}
+                  onClick={() => toggleQuoteDetails(quoteKey)}
+                >
+                  <span>{isExpanded ? "Hide details" : "View details"}</span>
+                  <span className="assistant-quote-view-arrow" aria-hidden="true">
+                    {isExpanded ? "˄" : "˅"}
+                  </span>
+                </button>
+                {isExpanded && (
+                  <div className="assistant-quote-details">
+                    <div className="assistant-quote-detail-benefits" aria-label={`${quote.insurer} additional benefits`}>
+                      {detailBenefits.map((benefit) => (
+                        <p className="assistant-quote-detail-benefit" key={`${quoteKey}-${benefit}`}>
+                          <span className="assistant-quote-check" aria-hidden="true">✓</span>
+                          <span>{benefit}</span>
+                        </p>
+                      ))}
+                    </div>
+                    <div className="assistant-quote-doc-links" aria-label={`${quote.insurer} policy documents`}>
+                      {quoteDocumentLinks.map((documentLink) => (
+                        <button
+                          type="button"
+                          className="assistant-quote-doc-link"
+                          key={`${quoteKey}-${documentLink.label}`}
+                          onClick={() =>
+                            setPdfModal({
+                              title: `${quote.insurer} ${documentLink.label}`,
+                              url: documentLink.url,
+                            })
+                          }
+                        >
+                          {documentLink.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                <p className="assistant-quote-line assistant-quote-base-price">
+                  <s>RM {formatQuoteMoney(quote.basePrice)}</s>
+                  {quote.ncdPercent && <span>(NCD {quote.ncdPercent})</span>}
+                </p>
+                <p className="assistant-quote-final-price">
+                  RM {formatQuoteMoney(quote.priceAfter || quote.finalPrice)}
+                </p>
+              </div>
+
+              <div className="assistant-quote-side">
+                {quote.logoUrl && (
+                  <Image
+                    src={quote.logoUrl}
+                    alt={quote.logoAlt || quote.insurer}
+                    width={112}
+                    height={72}
+                    className="assistant-quote-logo"
+                    data-insurer={quote.id}
+                  />
+                )}
+                <button
+                  type="button"
+                  className="assistant-quote-select"
+                  onClick={() => onSelectQuote?.(quote)}
+                  disabled={!onSelectQuote}
+                >
+                  Select
+                </button>
+              </div>
+            </article>
+          );
+        })}
+      </div>
+      {pdfModal && (
+        <div className="assistant-pdf-modal-backdrop" role="presentation" onClick={() => setPdfModal(null)}>
+          <div
+            className="assistant-pdf-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="assistant-pdf-modal-title"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="assistant-pdf-modal-header">
+              <h3 id="assistant-pdf-modal-title">{pdfModal.title}</h3>
+              <button type="button" className="assistant-pdf-modal-close" onClick={() => setPdfModal(null)}>
+                Close
+              </button>
+            </div>
+            <iframe className="assistant-pdf-frame" src={pdfModal.url} title={pdfModal.title} />
+            <p className="assistant-pdf-note">Sample document preview. Replace this file with the insurer PDF when ready.</p>
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
 
 const HERO_INSURER_LOGOS = [
   { id: "allianz", name: "Allianz", src: "/partners/allianz.svg" },
@@ -715,7 +1288,16 @@ Your coverage starts immediately. Drive safe!`
             .trim();
 
           setMessages((prev) =>
-            prev.map((msg) => (msg.id === assistantId ? { ...msg, content: cleanedReply } : msg))
+            prev.map((msg) => (
+              msg.id === assistantId
+                ? {
+                    ...msg,
+                    content: cleanedReply,
+                    summaryCard: data.summaryCard || null,
+                    addOnsCard: data.addOnsCard || null,
+                  }
+                : msg
+            ))
           );
 
           // Persist server state so we can send it back next turn
@@ -824,6 +1406,106 @@ Your coverage starts immediately. Drive safe!`
     streamReply(history, assistantId);
   };
 
+  const handleQuoteCardSelect = (quote) => {
+    const selectionText = quote?.selectionText || quote?.insurer || "";
+    if (!selectionText.trim()) return;
+    handleQuickStart(selectionText);
+  };
+
+  const handleAddOnsConfirm = ({ selectedIds = [], options = [], windscreenCoverage = 0 }) => {
+    if (!selectedIds.length) return;
+    const selectedLabels = options
+      .filter((option) => selectedIds.includes(option.id))
+      .map((option) => {
+        if (option.hasCoverageInput) {
+          return windscreenCoverage > 0
+            ? `windscreen coverage RM ${formatQuoteMoney(windscreenCoverage)}`
+            : "windscreen";
+        }
+        return option.name;
+      });
+
+    if (selectedLabels.length > 0) {
+      handleQuickStart(`add ${selectedLabels.join(", ")}`);
+    }
+  };
+
+  const handleAddOnsSkip = () => {
+    handleQuickStart("skip add-ons");
+  };
+
+  const markdownComponents = {
+    a: ({ href, children, node, ...anchorProps }) => {
+      const isMailtoLink = typeof href === "string" && /^mailto:/i.test(href);
+      if (isMailtoLink) {
+        return <span className={anchorProps.className}>{children}</span>;
+      }
+      // Open payment links in new tab
+      const isPaymentLink = href && href.includes('/payment/');
+      const isDocumentPdfLink = typeof href === "string" && /\/documents\/.+\.pdf(?:\?.*)?$/i.test(href);
+      const shouldOpenNewTab = isPaymentLink || isDocumentPdfLink || anchorProps.target === "_blank";
+      const shouldDownload = isDocumentPdfLink || anchorProps.download !== undefined;
+      const hrefWithSession =
+        isPaymentLink && href && !/[?&]session=/.test(href)
+          ? `${href}${href.includes("?") ? "&" : "?"}session=${encodeURIComponent(sessionKey)}`
+          : href;
+      const paymentButtonStyle = isPaymentLink
+        ? {
+            display: "inline-block",
+            background: "#00B14F",
+            color: "#ffffff",
+            textDecoration: "none",
+            padding: "10px 18px",
+            borderRadius: "999px",
+            fontSize: "1.05em",
+            fontWeight: 700,
+            lineHeight: 1.2,
+          }
+        : undefined;
+      const mergedClassName = [
+        anchorProps.className,
+        isPaymentLink ? "payment-cta" : null,
+      ].filter(Boolean).join(" ");
+      return (
+        <a
+          {...anchorProps}
+          className={mergedClassName || undefined}
+          href={hrefWithSession}
+          target={shouldOpenNewTab ? "_blank" : (anchorProps.target || "_self")}
+          rel={shouldOpenNewTab ? (anchorProps.rel || "noopener noreferrer") : anchorProps.rel}
+          download={shouldDownload ? (typeof anchorProps.download === "string" ? anchorProps.download : "") : undefined}
+          style={paymentButtonStyle || anchorProps.style}
+        >
+          {children}
+        </a>
+      );
+    },
+    p: ({ children, className }) => {
+      const text = flattenNodeText(children).trim();
+      if (isStepIndicator(text)) {
+        const parsed = parseStepIndicator(text);
+        if (parsed) {
+          return (
+            <p className="chat-step-indicator">
+              Step <strong>{parsed.current}</strong> of <strong>{parsed.total}</strong> — {parsed.title}
+            </p>
+          );
+        }
+        return <p className="chat-step-indicator">{children}</p>;
+      }
+      if (isSummaryTitleLine(text)) {
+        return <p className="summary-title">{children}</p>;
+      }
+      if (isSummaryDividerLine(text)) {
+        return <p className="summary-divider">{children}</p>;
+      }
+      if (isSummaryTotalLine(text)) {
+        return <p className="summary-total">{children}</p>;
+      }
+      return <p className={className}>{children}</p>;
+    },
+  };
+
   useEffect(() => {
     if (!hasMessages) {
       resetHomePosition();
@@ -884,8 +1566,8 @@ Your coverage starts immediately. Drive safe!`
               <div className="home-hero-types" role="group" aria-label="Insurance type">
                 <div className="home-hero-type-option">
                   <HeroTypeIcon
-                    src="/icons/car-insurance.png"
-                    alt="Car insurance icon"
+                    src="/images/home-car-insurance.png"
+                    alt="Car insurance"
                     fallback="🚗"
                   />
                   <button
@@ -899,8 +1581,8 @@ Your coverage starts immediately. Drive safe!`
 
                 <div className="home-hero-type-option">
                   <HeroTypeIcon
-                    src="/icons/motor-insurance.png"
-                    alt="Motor insurance icon"
+                    src="/images/home-motor-insurance-cropped.png"
+                    alt="Motor insurance"
                     fallback="🛵"
                   />
                   <button
@@ -970,88 +1652,152 @@ Your coverage starts immediately. Drive safe!`
                     .replace(/\[SHOW_OTP\]/g, "")
                     .replace(/\[SHOW_PAYMENT\]/g, "")
                     .replace(/\[SHOW_SUCCESS\]/g, "")
+                    .replace(/Found your vehicle!\s*🚗/g, "Found your vehicle!")
+                    .replace(/<span style="display:block;font-size:18px;font-weight:800">([^<]+)<\/span>/g, '<span style="display:block;font-size:18px;font-weight:800;color:#000000">$1</span>')
+                    .replace(/<span style="display:block;font-size:18px;font-weight:800;color:#0062ff">([^<]+)<\/span>/g, '<span style="display:block;font-size:18px;font-weight:800;color:#000000">$1</span>')
+                    .replace(/<span style="display:block;font-weight:400">(20\d{2} [^<]+\(Auto-[^<]+\))<\/span>/g, '<span style="display:block;font-weight:700">$1</span>')
+                    .replace(/<span style="display:block;font-weight:400">(Policy Effective :|Policy Period :|Market Value :|Owner IC :|Coverage Type:|No Claim Discount \(NCD\):) ([^<]+)<\/span>/g, '<span style="display:block;font-weight:400"><strong>$1</strong> $2</span>')
+                    .replace(/<strong>Policy Effective :<\/strong>/g, '<strong>Policy Period :</strong>')
+                    .replace(/<span style="display:block;height:0;border-top:1px solid #e5e7eb;margin:10px 0 9px"><\/span>/g, '<span style="display:block;height:0;width:350px;max-width:100%;border-top:1px solid #e5e7eb;margin:5px 0 7px"></span>')
+                    .replace(/<br\s*\/?>\s*(?=<span style="display:block;font-weight:400"><strong>Policy (?:Effective|Period) :<\/strong>)/g, '<span style="display:block;height:0;width:350px;max-width:100%;border-top:1px solid #e5e7eb;margin:5px 0 7px"></span>\n')
+                    .replace(/(\d{6}-\d{2}-)\*{4}/g, "$1&bull;&bull;&bull;&bull;")
                     .trim();
+                  const quotePresentation =
+                    msg.role === "assistant"
+                      ? parseAssistantQuotePresentation(cleanedContent)
+                      : null;
+                  const summaryPresentation =
+                    msg.role === "assistant"
+                      ? parseAssistantSummaryPresentation(cleanedContent, msg.summaryCard)
+                      : null;
+                  const addOnsPresentation =
+                    msg.role === "assistant"
+                      ? parseAssistantAddOnsPresentation(cleanedContent, msg.addOnsCard)
+                      : null;
 
                   return (
                     <div key={msg.id} id={`msg-${msg.id}`} className={`chat-row ${msg.role}`}>
                       <div className="chat-content">
-                        <ReactMarkdown
-                          remarkPlugins={[remarkGfm]}
-                          rehypePlugins={[rehypeRaw, [rehypeSanitize, sanitizeSchema]]}
-                          components={{
-                            a: ({ href, children, node, ...anchorProps }) => {
-                              const isMailtoLink = typeof href === "string" && /^mailto:/i.test(href);
-                              if (isMailtoLink) {
-                                return <span className={anchorProps.className}>{children}</span>;
-                              }
-                              // Open payment links in new tab
-                              const isPaymentLink = href && href.includes('/payment/');
-                              const isDocumentPdfLink = typeof href === "string" && /\/documents\/.+\.pdf(?:\?.*)?$/i.test(href);
-                              const shouldOpenNewTab = isPaymentLink || isDocumentPdfLink || anchorProps.target === "_blank";
-                              const shouldDownload = isDocumentPdfLink || anchorProps.download !== undefined;
-                              const hrefWithSession =
-                                isPaymentLink && href && !/[?&]session=/.test(href)
-                                  ? `${href}${href.includes("?") ? "&" : "?"}session=${encodeURIComponent(sessionKey)}`
-                                  : href;
-                              const paymentButtonStyle = isPaymentLink
-                                ? {
-                                    display: "inline-block",
-                                    background: "#00B14F",
-                                    color: "#ffffff",
-                                    textDecoration: "none",
-                                    padding: "10px 18px",
-                                    borderRadius: "999px",
-                                    fontSize: "1.05em",
-                                    fontWeight: 700,
-                                    lineHeight: 1.2,
-                                  }
-                                : undefined;
-                              const mergedClassName = [
-                                anchorProps.className,
-                                isPaymentLink ? "payment-cta" : null,
-                              ].filter(Boolean).join(" ");
-                              return (
-                                <a
-                                  {...anchorProps}
-                                  className={mergedClassName || undefined}
-                                  href={hrefWithSession}
-                                  target={shouldOpenNewTab ? "_blank" : (anchorProps.target || "_self")}
-                                  rel={shouldOpenNewTab ? (anchorProps.rel || "noopener noreferrer") : anchorProps.rel}
-                                  download={shouldDownload ? (typeof anchorProps.download === "string" ? anchorProps.download : "") : undefined}
-                                  style={paymentButtonStyle || anchorProps.style}
-                                >
-                                  {children}
-                                </a>
+                        {quotePresentation ? (
+                          <>
+                            {quotePresentation.before && (
+                              <ReactMarkdown
+                                remarkPlugins={[remarkGfm]}
+                                rehypePlugins={[rehypeRaw, [rehypeSanitize, sanitizeSchema]]}
+                                components={markdownComponents}
+                              >
+                                {quotePresentation.before}
+                              </ReactMarkdown>
+                            )}
+                            <AssistantQuoteCards
+                              quotes={quotePresentation.quotes}
+                              onSelectQuote={isStreaming ? undefined : handleQuoteCardSelect}
+                            />
+                            {quotePresentation.after && (
+                              <ReactMarkdown
+                                remarkPlugins={[remarkGfm]}
+                                rehypePlugins={[rehypeRaw, [rehypeSanitize, sanitizeSchema]]}
+                                components={markdownComponents}
+                              >
+                                {quotePresentation.after}
+                              </ReactMarkdown>
+                            )}
+                          </>
+                        ) : summaryPresentation ? (
+                          <>
+                            {summaryPresentation.before && (
+                              <ReactMarkdown
+                                remarkPlugins={[remarkGfm]}
+                                rehypePlugins={[rehypeRaw, [rehypeSanitize, sanitizeSchema]]}
+                                components={markdownComponents}
+                              >
+                                {summaryPresentation.before}
+                              </ReactMarkdown>
+                            )}
+                            <AssistantSummaryCard
+                              summary={withSummaryDisplayState(summaryPresentation.summary, summaryPresentation.after)}
+                            />
+                            {(() => {
+                              const nestedAddOnsPresentation = parseAssistantAddOnsPresentation(
+                                summaryPresentation.after,
+                                msg.addOnsCard
                               );
-                            },
-                            p: ({ children, className }) => {
-                              const text = flattenNodeText(children).trim();
-                              if (isStepIndicator(text)) {
-                                const parsed = parseStepIndicator(text);
-                                if (parsed) {
-                                  return (
-                                    <p className="chat-step-indicator">
-                                      Step <strong>{parsed.current}</strong> of <strong>{parsed.total}</strong> — {parsed.title}
-                                    </p>
-                                  );
-                                }
-                                return <p className="chat-step-indicator">{children}</p>;
+                              if (!nestedAddOnsPresentation) {
+                                return summaryPresentation.after ? (
+                                  <ReactMarkdown
+                                    remarkPlugins={[remarkGfm]}
+                                    rehypePlugins={[rehypeRaw, [rehypeSanitize, sanitizeSchema]]}
+                                    components={markdownComponents}
+                                  >
+                                    {summaryPresentation.after}
+                                  </ReactMarkdown>
+                                ) : null;
                               }
-                              if (isSummaryTitleLine(text)) {
-                                return <p className="summary-title">{children}</p>;
-                              }
-                              if (isSummaryDividerLine(text)) {
-                                return <p className="summary-divider">{children}</p>;
-                              }
-                              if (isSummaryTotalLine(text)) {
-                                return <p className="summary-total">{children}</p>;
-                              }
-                              return <p className={className}>{children}</p>;
-                            },
-                          }}
-                        >
-                          {cleanedContent}
-                        </ReactMarkdown>
+
+                              return (
+                                <>
+                                  {nestedAddOnsPresentation.before && (
+                                    <ReactMarkdown
+                                      remarkPlugins={[remarkGfm]}
+                                      rehypePlugins={[rehypeRaw, [rehypeSanitize, sanitizeSchema]]}
+                                      components={markdownComponents}
+                                    >
+                                      {nestedAddOnsPresentation.before}
+                                    </ReactMarkdown>
+                                  )}
+                                  <AssistantAddOnsSelector
+                                    addOnsCard={nestedAddOnsPresentation.addOns}
+                                    onConfirm={isStreaming ? undefined : handleAddOnsConfirm}
+                                    onSkip={isStreaming ? undefined : handleAddOnsSkip}
+                                  />
+                                  {nestedAddOnsPresentation.after && (
+                                    <ReactMarkdown
+                                      remarkPlugins={[remarkGfm]}
+                                      rehypePlugins={[rehypeRaw, [rehypeSanitize, sanitizeSchema]]}
+                                      components={markdownComponents}
+                                    >
+                                      {nestedAddOnsPresentation.after}
+                                    </ReactMarkdown>
+                                  )}
+                                </>
+                              );
+                            })()}
+                          </>
+                        ) : addOnsPresentation ? (
+                          <>
+                            {addOnsPresentation.before && (
+                              <ReactMarkdown
+                                remarkPlugins={[remarkGfm]}
+                                rehypePlugins={[rehypeRaw, [rehypeSanitize, sanitizeSchema]]}
+                                components={markdownComponents}
+                              >
+                                {addOnsPresentation.before}
+                              </ReactMarkdown>
+                            )}
+                            <AssistantAddOnsSelector
+                              addOnsCard={addOnsPresentation.addOns}
+                              onConfirm={isStreaming ? undefined : handleAddOnsConfirm}
+                              onSkip={isStreaming ? undefined : handleAddOnsSkip}
+                            />
+                            {addOnsPresentation.after && (
+                              <ReactMarkdown
+                                remarkPlugins={[remarkGfm]}
+                                rehypePlugins={[rehypeRaw, [rehypeSanitize, sanitizeSchema]]}
+                                components={markdownComponents}
+                              >
+                                {addOnsPresentation.after}
+                              </ReactMarkdown>
+                            )}
+                          </>
+                        ) : (
+                          <ReactMarkdown
+                            remarkPlugins={[remarkGfm]}
+                            rehypePlugins={[rehypeRaw, [rehypeSanitize, sanitizeSchema]]}
+                            components={markdownComponents}
+                          >
+                            {cleanedContent}
+                          </ReactMarkdown>
+                        )}
                       </div>
                     </div>
                   );

@@ -85,11 +85,11 @@ export default function AppLayout({ children }) {
         <header className="mobile-header">
           <div className="mobile-header-left">
             <button className="burger-icon" aria-label="Open menu" onClick={() => setOpen(true)}>
-              <svg className="icon" viewBox="0 0 24 24" width="24" height="24" aria-hidden="true">
-                <path d="M0 5H24" fill="none" stroke="currentColor" strokeWidth="2.8" strokeLinecap="round" />
-                <path d="M0 12H16.8" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" />
-                <path d="M0 19H11" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
-              </svg>
+              <span className="burger-lines" aria-hidden="true">
+                <span className="burger-line burger-line-top" />
+                <span className="burger-line burger-line-middle" />
+                <span className="burger-line burger-line-bottom" />
+              </span>
             </button>
           </div>
 

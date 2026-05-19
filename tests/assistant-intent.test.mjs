@@ -287,6 +287,38 @@ test('addons step should treat skip variants as select_addon', () => {
   assert.deepEqual(intentTransposeTypo.data.addOns, []);
 });
 
+test('addons step should treat explicit betterment waiver request as selection', () => {
+  const state = {
+    step: FLOW_STEPS.ADDONS,
+    selectedQuote: { insurer: 'Takaful Ikhlas' },
+    addOnsConfirmed: false,
+  };
+  const intent = detectUserIntent('confirm betterment waiver', state);
+  assert.equal(intent.intent, 'select_addon');
+  assert.deepEqual(intent.data.addOns, ['betterment_waiver']);
+});
+
+test('addons step should keep betterment explanation request as question', () => {
+  const state = {
+    step: FLOW_STEPS.ADDONS,
+    selectedQuote: { insurer: 'Takaful Ikhlas' },
+    addOnsConfirmed: false,
+  };
+  const intent = detectUserIntent('what is betterment?', state);
+  assert.equal(intent.intent, 'ask_question');
+});
+
+test('addons step should parse extended number selections', () => {
+  const state = {
+    step: FLOW_STEPS.ADDONS,
+    selectedQuote: { insurer: 'Takaful Ikhlas' },
+    addOnsConfirmed: false,
+  };
+  const intent = detectUserIntent('1, 8', state);
+  assert.equal(intent.intent, 'select_addon');
+  assert.deepEqual(intent.data.addOns, ['windscreen', 'betterment_waiver']);
+});
+
 test('quotes step should treat hesitant insurer mention as selection when not asking', () => {
   const state = {
     step: FLOW_STEPS.QUOTES,
