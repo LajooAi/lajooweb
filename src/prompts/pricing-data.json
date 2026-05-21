@@ -2,7 +2,7 @@
   "insurers": [
     {
       "id": "takaful-ikhlas",
-      "name": "Takaful Ikhlas",
+      "name": "Takaful Ikhlas Insurance",
       "logo": "/partners/takaful.svg",
       "priceBefore": 995,
       "priceAfter": 796,
@@ -12,6 +12,20 @@
         "Easy and Fast Claims Approval",
         "1st Takaful Operator in Malaysia",
         "Shariah-Compliant"
+      ]
+    },
+    {
+      "id": "tokio-marine",
+      "name": "Tokio Marine Insurance",
+      "logo": "/partners/tokio-marine.svg",
+      "priceBefore": 1000,
+      "priceAfter": 800,
+      "ncdPercent": 20,
+      "sumInsured": 35000,
+      "features": [
+        "Established international insurer",
+        "Competitive premium",
+        "Reliable claims support"
       ]
     },
     {
@@ -37,6 +51,48 @@
       "features": [
         "FREE 24-hour Claim Assistance",
         "Best Car Insurer 2018"
+      ]
+    },
+    {
+      "id": "lonpac",
+      "name": "Lonpac Insurance",
+      "logo": "/partners/lonpac.svg",
+      "priceBefore": 1200,
+      "priceAfter": 960,
+      "ncdPercent": 20,
+      "sumInsured": 37000,
+      "features": [
+        "Strong sum insured value",
+        "Straightforward comprehensive cover",
+        "Local market presence"
+      ]
+    },
+    {
+      "id": "msig",
+      "name": "MSIG Insurance",
+      "logo": "/partners/msig.svg",
+      "priceBefore": 1250,
+      "priceAfter": 1000,
+      "ncdPercent": 20,
+      "sumInsured": 37000,
+      "features": [
+        "International insurer network",
+        "Higher sum insured",
+        "Reliable service option"
+      ]
+    },
+    {
+      "id": "generali",
+      "name": "Generali Insurance",
+      "logo": "/partners/generali.svg",
+      "priceBefore": 1350,
+      "priceAfter": 1080,
+      "ncdPercent": 20,
+      "sumInsured": 40000,
+      "features": [
+        "Highest sum insured in this quote set",
+        "Comprehensive coverage option",
+        "International insurer brand"
       ]
     }
   ],

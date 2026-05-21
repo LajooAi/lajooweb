@@ -65,16 +65,36 @@ const WINDSCREEN_PREMIUM_RATE = 0.15;
 const getQuoteSelectionText = (insurerName = "") => {
   const lower = insurerName.toLowerCase();
   if (lower.includes("takaful")) return "Takaful";
+  if (lower.includes("tokio")) return "Tokio Marine";
   if (lower.includes("etiqa")) return "Etiqa";
   if (lower.includes("allianz")) return "Allianz";
+  if (lower.includes("lonpac")) return "Lonpac";
+  if (lower.includes("msig")) return "MSIG";
+  if (lower.includes("generali")) return "Generali";
+  return insurerName;
+};
+
+const getQuoteDisplayName = (insurerName = "") => {
+  const lower = insurerName.toLowerCase();
+  if (lower.includes("takaful")) return "Takaful Ikhlas Insurance";
+  if (lower.includes("tokio")) return "Tokio Marine Insurance";
+  if (lower.includes("etiqa")) return "Etiqa Insurance";
+  if (lower.includes("allianz")) return "Allianz Insurance";
+  if (lower.includes("lonpac")) return "Lonpac Insurance";
+  if (lower.includes("msig")) return "MSIG Insurance";
+  if (lower.includes("generali")) return "Generali Insurance";
   return insurerName;
 };
 
 const getInsurerKey = (insurerName = "") => {
   const lower = insurerName.toLowerCase();
   if (lower.includes("takaful")) return "takaful";
+  if (lower.includes("tokio")) return "tokio";
   if (lower.includes("etiqa")) return "etiqa";
   if (lower.includes("allianz")) return "allianz";
+  if (lower.includes("lonpac")) return "lonpac";
+  if (lower.includes("msig")) return "msig";
+  if (lower.includes("generali")) return "generali";
   return "default";
 };
 
@@ -466,7 +486,7 @@ const parseAssistantQuotePresentation = (content = "") => {
 
     quotes.push({
       id: getInsurerKey(insurer),
-      insurer,
+      insurer: getQuoteDisplayName(insurer),
       logoUrl,
       logoAlt,
       finalPrice,
@@ -633,10 +653,12 @@ function AssistantQuoteCards({ quotes = [], onSelectQuote }) {
 
 const HERO_INSURER_LOGOS = [
   { id: "allianz", name: "Allianz", src: "/partners/allianz.svg" },
+  { id: "tokio", name: "Tokio Marine", src: "/partners/tokio-marine.svg" },
   { id: "etiqa", name: "Etiqa", src: "/partners/etiqa.svg" },
   { id: "takaful", name: "Takaful", src: "/partners/takaful.svg" },
   { id: "lonpac", name: "Lonpac", src: "/partners/lonpac.svg" },
   { id: "msig", name: "MSIG", src: "/partners/msig.svg" },
+  { id: "generali", name: "Generali", src: "/partners/generali.svg" },
 ];
 
 function HeroTypeIcon({ src, alt, fallback }) {
@@ -1426,7 +1448,7 @@ Your coverage starts immediately. Drive safe!`
       });
 
     if (selectedLabels.length > 0) {
-      handleQuickStart(`add ${selectedLabels.join(", ")}`);
+      handleQuickStart(`add ${selectedLabels.join(",  \n")}`);
     }
   };
 
@@ -1560,7 +1582,7 @@ Your coverage starts immediately. Drive safe!`
                 lineClassName="home-hero-title-line"
                 secondaryLineClassName="home-hero-title-line-second"
                 primaryText="Renew insurance"
-                secondaryText="in one simple chat with AI."
+                secondaryText="in one simple AI chat."
               />
 
               <div className="home-hero-types" role="group" aria-label="Insurance type">

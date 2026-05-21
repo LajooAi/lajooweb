@@ -189,7 +189,7 @@ select {
   border-radius: 0;
   padding: 0;
   min-height: 31px;
-  font-size: clamp(12px, 1.05vw, 15px);
+  font-size: clamp(13px, 1.05vw, 16px);
   font-weight: 700;
   letter-spacing: 0.01em;
   line-height: 1;
@@ -241,7 +241,7 @@ select {
 @media (max-width: 768px) {
   .country-language-button {
     min-height: 29px;
-    font-size: 13px;
+    font-size: 14px;
     gap: 4px;
   }
 
@@ -806,16 +806,16 @@ h2 {
   justify-content: center;
   border-radius: 999px;
   cursor: pointer;
-  color: var(--color-text-primary);
+  color: #000000;
 }
 
 .drawer-close:hover {
-  color: var(--color-brand-500);
+  color: #000000;
 }
 
 .drawer-nav { display: flex; flex-direction: column; gap: 18px; margin-top: var(--space-2); }
 
-.drawer-link { display: block; padding: var(--space-3) 14px; border-radius: 14px; text-decoration: none; color: var(--color-text-primary); }
+.drawer-link { display: block; padding: var(--space-3) 14px; border-radius: 14px; text-decoration: none; color: #000000; }
 
 .drawer-link:hover { background: var(--color-bg-subtle); }
 
@@ -929,7 +929,7 @@ body.home-route .mobile-header {
   line-height: 1.08;
   white-space: nowrap;
   color: #0A1F44;
-  font-weight: 700;
+  font-weight: 600;
 }
 
 .home-page-shell .home-hero-title-line:not(.home-hero-title-line-second) {
@@ -1058,7 +1058,7 @@ body.home-route .mobile-header {
   margin-right: auto;
   font-size: 18px;
   font-weight: 650;
-  color: var(--color-text-primary);
+  color: #000000;
 }
 
 .picker-back {
@@ -1067,7 +1067,7 @@ body.home-route .mobile-header {
   font-size: 28px;
   line-height: 1;
   cursor: pointer;
-  color: var(--color-text-primary);
+  color: #000000;
   padding: 0;
 }
 
@@ -1082,12 +1082,12 @@ body.home-route .mobile-header {
   justify-content: center;
   border-radius: 999px;
   cursor: pointer;
-  color: var(--color-text-primary);
+  color: #000000;
 }
 
 .picker-back:hover,
 .picker-x:hover {
-  color: var(--color-brand-500);
+  color: #000000;
 }
 
 .rounded-close-icon {
@@ -1128,7 +1128,7 @@ body.home-route .mobile-header {
   border: 0;
   border-radius: 14px;
   background: transparent;
-  color: var(--color-text-primary);
+  color: #000000;
   cursor: pointer;
   text-align: left;
   font-size: 16px;
@@ -1163,16 +1163,16 @@ body.home-route .mobile-header {
 
 /* Keep unselected BM/CN labels black in language list */
 .picker-row-language:not(.checked) .row-left {
-  color: var(--color-text-primary);
+  color: #000000;
   font-weight: 400;
 }
 
 /* Cell content */
-.row-left { display: flex; align-items: center; gap: 10px; color: var(--color-text-primary); }
+.row-left { display: flex; align-items: center; gap: 10px; color: #000000; }
 .flag { width: auto; height: 1em; border-radius: 2px; display: block; }
 .row-text { display: flex; gap: 6px; }
-.row-code { color: var(--color-text-primary); }
-.row-name { color: var(--color-text-primary); opacity: .8; }
+.row-code { color: #000000; }
+.row-name { color: #000000; opacity: .8; }
 .row-right {
   min-width: 28px;
   display: inline-flex;
@@ -1193,12 +1193,12 @@ body.home-route .mobile-header {
 }
 
 .row-right.chevron {
-  color: var(--color-text-secondary);
+  color: #000000;
 }
 
 .picker-row.active .row-right.chevron { color: #ffffff; }
 .row-right.tick {
-  color: var(--color-brand-500);
+  color: #000000;
 }
 
 .picker-row.checked .row-right.tick { color: #ffffff; }
@@ -1589,6 +1589,12 @@ body.home-route .mobile-header {
   background: #EEF5FF;
   color: #000000;
   line-height: 1.5;
+  text-align: left;
+}
+
+.chat-row.user .chat-content p {
+  text-align: left;
+  white-space: pre-line;
 }
 
 .chat-row.user .chat-content a {
@@ -1675,7 +1681,7 @@ body.home-route .mobile-header {
   border-radius: 16px;
   background: #ffffff;
   color: #505050;
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 400;
   line-height: 18px;
   letter-spacing: 0;
@@ -1684,18 +1690,18 @@ body.home-route .mobile-header {
 
 .assistant-summary-header {
   display: grid;
-  grid-template-columns: 36px minmax(0, 1fr);
-  align-items: start;
+  grid-template-columns: 82px minmax(0, 1fr);
+  align-items: center;
   gap: 10px;
   margin: 0 0 4px;
 }
 
-.assistant-summary-logo {
+.assistant-summary-card .assistant-summary-logo {
   display: block;
-  width: 36px;
+  width: 82px;
   height: 36px;
   object-fit: contain;
-  object-position: center;
+  object-position: left center;
   margin: 0;
   border-radius: 0;
 }
@@ -1717,7 +1723,7 @@ body.home-route .mobile-header {
 .assistant-summary-meta p {
   margin: 0;
   color: #505050;
-  font-size: 13px;
+  font-size: 14px;
   line-height: 18px;
 }
 
@@ -1748,7 +1754,7 @@ body.home-route .mobile-header {
 .assistant-summary-section h4 {
   margin: 0;
   color: #000000;
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 700;
   line-height: 18px;
   letter-spacing: 0;
@@ -1761,7 +1767,7 @@ body.home-route .mobile-header {
   gap: 10px;
   min-height: 18px;
   color: #505050;
-  font-size: 13px;
+  font-size: 14px;
   line-height: 18px;
 }
 
@@ -1773,7 +1779,7 @@ body.home-route .mobile-header {
 
 .assistant-summary-line strong {
   color: #000000;
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 600;
   line-height: 18px;
   white-space: nowrap;
@@ -1815,13 +1821,13 @@ body.home-route .mobile-header {
   padding: 0;
   background: transparent;
   color: #000000;
-  font-size: 14px;
-  line-height: 21px;
+  font-size: 15px;
+  line-height: 22px;
   letter-spacing: 0;
 }
 
-.assistant-addons-title {
-  margin: 0 0 16px 0;
+.assistant-addons-card .assistant-addons-title {
+  margin: 0 0 20px 0;
   color: #000000;
   font-size: 16px;
   line-height: 22px;
@@ -1833,21 +1839,21 @@ body.home-route .mobile-header {
   font-weight: 700;
 }
 
-.assistant-addons-list {
+.assistant-addons-card .assistant-addons-list {
   display: flex;
   flex-direction: column;
-  gap: 0;
+  gap: 4px;
 }
 
 .assistant-addons-row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) max-content 20px;
+  grid-template-columns: minmax(0, 1fr) max-content 21px;
   align-items: center;
   gap: 8px;
-  min-height: 21px;
+  min-height: 22px;
   color: #000000;
-  font-size: 14px;
-  line-height: 21px;
+  font-size: 15px;
+  line-height: 22px;
 }
 
 .assistant-addons-left {
@@ -1856,8 +1862,8 @@ body.home-route .mobile-header {
   align-items: center;
   gap: 4px;
   color: #000000;
-  font-size: 14px;
-  line-height: 21px;
+  font-size: 15px;
+  line-height: 22px;
 }
 
 .assistant-addons-number {
@@ -1865,7 +1871,7 @@ body.home-route .mobile-header {
   color: #000000;
   font-weight: 400;
   text-align: right;
-  font-size: 14px;
+  font-size: 15px;
   white-space: nowrap;
 }
 
@@ -1876,21 +1882,21 @@ body.home-route .mobile-header {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  font-size: 14px;
+  font-size: 15px;
 }
 
 .assistant-addons-coverage {
   flex: 0 0 auto;
   display: inline-flex;
   align-items: center;
-  height: 21px;
+  height: 22px;
   border: 1px solid #b1b1b1;
   border-radius: 6px;
   overflow: hidden;
   color: #000000;
   background: #ffffff;
-  font-size: 14px;
-  line-height: 20px;
+  font-size: 15px;
+  line-height: 21px;
 }
 
 .assistant-addons-coverage span {
@@ -1899,7 +1905,7 @@ body.home-route .mobile-header {
 
 .assistant-addons-coverage input {
   width: 78px;
-  height: 20px;
+  height: 21px;
   min-width: 0;
   padding: 0 5px 0 0;
   border: 0;
@@ -1907,15 +1913,15 @@ body.home-route .mobile-header {
   background: transparent;
   color: #000000;
   font: inherit;
-  font-size: 14px;
-  line-height: 20px;
+  font-size: 15px;
+  line-height: 21px;
   text-align: right;
 }
 
 .assistant-addons-star {
   flex: 0 0 auto;
   color: #ff7b00;
-  font-size: 12px;
+  font-size: 13px;
   line-height: 1;
   transform: translateY(-0.5px);
 }
@@ -1927,9 +1933,9 @@ body.home-route .mobile-header {
   align-items: center;
 }
 
-.assistant-addons-info {
-  width: 12px;
-  height: 12px;
+.assistant-addons-card .assistant-addons-info {
+  width: 15px;
+  height: 15px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -1938,10 +1944,11 @@ body.home-route .mobile-header {
   border-radius: 999px;
   background: #555555;
   color: #ffffff;
-  font: inherit;
-  font-size: 8px;
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: 10px;
   font-weight: 700;
-  line-height: 1;
+  line-height: 15px;
+  text-align: center;
   cursor: pointer;
 }
 
@@ -1957,17 +1964,17 @@ body.home-route .mobile-header {
   border-radius: 6px;
   background: #555555;
   color: #ffffff;
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 400;
-  line-height: 16px;
+  line-height: 17px;
   box-shadow: 0 8px 20px rgba(0, 0, 0, 0.16);
 }
 
 .assistant-addons-card .assistant-addons-price {
   color: #000000;
-  font-size: 14px;
+  font-size: 15px;
   font-weight: 400;
-  line-height: 21px;
+  line-height: 22px;
   white-space: nowrap;
   text-align: right;
 }
@@ -1977,8 +1984,8 @@ body.home-route .mobile-header {
 }
 
 .assistant-addons-check {
-  width: 18px;
-  height: 18px;
+  width: 19px;
+  height: 19px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -1988,7 +1995,7 @@ body.home-route .mobile-header {
   background: #ffffff;
   color: #ffffff;
   font: inherit;
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 800;
   line-height: 1;
   cursor: pointer;
@@ -2013,9 +2020,9 @@ body.home-route .mobile-header {
   background: transparent;
   color: #0062ff;
   font: inherit;
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 500;
-  line-height: 18px;
+  line-height: 19px;
   cursor: pointer;
 }
 
@@ -2026,7 +2033,7 @@ body.home-route .mobile-header {
 
 .assistant-addons-confirm {
   min-width: 92px;
-  min-height: 29px;
+  min-height: 30px;
   justify-self: end;
   padding: 4px 18px;
   border: 1.4px solid #0062ff;
@@ -2076,8 +2083,8 @@ body.home-route .mobile-header {
 
 .assistant-quote-card {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 84px;
-  gap: 8px;
+  grid-template-columns: minmax(0, 1fr) 112px;
+  gap: 10px;
   width: 100%;
   padding: 12px 14px;
   border: 1px solid rgba(15, 23, 42, 0.13);
@@ -2236,28 +2243,50 @@ body.home-route .mobile-header {
   gap: 8px;
 }
 
-.assistant-quote-logo {
+.assistant-quote-card .assistant-quote-logo {
   display: block;
-  width: 100%;
-  max-width: 74px;
-  height: 42px;
+  width: var(--assistant-quote-logo-width, 82px);
+  max-width: none;
+  height: var(--assistant-quote-logo-height, 44px);
+  margin-right: 0;
+  border-radius: 0;
   object-fit: contain;
   object-position: right center;
 }
 
 .assistant-quote-logo[data-insurer="takaful"] {
-  height: 54px;
-  max-width: 62px;
+  --assistant-quote-logo-width: 62px;
+  --assistant-quote-logo-height: 54px;
+}
+
+.assistant-quote-logo[data-insurer="tokio"] {
+  --assistant-quote-logo-width: 76px;
+  --assistant-quote-logo-height: 58px;
 }
 
 .assistant-quote-logo[data-insurer="etiqa"] {
-  max-width: 78px;
-  height: 42px;
+  --assistant-quote-logo-width: 78px;
+  --assistant-quote-logo-height: 42px;
 }
 
 .assistant-quote-logo[data-insurer="allianz"] {
-  max-width: 76px;
-  height: 34px;
+  --assistant-quote-logo-width: 112px;
+  --assistant-quote-logo-height: 42px;
+}
+
+.assistant-quote-logo[data-insurer="lonpac"] {
+  --assistant-quote-logo-width: 112px;
+  --assistant-quote-logo-height: 46px;
+}
+
+.assistant-quote-logo[data-insurer="msig"] {
+  --assistant-quote-logo-width: 92px;
+  --assistant-quote-logo-height: 42px;
+}
+
+.assistant-quote-logo[data-insurer="generali"] {
+  --assistant-quote-logo-width: 68px;
+  --assistant-quote-logo-height: 54px;
 }
 
 .assistant-quote-select {
@@ -3905,14 +3934,15 @@ body.home-route .mobile-header {
 
 @media (max-width: 639px) {
   .home-page-shell.is-home .hero-content.home-hero {
-    padding: calc(var(--home-hero-chat-padding-top-mobile) - 2px) 0 var(--home-hero-chat-padding-bottom-mobile);
+    padding: calc(var(--home-hero-chat-padding-top-mobile) - 22px) 0 var(--home-hero-chat-padding-bottom-mobile);
     overflow-x: hidden;
     overflow-y: visible;
   }
 
   .home-page-shell.is-home .home-hero-title {
-    --hero-line-one-size: clamp(34px, 10.6vw, 52px);
-    --hero-line-two-size: clamp(18px, 6.9vw, 31px);
+    --equal-width-secondary-max-size: 40px;
+    --hero-line-one-size: clamp(34px, 11vw, 52px);
+    --hero-line-two-size: clamp(28px, 8.5vw, 39px);
     margin: 0 auto calc(clamp(48px, 6.2vh, 62px) + 5px);
   }
 

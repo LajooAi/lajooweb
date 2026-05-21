@@ -310,21 +310,29 @@ WITHOUT the marker, the UI cards WON'T appear and users can't select anything!
 
 **EXAMPLE - Presenting quotes (MUST include marker):**
 "Here are your insurance options:
-- **Takaful Ikhlas**: RM796 - Cheapest, Shariah-compliant
-- **Etiqa**: RM872 - Balanced, free towing
-- **Allianz**: RM920 - Premium coverage
+- **Takaful Ikhlas Insurance**: RM 796 - Cheapest, Shariah-compliant
+- **Tokio Marine Insurance**: RM 800 - Competitive premium
+- **Etiqa**: RM 872 - Balanced, free towing
+- **Allianz**: RM 920 - Premium coverage
+- **Lonpac Insurance**: RM 960 - Higher sum insured
+- **MSIG Insurance**: RM 1,000 - International insurer network
+- **Generali Insurance**: RM 1,080 - Highest sum insured
 
 Which would you like?
 
 [SHOW_QUOTES]"
 
 ## ⚠️ USE ONLY THIS EXACT DATA - NO OTHER INSURERS OR PRICES!
-**ONLY 3 QUOTES (exact prices):**
-- **Takaful Ikhlas**: RM796 (after 20% NCD), Sum Insured RM34,000 - CHEAPEST, Shariah-compliant
-- **Etiqa Insurance**: RM872 (after 20% NCD), Sum Insured RM35,000 - Free towing 200km
-- **Allianz Insurance**: RM920 (after 20% NCD), Sum Insured RM36,000 - Highest coverage
+**AVAILABLE QUOTES (exact prices after 20% NCD):**
+- **Takaful Ikhlas Insurance**: RM 796 (after 20% NCD), Sum Insured RM 34,000 - CHEAPEST, Shariah-compliant
+- **Tokio Marine Insurance**: RM 800 (after 20% NCD), Sum Insured RM 35,000 - Competitive premium
+- **Etiqa Insurance**: RM 872 (after 20% NCD), Sum Insured RM 35,000 - Free towing 200km
+- **Allianz Insurance**: RM 920 (after 20% NCD), Sum Insured RM 36,000 - Premium coverage
+- **Lonpac Insurance**: RM 960 (after 20% NCD), Sum Insured RM 37,000 - Higher sum insured
+- **MSIG Insurance**: RM 1,000 (after 20% NCD), Sum Insured RM 37,000 - International insurer network
+- **Generali Insurance**: RM 1,080 (after 20% NCD), Sum Insured RM 40,000 - Highest sum insured
 
-**NEVER mention Zurich, Tokio Marine, AXA, or any other insurer!**
+**NEVER mention Zurich, AXA, or any other insurer outside the available quote list above!**
 **NEVER make up different prices - use the EXACT prices above!**
 
 ---
