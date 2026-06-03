@@ -1,4 +1,5 @@
 import { FLOW_STEPS, USER_INTENTS } from '../../lib/conversationState.js';
+import { getInsurerKeysFromText } from '../../lib/insurerCatalog.js';
 
 export const CONVERSATION_MODES = {
   FLOW_ANSWER: 'flow_answer',
@@ -49,7 +50,8 @@ function hasQuestionShape(text) {
 }
 
 function looksLikeQuoteComparison(text) {
-  return /\b(compare|comparison|vs\.?|versus|difference|different|better|best|which one|which is better|why (?:not|choose)|between|recommend|recommendation|cheaper|cheapest|coverage|sum insured|claims?|claim support|allianz|etiqa|takaful|ikhlas)\b/i.test(text);
+  return /\b(compare|comparison|vs\.?|versus|difference|different|better|best|which one|which is better|why (?:not|choose)|between|recommend|recommendation|cheaper|cheapest|coverage|sum insured|claims?|claim support)\b/i.test(text) ||
+    getInsurerKeysFromText(text).length > 0;
 }
 
 function looksLikeInsuranceQuestion(text) {

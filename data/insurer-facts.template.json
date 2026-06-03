@@ -15,6 +15,26 @@
       "code": "ALLIANZ",
       "name": "Allianz Insurance",
       "type": "CONVENTIONAL"
+    },
+    {
+      "code": "TOKIO",
+      "name": "Tokio Marine",
+      "type": "CONVENTIONAL"
+    },
+    {
+      "code": "LONPAC",
+      "name": "Lonpac",
+      "type": "CONVENTIONAL"
+    },
+    {
+      "code": "MSIG",
+      "name": "MSIG",
+      "type": "CONVENTIONAL"
+    },
+    {
+      "code": "GENERALI",
+      "name": "Generali Insurance",
+      "type": "CONVENTIONAL"
     }
   ],
   "facts": [

@@ -1,7 +1,9 @@
 .footer {
-  width: 100%;
+  width: 100vw;
+  margin-right: calc(50% - 50vw);
+  margin-left: calc(50% - 50vw);
   margin-top: 0;
-  padding: 80px 0 70px;
+  padding: 55px 0 70px;
   color: #000000;
   background: #ffffff;
 }
@@ -9,7 +11,7 @@
 .container {
   width: min(100%, 636px);
   margin: 0 auto;
-  padding: 0 67px;
+  padding: 0 29px;
 }
 
 .sections {
@@ -38,7 +40,7 @@
 .company {
   margin: 18px 0 0;
   color: #000000;
-  font-size: 21.16px;
+  font-size: 16px;
   font-weight: 400;
   line-height: 1.2;
   letter-spacing: 0;
@@ -47,7 +49,7 @@
 .registration {
   margin: 4px 0 0;
   color: #000000;
-  font-size: 21.16px;
+  font-size: 16px;
   font-weight: 400;
   line-height: 1.2;
   letter-spacing: 0;
@@ -65,9 +67,9 @@
   margin: 12px 0 0;
   padding: 3px 10px 4px;
   border-radius: 8px;
-  background: #eaf2ff;
+  background: #eeeeee;
   color: #000000;
-  font-size: 21.16px;
+  font-size: 16px;
   font-weight: 500;
   line-height: 1.22;
   letter-spacing: 0;
@@ -80,14 +82,16 @@
 
 .menu {
   display: grid;
+  justify-items: start;
   gap: 24px;
   margin: 0;
 }
 
 .menuLink {
+  width: fit-content;
   color: #000000;
   text-decoration: none;
-  font-size: 19.146px;
+  font-size: 16px;
   font-weight: 700;
   line-height: 1.2;
   letter-spacing: 0;
@@ -108,7 +112,7 @@
 .followTitle {
   margin: 0 0 13px;
   color: #363636;
-  font-size: 19.7px;
+  font-size: 15px;
   font-weight: 500;
   line-height: 1.18;
   letter-spacing: 0;
@@ -144,23 +148,17 @@
   box-shadow: none;
 }
 
-.iconSvg {
+.socialIcon {
   width: 46%;
   height: 46%;
   display: block;
-}
-
-.rednoteGlyph {
-  font-size: 15px;
-  font-weight: 700;
-  line-height: 1;
-  letter-spacing: 0;
+  object-fit: contain;
 }
 
 .copyright {
   margin: 36px 0 0;
   color: #363636;
-  font-size: 19.16px;
+  font-size: 15px;
   font-weight: 500;
   line-height: 1.25;
   letter-spacing: 0;
@@ -169,11 +167,11 @@
 
 @media (max-width: 680px) {
   .footer {
-    padding: 72px 0 58px;
+    padding: 47px 0 58px;
   }
 
   .container {
-    padding: 0 clamp(28px, 10vw, 67px);
+    padding: 0 29px;
   }
 
   .brandLogo {
@@ -181,9 +179,12 @@
   }
 
   .company,
-  .registration,
+  .registration {
+    font-size: 16px;
+  }
+
   .tagline {
-    font-size: clamp(15.5px, 3.6vw, 21.16px);
+    font-size: 16px;
   }
 
   .menu {
@@ -191,11 +192,11 @@
   }
 
   .menuLink {
-    font-size: clamp(18px, 4.3vw, 19.146px);
+    font-size: 16px;
   }
 
   .followTitle {
-    font-size: clamp(18px, 4.4vw, 19.7px);
+    font-size: 15px;
   }
 
   .socialRow {
@@ -210,13 +211,13 @@
 
   .copyright {
     margin-top: 32px;
-    font-size: clamp(14px, 3.5vw, 19.16px);
+    font-size: 15px;
   }
 }
 
 @media (max-width: 390px) {
   .container {
-    padding: 0 28px;
+    padding: 0 29px;
   }
 
   .socialRow {
@@ -224,6 +225,6 @@
   }
 
   .tagline {
-    font-size: 16px;
+    font-size: 15px;
   }
 }

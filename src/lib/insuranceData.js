@@ -1,3 +1,8 @@
+import {
+  AVAILABLE_INSURERS,
+  getInsurerByText,
+} from './insurerCatalog.js';
+
 /**
  * Insurance Data Layer - Single Source of Truth
  *
@@ -15,47 +20,26 @@
 // INSURERS - The companies we work with
 // ============================================================================
 
-export const INSURERS = {
-  TAKAFUL_IKHLAS: {
-    id: 'takaful-ikhlas',
-    name: 'Takaful Ikhlas',
-    displayName: 'Takaful Ikhlas',
-    logoUrl: '/partners/takaful.svg',
-    type: 'takaful', // Islamic insurance
-    features: [
-      'Shariah-compliant (Islamic insurance)',
-      'Fast claim payout',
-      'Great value for money',
-    ],
-    rating: 4.5,
-  },
-  ETIQA: {
-    id: 'etiqa',
-    name: 'Etiqa Insurance',
-    displayName: 'Etiqa Insurance',
-    logoUrl: '/partners/etiqa.svg',
-    type: 'conventional',
-    features: [
-      'Free towing service up to 200km',
-      'Good customer service',
-      'Well-established local insurer',
-    ],
-    rating: 4.3,
-  },
-  ALLIANZ: {
-    id: 'allianz',
-    name: 'Allianz Insurance',
-    displayName: 'Allianz Insurance',
-    logoUrl: '/partners/allianz.svg',
-    type: 'conventional',
-    features: [
-      'Premium service quality',
-      'Excellent claims network',
-      'Best customer service ratings',
-    ],
-    rating: 4.7,
-  },
-};
+function insurerExportKey(insurer) {
+  if (insurer.key === 'takaful') return 'TAKAFUL_IKHLAS';
+  if (insurer.key === 'tokio') return 'TOKIO_MARINE';
+  return insurer.code;
+}
+
+export const INSURERS = Object.fromEntries(
+  AVAILABLE_INSURERS.map((insurer) => [
+    insurerExportKey(insurer),
+    {
+      id: insurer.id,
+      name: insurer.summaryName,
+      displayName: insurer.displayName,
+      logoUrl: insurer.logoUrl,
+      type: insurer.type,
+      features: insurer.features,
+      rating: 4.5,
+    },
+  ])
+);
 
 // ============================================================================
 // QUOTES - Insurance pricing (mock data, replace with API later)
@@ -70,62 +54,67 @@ export function getQuotes({ vehicleValue = 51000, ncdPercent = 20, engineCC = 14
   // In production, this would call real insurer APIs
   // For now, return structured mock data
 
-  const quotes = [
-    {
-      id: `${INSURERS.TAKAFUL_IKHLAS.id}-${Date.now()}`,
-      insurer: INSURERS.TAKAFUL_IKHLAS,
-      sumInsured: 34000,
-      coverType: 'Comprehensive',
-      pricing: {
-        basePremium: 995,
-        ncdPercent: ncdPercent,
-        ncdDiscount: 199,
-        finalPremium: 796,
-      },
-      benefits: [
-        'CHEAPEST option',
-        ...INSURERS.TAKAFUL_IKHLAS.features,
-      ],
+  const quoteMeta = {
+    takaful: {
+      benefit: 'CHEAPEST option',
       recommendation: 'Best for budget-conscious drivers seeking Shariah-compliant coverage',
       tag: 'CHEAPEST',
     },
-    {
-      id: `${INSURERS.ETIQA.id}-${Date.now()}`,
-      insurer: INSURERS.ETIQA,
-      sumInsured: 35000,
-      coverType: 'Comprehensive',
-      pricing: {
-        basePremium: 1090,
-        ncdPercent: ncdPercent,
-        ncdDiscount: 218,
-        finalPremium: 872,
-      },
-      benefits: [
-        'Balanced price and coverage',
-        ...INSURERS.ETIQA.features,
-      ],
+    tokio: {
+      benefit: 'Very close to cheapest',
+      recommendation: 'Best for drivers who want a low premium from an international insurer',
+      tag: 'VALUE',
+    },
+    etiqa: {
+      benefit: 'Balanced price and coverage',
       recommendation: 'Best for drivers who travel frequently and want roadside assistance',
       tag: 'BALANCED',
     },
-    {
-      id: `${INSURERS.ALLIANZ.id}-${Date.now()}`,
-      insurer: INSURERS.ALLIANZ,
-      sumInsured: 36000,
-      coverType: 'Comprehensive',
-      pricing: {
-        basePremium: 1150,
-        ncdPercent: ncdPercent,
-        ncdDiscount: 230,
-        finalPremium: 920,
-      },
-      benefits: [
-        'Highest sum insured (RM36,000)',
-        ...INSURERS.ALLIANZ.features,
-      ],
-      recommendation: 'Best for drivers who prioritize premium service and maximum coverage',
+    allianz: {
+      benefit: 'Premium service option',
+      recommendation: 'Best for drivers who prioritize service confidence',
       tag: 'PREMIUM',
     },
-  ];
+    lonpac: {
+      benefit: 'Strong value for RM 37,000 sum insured',
+      recommendation: 'Best for drivers who want higher sum insured while keeping premium below RM 1,000',
+      tag: 'HIGHER COVER',
+    },
+    msig: {
+      benefit: 'Higher sum insured option',
+      recommendation: 'Best for drivers who want RM 37,000 coverage from an international insurer',
+      tag: 'HIGHER COVER',
+    },
+    generali: {
+      benefit: 'Highest sum insured (RM 40,000)',
+      recommendation: 'Best for drivers who prioritize maximum sum insured',
+      tag: 'MAX COVER',
+    },
+  };
+
+  const quotes = AVAILABLE_INSURERS.map((catalogInsurer) => {
+    const insurer = INSURERS[insurerExportKey(catalogInsurer)];
+    const meta = quoteMeta[catalogInsurer.key] || {};
+
+    return {
+      id: `${insurer.id}-${Date.now()}`,
+      insurer,
+      sumInsured: catalogInsurer.sumInsured,
+      coverType: 'Comprehensive',
+      pricing: {
+        basePremium: catalogInsurer.priceBefore,
+        ncdPercent: ncdPercent,
+        ncdDiscount: Number((catalogInsurer.priceBefore - catalogInsurer.priceAfter).toFixed(2)),
+        finalPremium: catalogInsurer.priceAfter,
+      },
+      benefits: [
+        meta.benefit,
+        ...insurer.features,
+      ].filter(Boolean),
+      recommendation: meta.recommendation || 'Available comprehensive motor insurance option',
+      tag: meta.tag || 'OPTION',
+    };
+  });
 
   // Sort by price (cheapest first)
   return quotes.sort((a, b) => a.pricing.finalPremium - b.pricing.finalPremium);
@@ -136,18 +125,8 @@ export function getQuotes({ vehicleValue = 51000, ncdPercent = 20, engineCC = 14
  */
 export function findQuoteByInsurer(insurerName) {
   const quotes = getQuotes();
-  const normalized = insurerName.toLowerCase();
-
-  // Handle typos and variations
-  if (normalized.includes('takaful') || normalized.includes('ikhlas')) {
-    return quotes.find(q => q.insurer.id === 'takaful-ikhlas');
-  }
-  if (normalized.includes('etiqa') || normalized.includes('etika')) {
-    return quotes.find(q => q.insurer.id === 'etiqa');
-  }
-  if (normalized.includes('allianz') || normalized.includes('alianz')) {
-    return quotes.find(q => q.insurer.id === 'allianz');
-  }
+  const insurer = getInsurerByText(insurerName);
+  if (insurer) return quotes.find(q => q.insurer.id === insurer.id);
 
   return null;
 }

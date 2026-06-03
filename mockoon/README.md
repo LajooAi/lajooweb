@@ -1,6 +1,6 @@
 # Lajoo Mockoon API Pack
 
-This folder contains a production-style Mockoon environment for insurer testing (Takaful, Etiqa, Allianz) with 10 sample vehicles.
+This folder contains a production-style Mockoon environment for insurer testing (Takaful, Tokio Marine, Etiqa, Allianz, Lonpac, MSIG, Generali) with 10 sample vehicles.
 
 ## Files
 

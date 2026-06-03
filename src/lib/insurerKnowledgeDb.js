@@ -1,4 +1,9 @@
 import prisma from "./prisma.js";
+import {
+  AVAILABLE_INSURERS,
+  getInsurerKeysFromText,
+  getInsurerByKey,
+} from "./insurerCatalog.js";
 
 const QUERY_STOP_WORDS = new Set([
   "a",
@@ -103,18 +108,21 @@ function mergeKnowledgeResults(dbResults = [], staticResults = [], limit = 6) {
 }
 
 function extractInsurerHints(query) {
-  const q = String(query || "").toLowerCase();
-  const hints = new Set();
-
-  if (q.includes("allianz")) hints.add("ALLIANZ");
-  if (q.includes("etiqa")) hints.add("ETIQA");
-  if (q.includes("takaful") || q.includes("ikhlas")) hints.add("TAKAFUL");
-
-  return [...hints];
+  return getInsurerKeysFromText(query)
+    .map((key) => getInsurerByKey(key)?.code)
+    .filter(Boolean);
 }
 
 function stripInsurerNameTerms(terms = []) {
-  const insurerTerms = new Set(["allianz", "etiqa", "takaful", "ikhlas"]);
+  const insurerTerms = new Set(
+    AVAILABLE_INSURERS.flatMap((insurer) => [
+      insurer.key,
+      insurer.id,
+      insurer.shortName,
+      insurer.displayName,
+      ...insurer.aliases,
+    ]).flatMap((term) => String(term || "").toLowerCase().split(/[^a-z0-9]+/g).filter(Boolean))
+  );
   const filtered = terms.filter((term) => !insurerTerms.has(String(term || "").toLowerCase()));
   return filtered.length > 0 ? filtered : terms;
 }

@@ -35,19 +35,19 @@ function formatPricingData(data) {
   text += '**Insurance (after 20% NCD):**\n';
   for (const ins of insurers) {
     const features = ins.features.join(', ');
-    text += `- ${ins.name}: RM${ins.priceAfter} (was RM${ins.priceBefore}) — Sum Insured RM${(ins.sumInsured / 1000).toFixed(0)}k, ${features}\n`;
+    text += `- ${ins.name}: RM ${ins.priceAfter.toLocaleString()} (was RM ${ins.priceBefore.toLocaleString()}) — Sum Insured RM ${ins.sumInsured.toLocaleString()}, ${features}\n`;
   }
 
   // Add-ons
   text += '\n**Add-Ons:**\n';
   for (const addon of addOns) {
-    text += `- ${addon.name}: RM${addon.price} — ${addon.description}\n`;
+    text += `- ${addon.name}: RM ${addon.price.toLocaleString()} — ${addon.description}\n`;
   }
 
   // Road Tax
   text += '\n**Road Tax:**\n';
-  text += `- 6 months digital: RM${roadTax['6months'].digital} | delivered: RM${roadTax['6months'].delivered}\n`;
-  text += `- 12 months digital: RM${roadTax['12months'].digital} | delivered: RM${roadTax['12months'].delivered}\n`;
+  text += `- 6 months digital: RM ${roadTax['6months'].digital.toLocaleString()} | delivered: RM ${roadTax['6months'].delivered.toLocaleString()}\n`;
+  text += `- 12 months digital: RM ${roadTax['12months'].digital.toLocaleString()} | delivered: RM ${roadTax['12months'].delivered.toLocaleString()}\n`;
 
   // Delivery Times
   text += '\n**Delivery Times (for physical road tax):**\n';

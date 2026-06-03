@@ -239,7 +239,7 @@ const aiRenewalStats = [
     key: "time",
     kind: "time",
     value: "3 mins",
-    label: "Average renewal time",
+    label: "Renewal time",
   },
   {
     key: "replies",
@@ -473,7 +473,7 @@ export default function WhatIsLajooPage() {
           </div>
 
           <div className="understand-compare-card">
-            <p>Lajoo then compares and recommends the best for you.</p>
+            <p>LAJOO then compares and recommends the best for you.</p>
           </div>
 
           <div className="about-road-stripes understand-road-stripes" aria-hidden="true">
@@ -568,7 +568,7 @@ export default function WhatIsLajooPage() {
 
           <div className="ai-simple-grid">
             {aiRenewalStats.map((item) => (
-              <article key={item.key} className="ai-simple-card">
+              <article key={item.key} className={`ai-simple-card ai-simple-card--${item.key}`}>
                 <div className="ai-simple-card__icon" aria-hidden="true">
                   <AiSimpleIcon kind={item.kind} />
                 </div>

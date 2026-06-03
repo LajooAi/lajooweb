@@ -136,6 +136,34 @@
     "expectedDataContains": { "insurer": "etiqa" }
   },
   {
+    "name": "Quotes select Tokio Marine",
+    "message": "tokio marine please",
+    "step": "quotes",
+    "expectedIntent": "select_quote",
+    "expectedDataContains": { "insurer": "tokio" }
+  },
+  {
+    "name": "Quotes select Lonpac",
+    "message": "go with lonpac",
+    "step": "quotes",
+    "expectedIntent": "select_quote",
+    "expectedDataContains": { "insurer": "lonpac" }
+  },
+  {
+    "name": "Quotes select MSIG",
+    "message": "msig",
+    "step": "quotes",
+    "expectedIntent": "select_quote",
+    "expectedDataContains": { "insurer": "msig" }
+  },
+  {
+    "name": "Quotes select Generali",
+    "message": "generali",
+    "step": "quotes",
+    "expectedIntent": "select_quote",
+    "expectedDataContains": { "insurer": "generali" }
+  },
+  {
     "name": "Quotes ask about insurer should remain question",
     "message": "about etiqa",
     "step": "quotes",

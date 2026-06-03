@@ -10,6 +10,18 @@
 import { NextResponse } from "next/server";
 import { ConversationState, detectUserIntent, USER_INTENTS, FLOW_STEPS } from "@/lib/conversationState";
 import { getQuotes, ADDONS } from "@/lib/insuranceData";
+import {
+  AVAILABLE_INSURERS,
+  AVAILABLE_INSURER_CHOICE_TEXT,
+  AVAILABLE_INSURER_NAMES_TEXT,
+  AVAILABLE_INSURER_OPTIONS_WITH_PRICES,
+  UNAVAILABLE_INSURER_REGEX,
+  getInsurerByKey,
+  getInsurerKeysFromText,
+  findInsurerKeyByText,
+  textMatchesInsurerKey,
+  getInsurerQuoteIdPrefix,
+} from "@/lib/insurerCatalog";
 import { AI_FUNCTIONS } from "@/lib/aiFunctions";
 import {
   searchInsurerKnowledgeFromDb,
@@ -77,6 +89,28 @@ const PERSONAL_DETAIL_EXAMPLES = {
   'Phone number': '0123456789',
   Address: 'No 12, Jalan Setia 1, 47000 Shah Alam, Selangor',
 };
+const OTP_PROMPT_COPY = `Perfect ✅
+I’ve sent a **4-digit OTP** to your phone or email.
+Please enter it below to verify and continue.`;
+
+function getRoadTaxDisplayName(roadTax, noRoadTaxLabel = 'Not included') {
+  const rawName = typeof roadTax === 'string' ? roadTax : roadTax?.name;
+  const name = String(rawName || '').trim();
+  const normalized = name.toLowerCase();
+
+  if (!name) return '';
+  if (normalized.includes('no road tax') || normalized === 'none' || normalized === 'not included') {
+    return noRoadTaxLabel;
+  }
+  if (normalized.includes('physical') || normalized.includes('deliver')) {
+    return '12 months physical + delivery';
+  }
+  if (normalized.includes('digital') || normalized.includes('12month-digital')) {
+    return '12 months digital road tax';
+  }
+
+  return name;
+}
 
 const ADD_ON_CATALOG = [
   {
@@ -165,26 +199,25 @@ const ADD_ON_CATALOG = [
 
 const ADD_ON_BY_ID = Object.fromEntries(ADD_ON_CATALOG.map((addOn) => [addOn.id, addOn]));
 
-const INSURER_UI_META = {
-  TAKAFUL: {
-    id: 'takaful-ikhlas',
-    displayName: 'Takaful Ikhlas',
-    logoUrl: '/partners/takaful.svg',
-    features: ['Shariah-compliant (Islamic insurance)', 'Fast claim payout', 'Great value for money'],
-  },
-  ETIQA: {
-    id: 'etiqa',
-    displayName: 'Etiqa Insurance',
-    logoUrl: '/partners/etiqa.svg',
-    features: ['Free towing service up to 200km', 'Good customer service', 'Well-established local insurer'],
-  },
-  ALLIANZ: {
-    id: 'allianz',
-    displayName: 'Allianz Insurance',
-    logoUrl: '/partners/allianz.svg',
-    features: ['Premium service quality', 'Excellent claims network', 'Best customer service ratings'],
-  },
-};
+const INSURER_UI_META = Object.fromEntries(
+  AVAILABLE_INSURERS.map((insurer) => [
+    insurer.code,
+    {
+      id: insurer.id,
+      displayName: insurer.displayName,
+      logoUrl: insurer.logoUrl,
+      features: insurer.features,
+    },
+  ])
+);
+
+const AVAILABLE_INSURER_MENTION_REGEX = new RegExp(
+  AVAILABLE_INSURERS
+    .flatMap((insurer) => [insurer.shortName, insurer.displayName, ...insurer.aliases])
+    .map((value) => String(value).trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/\s+/g, '\\s*'))
+    .join('|'),
+  'i'
+);
 
 const DEFAULT_TRANSACTION_STATE = {
   quoteId: null,
@@ -209,9 +242,41 @@ const GATEWAY_PAYMENT_METHOD_MAP = {
 function getQuotesFromState(state) {
   const gatewayQuotes = state?.vehicleInfo?.quoteOptions;
   if (Array.isArray(gatewayQuotes) && gatewayQuotes.length > 0) {
-    return gatewayQuotes;
+    return supplementQuotesWithCatalog(gatewayQuotes, state);
   }
-  return getQuotes();
+  return supplementQuotesWithCatalog(getQuotes(), state);
+}
+
+function getQuoteInsurerKey(quote) {
+  return findInsurerKeyByText(`${quote?.insurer?.id || ''} ${quote?.insurer?.displayName || ''}`);
+}
+
+function quoteIdForInsurerKey(state, insurerKey, fallbackId = null) {
+  const sampleId = state?.vehicleInfo?.sampleId;
+  const quotePrefix = getInsurerQuoteIdPrefix(insurerKey);
+  if (sampleId && quotePrefix) return `QT-${sampleId}-${quotePrefix}-001`;
+  return fallbackId;
+}
+
+function withGatewayStyleQuoteId(quote, state) {
+  const insurerKey = getQuoteInsurerKey(quote);
+  const quoteId = quoteIdForInsurerKey(state, insurerKey, quote?.id || null);
+  if (!quoteId || quoteId === quote?.id) return quote;
+  return { ...quote, id: quoteId };
+}
+
+function supplementQuotesWithCatalog(quotes = [], state = {}) {
+  const combined = Array.isArray(quotes) ? quotes.filter(Boolean).map((quote) => withGatewayStyleQuoteId(quote, state)) : [];
+  const seenKeys = new Set(combined.map(getQuoteInsurerKey).filter(Boolean));
+
+  for (const catalogQuote of getQuotes()) {
+    const insurerKey = getQuoteInsurerKey(catalogQuote);
+    if (!insurerKey || seenKeys.has(insurerKey)) continue;
+    combined.push(withGatewayStyleQuoteId(catalogQuote, state));
+    seenKeys.add(insurerKey);
+  }
+
+  return combined.sort((a, b) => Number(a?.pricing?.finalPremium || 0) - Number(b?.pricing?.finalPremium || 0));
 }
 
 function getSharedNcdPercent(quotes = []) {
@@ -396,10 +461,15 @@ function insurerMetaFromGatewayQuote(quote) {
   const code = String(quote?.insurer?.code || '').toUpperCase();
   if (INSURER_UI_META[code]) return INSURER_UI_META[code];
 
-  const name = String(quote?.insurer?.name || '').toLowerCase();
-  if (name.includes('takaful') || name.includes('ikhlas')) return INSURER_UI_META.TAKAFUL;
-  if (name.includes('etiqa')) return INSURER_UI_META.ETIQA;
-  if (name.includes('allianz')) return INSURER_UI_META.ALLIANZ;
+  const insurer = getInsurerByKey(findInsurerKeyByText(quote?.insurer?.name || ''));
+  if (insurer) {
+    return {
+      id: insurer.id,
+      displayName: insurer.displayName,
+      logoUrl: insurer.logoUrl,
+      features: insurer.features,
+    };
+  }
 
   return {
     id: code ? code.toLowerCase() : 'unknown-insurer',
@@ -485,10 +555,7 @@ function quoteSelectionFromIntent(state, insurerKey) {
   const selected = quotes.find((q) => {
     const id = String(q?.insurer?.id || '').toLowerCase();
     const name = String(q?.insurer?.displayName || '').toLowerCase();
-    if (key === 'takaful') return id.includes('takaful') || name.includes('takaful') || name.includes('ikhlas');
-    if (key === 'etiqa') return id.includes('etiqa') || name.includes('etiqa');
-    if (key === 'allianz') return id.includes('allianz') || name.includes('allianz');
-    return false;
+    return textMatchesInsurerKey(`${id} ${name}`, key);
   });
 
   if (!selected) return null;
@@ -515,15 +582,9 @@ function quoteIdForCurrentSelection(state) {
   const sampleId = state?.vehicleInfo?.sampleId;
   if (!sampleId) return null;
 
-  if (selectedInsurer.includes('takaful') || selectedInsurer.includes('ikhlas')) {
-    return `QT-${sampleId}-TAK-001`;
-  }
-  if (selectedInsurer.includes('etiqa')) {
-    return `QT-${sampleId}-ETI-001`;
-  }
-  if (selectedInsurer.includes('allianz')) {
-    return `QT-${sampleId}-ALL-001`;
-  }
+  const insurerKey = findInsurerKeyByText(selectedInsurer);
+  const quotePrefix = getInsurerQuoteIdPrefix(insurerKey);
+  if (quotePrefix) return `QT-${sampleId}-${quotePrefix}-001`;
   return null;
 }
 
@@ -862,6 +923,12 @@ function buildPersonalDetailExampleList(labels = ['Email', 'Phone number', 'Addr
     .join('\n');
 }
 
+function buildPersonalDetailsRequest(labels = ['Email', 'Phone number', 'Address']) {
+  return `Almost done — please **share your details** before payment. I’ll use them for OTP verification and to send your policy documents.
+
+${buildPersonalDetailExampleList(labels)}`;
+}
+
 function detectLikelyPersonalDetailTypos(text, extracted = {}) {
   if (!text || typeof text !== 'string') return [];
 
@@ -926,24 +993,18 @@ function getQuoteForSummary(state) {
 }
 
 function getInsurerLogoForSummary(insurerName) {
-  const lower = String(insurerName || '').toLowerCase();
-  if (lower.includes('takaful') || lower.includes('ikhlas')) return '/partners/takaful.svg';
-  if (lower.includes('etiqa')) return '/partners/etiqa.svg';
-  if (lower.includes('allianz')) return '/partners/allianz.svg';
-  return '';
+  const insurer = getInsurerByKey(findInsurerKeyByText(insurerName));
+  return insurer?.logoUrl || '';
 }
 
 function getInsurerDisplayForSummary(insurerName) {
-  const lower = String(insurerName || '').toLowerCase();
-  if (lower.includes('takaful') || lower.includes('ikhlas')) return 'Takaful Ikhlas Insurance Bhd';
-  if (lower.includes('etiqa')) return 'Etiqa Insurance';
-  if (lower.includes('allianz')) return 'Allianz Insurance';
-  return insurerName || 'Selected insurer';
+  const insurer = getInsurerByKey(findInsurerKeyByText(insurerName));
+  return insurer?.summaryName || insurerName || 'Selected insurer';
 }
 
 function getInsuranceSectionTitle(insurerName) {
-  const lower = String(insurerName || '').toLowerCase();
-  return lower.includes('takaful') || lower.includes('ikhlas') ? 'Insurance/Takaful' : 'Insurance';
+  const insurer = getInsurerByKey(findInsurerKeyByText(insurerName));
+  return insurer?.type === 'takaful' ? 'Insurance/Takaful' : 'Insurance';
 }
 
 function getSummaryVehicleLine(state) {
@@ -1008,7 +1069,7 @@ function buildSummaryCardData(state) {
     taxPrice: amounts.tax,
     roadTaxSelected: !!selectedRoadTax && Number(selectedRoadTax?.price || 0) > 0,
     roadTaxDescription: selectedRoadTax
-      ? (selectedRoadTax.name === 'No Road Tax' ? 'Not included' : selectedRoadTax.name)
+      ? getRoadTaxDisplayName(selectedRoadTax)
       : 'Not selected yet',
     roadTaxPrice: amounts.roadTax,
     total: amounts.total,
@@ -1039,6 +1100,59 @@ function buildAddOnsCardData(state) {
   };
 }
 
+function buildRoadTaxCardData(state) {
+  if (!state?.selectedQuote) return null;
+  const physicalAvailable = canUseDeliveredRoadTax(state);
+
+  return {
+    defaultOptionId: '12month-digital',
+    physicalAvailable,
+    options: [
+      {
+        id: '12month-digital',
+        label: '12 months digital road tax',
+        description: 'Updates instantly in MYJPJ app',
+        price: 90,
+        available: true,
+        message: '12 months digital road tax',
+      },
+      {
+        id: '12month-physical',
+        label: '12 months physical + delivery',
+        description: physicalAvailable
+          ? 'MYJPJ app and delivered to you'
+          : 'Only for Foreign ID or Company Vehicles',
+        price: physicalAvailable ? 100 : null,
+        available: physicalAvailable,
+        unavailableLabel: physicalAvailable ? null : 'Not available',
+        message: '12 months physical + delivery',
+      },
+      {
+        id: 'none',
+        label: 'No, just insurance',
+        price: null,
+        available: true,
+        message: 'No, just insurance',
+      },
+    ],
+  };
+}
+
+function buildPaymentCardData(state) {
+  if (!state?.selectedQuote) return null;
+  const checkout = buildPaymentCheckoutData(state);
+
+  return {
+    total: checkout.total,
+    href: checkout.href,
+    icons: {
+      card: '/icons/payment-card.svg',
+      lock: '/icons/payment-lock.svg',
+      guard: '/icons/payment-shield.svg',
+    },
+  };
+}
+
 /** Build the quote summary box from current state */
 function buildSummaryBox(state) {
   const insurer = state.selectedQuote?.insurer || 'Not selected';
@@ -1064,8 +1178,8 @@ function buildSummaryBox(state) {
       : '**Add-ons:** Not selected yet — RM 0.00';
 
   const roadTaxLine = state.selectedRoadTax && state.selectedRoadTax.price > 0
-    ? `${state.selectedRoadTax.name} - RM ${formatMoneyTwoDecimals(state.selectedRoadTax.price)}`
-    : state.selectedRoadTax ? `${state.selectedRoadTax.name} - RM 0.00` : 'Not selected yet — RM 0.00';
+    ? `${getRoadTaxDisplayName(state.selectedRoadTax)} - RM ${formatMoneyTwoDecimals(state.selectedRoadTax.price)}`
+    : state.selectedRoadTax ? `${getRoadTaxDisplayName(state.selectedRoadTax)} - RM 0.00` : 'Not selected yet — RM 0.00';
 
 return `<span style="font-size:1.12em;display:block">**✓ Renewal Summary** (${plateDisplay})</span>
 
@@ -1082,7 +1196,7 @@ ${addOnsBlock}
 **Total:** &nbsp;<u>RM ${formatMoneyTwoDecimals(amounts.total)}</u>`;
 }
 
-/** Build the 3-quote cards block */
+/** Build the quote cards block */
 function buildQuotesBlock(state) {
   const quotes = getQuotesFromState(state);
   const quoteBlocks = quotes.map((q) => {
@@ -1104,6 +1218,16 @@ ${features}
   });
 
   return quoteBlocks.join('\n\n');
+}
+
+function buildQuoteSelectionReply(state) {
+  return `${formatStepLine(2, 'Choose Insurer')}
+
+Great, here's what we have:
+
+${buildQuotesBlock(state)}
+
+Which option would you like to go with, or would you like my recommendation?`;
 }
 
 /** Build the add-ons menu */
@@ -1199,7 +1323,7 @@ Please let me know which field is incorrect, or share the corrected **vehicle pl
 }
 
 /** Build the payment link */
-function buildPaymentLink(state) {
+function buildPaymentCheckoutData(state) {
   const tx = ensureTransactionState(state);
   const {
     insurance: insurerPrice,
@@ -1208,10 +1332,56 @@ function buildPaymentLink(state) {
     tax: taxTotal,
     total,
   } = calculateSummaryAmounts(state);
-  const insurer = encodeURIComponent(state.selectedQuote?.insurer || '');
-  const plate = encodeURIComponent(state.plateNumber || '');
+  const quote = getQuoteForSummary(state);
+  const insurerName = state.selectedQuote?.insurer || quote?.insurer?.displayName || '';
+  const insurerKey = findInsurerKeyByText(insurerName);
+  const insurer = getInsurerByKey(insurerKey);
+  const coverType = state?.vehicleInfo?.coverType || state?.selectedQuote?.coverType || quote?.coverType || 'Comprehensive';
+  const sumInsured = Number(state?.selectedQuote?.sumInsured || quote?.sumInsured || insurer?.sumInsured || 0);
+  const priceBefore = Number(state?.selectedQuote?.priceBefore || quote?.pricing?.basePremium || insurer?.priceBefore || insurerPrice || 0);
+  const ncdPercent = Number(state?.selectedQuote?.ncdPercent ?? quote?.pricing?.ncdPercent ?? insurer?.ncdPercent ?? 0);
+  const addOns = Array.isArray(state.selectedAddOns)
+    ? state.selectedAddOns.map((addOn) => ({
+        name: getSummaryAddOnName(addOn),
+        price: Number(addOn?.price || 0),
+      })).filter((addOn) => addOn.name && addOn.price > 0)
+    : [];
+  const selectedRoadTax = state.selectedRoadTax || null;
   const payId = tx.paymentIntentId || `PAY-${Date.now()}`;
-  return `[**Pay RM ${formatMoneyTwoDecimals(total)} Now ->**](/my/payment/${payId}?total=${total}&insurer=${insurer}&plate=${plate}&insurance=${insurerPrice}&addons=${addOnsTotal}&tax=${taxTotal}&roadtax=${roadTaxTotal})`;
+  const query = new URLSearchParams({
+    total: String(total),
+    insurer: insurerName,
+    plate: state.plateNumber || '',
+    insurance: String(insurerPrice),
+    addons: String(addOnsTotal),
+    tax: String(taxTotal),
+    roadtax: String(roadTaxTotal),
+    insurerDisplay: insurerKey === 'takaful'
+      ? 'Takaful Insurance Berhad'
+      : getInsurerDisplayForSummary(insurerName),
+    logo: getInsurerLogoForSummary(insurerName),
+    vehicleLine: getSummaryVehicleLine(state),
+    coverType,
+    sumInsured: String(sumInsured),
+    priceBefore: String(priceBefore),
+    ncd: String(ncdPercent),
+    policyPeriod: getPolicyEffectiveRangeDisplay({ month: 'long' }),
+    insuranceTitle: getInsuranceSectionTitle(insurerName),
+    roadtaxName: selectedRoadTax
+      ? getRoadTaxDisplayName(selectedRoadTax)
+      : '',
+    addonsDetail: JSON.stringify(addOns),
+  });
+
+  return {
+    total,
+    href: `/my/payment/${payId}?${query.toString()}`,
+  };
+}
+
+function buildPaymentLink(state) {
+  const { total, href } = buildPaymentCheckoutData(state);
+  return `[**Pay securely - RM ${formatMoneyTwoDecimals(total)}**](${href})`;
 }
 
 function buildPaymentStepBlock(summaryBox, paymentLink) {
@@ -1219,11 +1389,16 @@ function buildPaymentStepBlock(summaryBox, paymentLink) {
 
 ${formatStepLine(6, 'Payment')}
 
-Please check the quotation above before making payment via link below.
+Please review your quotation before payment.
+If anything needs to be changed, let me know.
 
 ${paymentLink}
 
-Credit/Debit Card, FPX, E-wallet, Instalment, Pay Later or Cash - your choice.`;
+Credit/Debit card, FPX, E-Wallet, Buy Now Pay Later, and Credit Card Instalments.
+
+Payment opens in a secure checkout page.
+
+After successful payment, your policy documents and payment receipt will be sent to your WhatsApp and email.`;
 }
 
 function buildRoadTaxStepBlock(summaryBox, state) {
@@ -1261,8 +1436,7 @@ ${summaryBox}
 
 ${formatStepLine(5, 'Your Details')}
 
-Almost done! Please share:
-${buildPersonalDetailExampleList()}`;
+${buildPersonalDetailsRequest()}`;
 }
 
 const STEP_LINE_REGEX = /^\s*(?:\*{1,2})?\s*step\s+(?:\*{1,2})?\d+(?:\*{1,2})?\s+of\s+(?:\*{1,2})?6(?:\*{1,2})?\s*[—-]/im;
@@ -1391,6 +1565,8 @@ const SUMMARY_BLOCK_REGEX = /(?:^✓\s*(?:\*\*)?renewal summary(?:\*\*)?\s*[—-
 const CANONICAL_SUMMARY_MARKER_REGEX = /<span style="font-size:1\.12em[^"]*">\*\*✓ Renewal Summary\*\*/i;
 const SUMMARY_SECTION_REGEX = /(?:^|\n)\s*(?:<span[^>]*>\s*)?(?:\*{0,2})?✓?\s*renewal summary(?:\*{0,2})?[^\n]*(?:<\/span>)?[\s\S]*?(?:\n\s*(?:\*{0,2})?(?:💰\s*)?total:?(?:\*{0,2})?\s*(?:&nbsp;)?\s*(?:<u>)?\s*rm[^\n]*)/im;
 const ADDONS_SECTION_REGEX = /(?:^|\n)\s*(?:\*{0,2})?step\s+(?:\*{0,2})?3(?:\*{0,2})?\s+of\s+(?:\*{0,2})?6(?:\*{0,2})?\s*[—-]\s*add-ons(?:\*{0,2})?[\s\S]*?(?:\n\s*based on your situation,[^\n]*reply skip\.?)/im;
+const ROADTAX_SECTION_REGEX = /(?:^|\n)\s*(?:\*{0,2})?step\s+(?:\*{0,2})?4(?:\*{0,2})?\s+of\s+(?:\*{0,2})?6(?:\*{0,2})?\s*[—-]\s*road tax(?:\*{0,2})?[\s\S]*?(?:printed road tax is only for Foreign ID or Company vehicles\.?)/im;
+const PAYMENT_SECTION_REGEX = /(?:^|\n)\s*(?:\*{0,2})?step\s+(?:\*{0,2})?6(?:\*{0,2})?\s+of\s+(?:\*{0,2})?6(?:\*{0,2})?\s*[—-]\s*payment(?:\*{0,2})?[\s\S]*?(?:policy documents and payment receipt will be sent to your WhatsApp and email\.?)/im;
 
 function ensurePaymentLinkIfMissing(response, paymentLink, shouldInject) {
   if (!shouldInject || !paymentLink) return response;
@@ -1560,10 +1736,13 @@ function getCurrentStepPlaybook(state, context = {}) {
   }
 
   if (state.step === FLOW_STEPS.QUOTES) {
+    const quoteOptions = getQuotesFromState(state).map((quote) =>
+      `${quote?.insurer?.displayName || 'Insurer'} (${formatRmAmount(quote?.pricing?.finalPremium || 0)})`
+    );
     return {
       label: 'Choose insurer',
       goal: 'Get the user to choose one insurer so we can continue to add-ons.',
-      options: ['Takaful Ikhlas (RM 796)', 'Etiqa Insurance (RM 872)', 'Allianz Insurance (RM 920)', 'Recommend for me'],
+      options: quoteOptions.length > 0 ? [...quoteOptions, 'Recommend for me'] : [...AVAILABLE_INSURER_OPTIONS_WITH_PRICES, 'Recommend for me'],
       nextAction: 'Ask the user to pick one insurer option.',
       sideQuestionPolicy: 'After answering any side question, return to insurer choice and ask for a pick.',
     };
@@ -1663,11 +1842,11 @@ function getStepCloseRule(state, context = {}) {
 
   if (state.step === FLOW_STEPS.QUOTES) {
     return {
-      mentionRegex: /(which option|which insurer|specific insurer|takaful|etiqa|allianz|recommend(?:ation)?|compare|budget|claims|coverage|go with|lock in|proceed)/i,
+      mentionRegex: new RegExp(`(which option|which insurer|specific insurer|${AVAILABLE_INSURER_MENTION_REGEX.source}|recommend(?:ation)?|compare|budget|claims|coverage|go with|lock in|proceed)`, 'i'),
       prompt: 'Would you like a quick side-by-side comparison, or should I recommend one based on your priority (**budget**, **claims**, or **coverage**)?',
       alternatives: [
         'Would you like a quick side-by-side comparison, or should I recommend one based on your priority (**budget**, **claims**, or **coverage**)?',
-        'If you’re ready, tell me which insurer to lock in: **Takaful**, **Etiqa**, or **Allianz**.',
+        `If you’re ready, tell me which insurer to lock in: ${AVAILABLE_INSURER_CHOICE_TEXT}.`,
       ],
     };
   }
@@ -1716,10 +1895,9 @@ function getStepCloseRule(state, context = {}) {
   if (state.step === FLOW_STEPS.OTP) {
     return {
       mentionRegex: /\botp\b/i,
-      prompt: 'Please key in the **OTP** sent to your phone or email now. 📱📧',
+      prompt: OTP_PROMPT_COPY,
       alternatives: [
-        'Please key in the **OTP** sent to your phone or email now. 📱📧',
-        'Please enter the **OTP** now so we can continue to payment. 📱📧',
+        OTP_PROMPT_COPY,
       ],
     };
   }
@@ -2067,7 +2245,7 @@ function buildClarifyingQuestionInstruction(state) {
   if (state.step === FLOW_STEPS.QUOTES) {
     return `Low intent confidence detected at quote selection.
 Ask ONE clarifying question only:
-"Which insurer would you like: **Takaful**, **Etiqa**, **Allianz**, or should I **recommend** one?"`;
+"Which insurer would you like: ${AVAILABLE_INSURER_CHOICE_TEXT}, or should I **recommend** one?"`;
   }
 
   if (state.step === FLOW_STEPS.ADDONS) {
@@ -2393,7 +2571,7 @@ function evaluateResponseQuality(response, state, context = {}) {
   if (
     context.intent?.intent === USER_INTENTS.PROVIDE_INFO &&
     isVehicleConfirmationGate(state, context.intent, context.messages || [], context.vehicleProfile) &&
-    /(which option|which insurer|takaful|etiqa|allianz|recommend for me)/i.test(text)
+    (/(which option|which insurer|recommend for me)/i.test(text) || AVAILABLE_INSURER_MENTION_REGEX.test(text))
   ) {
     issues.push('vehicle_confirmation_should_not_offer_quotes');
   }
@@ -2611,7 +2789,7 @@ ${recommendationRubric}
 ## NCD POSITIONING (CRITICAL)
 - NCD is a shared pricing adjustment, not an insurer-specific benefit.
 ${ncdGuidanceLine}
-- Never use NCD as a differentiator between Takaful, Etiqa, and Allianz.
+- Never use NCD as a differentiator between ${AVAILABLE_INSURER_NAMES_TEXT}.
 - If needed, mention NCD once as a shared note, not as per-insurer benefit bullets.
 
 ## FORMATTING RULES
@@ -2704,7 +2882,7 @@ async function executeFunction(functionName, args) {
       };
 
     case "get_insurance_quotes":
-      // Return our 3 standard quotes
+      // Return the standard quote panel.
       const quotes = getQuotes();
       return quotes.map(q => ({
         insurer: q.insurer.displayName,
@@ -2946,11 +3124,12 @@ export async function POST(request) {
 
     if (intent.intent === USER_INTENTS.SELECT_ROADTAX && intent.data?.option) {
       const roadTaxMap = {
-        '12month-digital': { name: '12 Months Digital', price: 90 },
+        '12month-digital': { name: '12 months digital road tax', price: 90 },
+        '12month-physical': { name: '12 months physical + delivery', price: 100 },
         'none': { name: 'No Road Tax', price: 0 },
       };
       const selectedOption = intent.data.option;
-      const isDeliveredOption = selectedOption.includes('deliver');
+      const isDeliveredOption = selectedOption.includes('deliver') || selectedOption.includes('physical');
       if (isDeliveredOption && !canUseDeliveredRoadTax(state)) {
         roadTaxDeliveryBlocked = true;
         blockedRoadTaxOption = selectedOption;
@@ -3301,7 +3480,7 @@ To get started, please provide your:
           role: "system",
           content: `CRITICAL RESTRICTION: User has NOT provided both plate + IC yet. You MUST NOT:
 - Show any insurance quotes or prices
-- Discuss specific insurers (Takaful, Etiqa, Allianz)
+- Discuss specific insurers (${AVAILABLE_INSURER_NAMES_TEXT})
 - Talk about add-ons, road tax, or any pricing details
 
 Ask for the missing item only. Keep it brief: "Please provide your **${missingItem}** ${missingExample} to proceed with the insurance renewal."`,
@@ -3317,23 +3496,7 @@ Ask for the missing item only. Keep it brief: "Please provide your **${missingIt
       !state.selectedQuote &&
       wasLastAssistantVehicleConfirmation(messages)
     ) {
-      const quotesBlock = buildQuotesBlock(state);
-      openAiMessages.push({
-        role: "system",
-        content: `Vehicle confirmed. Your response MUST include this exact quotes block:
-
-${formatStepLine(2, 'Choose Insurer')}
-
-Great, here's what we have:
-
-${quotesBlock}
-
-Which option would you like to go with, or would you like my recommendation?
-
-Start directly with the Step 2 line shown above.
-Do NOT add any extra intro line before Step 2 (for example: "Let's compare your options.").
-Do NOT alter the quote cards or prices.`,
-      });
+      forcedAssistantResponse = buildQuoteSelectionReply(state);
     }
 
     // --- VEHICLE LOOKUP complete, show vehicle details ---
@@ -3377,16 +3540,12 @@ Do NOT alter the quote cards or prices.`,
       // Find the last AI message to see which insurer was recommended
       const lastAIMessage = [...messages].reverse().find(m => m.role === 'assistant')?.content || '';
       const recommendedInsurerKey = state.lastRecommendedInsurer || parseRecommendedInsurerFromAssistantMessage(lastAIMessage);
-      const insurerMap = {
-        takaful: { insurer: 'Takaful Ikhlas', priceAfter: 796 },
-        etiqa: { insurer: 'Etiqa Insurance', priceAfter: 872 },
-        allianz: { insurer: 'Allianz Insurance', priceAfter: 920 },
-      };
-      const recommendedInsurer = recommendedInsurerKey ? insurerMap[recommendedInsurerKey] : null;
+      const recommendedInsurer = recommendedInsurerKey ? quoteSelectionFromIntent(state, recommendedInsurerKey) : null;
       const lowerLastAI = String(lastAIMessage).toLowerCase();
+      const mentionedInsurerCount = getInsurerKeysFromText(lowerLastAI).length;
       const confirmedComparisonOffer =
         /side-?by-?side|recommend one now|should i recommend/i.test(lowerLastAI) &&
-        /(takaful).*(etiqa).*(allianz)|(allianz).*(etiqa).*(takaful)|(etiqa).*(takaful).*(allianz)/i.test(lowerLastAI);
+        mentionedInsurerCount >= 2;
       const confirmedBettermentOffer = confirmedComparisonOffer && /betterment|zero betterment|waiver|depreciation/i.test(lowerLastAI);
 
       if (recommendedInsurer) {
@@ -3410,7 +3569,7 @@ Do NOT alter prices. You may add a brief line but MUST include the Step 3 block 
           content: `User replied "ok" to a zero-betterment comparison offer. Do NOT show full quotes list.
 Give a direct side-by-side answer using PostgreSQL-grounded facts only (from QUESTION GROUNDING / LIVE DATABASE context).
 If PostgreSQL evidence is missing for any insurer, say that clearly instead of guessing.
-Then close consultatively in one line: ask if user wants your recommendation based on current total premium, or if they want to pick **Takaful**, **Etiqa**, or **Allianz**.
+Then close consultatively in one line: ask if user wants your recommendation based on current total premium, or if they want to pick ${AVAILABLE_INSURER_CHOICE_TEXT}.
 Do NOT move to next step until insurer is selected.`,
         });
       } else if (confirmedComparisonOffer) {
@@ -3422,42 +3581,25 @@ Provide a concise side-by-side comparison in 3 short bullets:
 - Best documented claims/service confidence (PostgreSQL-grounded only)
 - Best higher-coverage option
 
-Then ask one clear close question: "Would you like my recommendation, or do you want Takaful, Etiqa, or Allianz?"
+Then ask one clear close question: "Would you like my recommendation, or do you want one of these: ${AVAILABLE_INSURER_NAMES_TEXT}?"
 Do NOT move to next step until insurer is selected.`,
         });
       } else {
         // No clear recommendation found - re-show full quotes deterministically
-        const quotesBlock = buildQuotesBlock(state);
-        openAiMessages.push({
-          role: "system",
-          content: `User confirmed but no specific recommended insurer was found in the previous assistant turn.
-Your response MUST include this exact quotes block:
-
-${formatStepLine(2, 'Choose Insurer')}
-
-Great, here's what we have:
-
-${quotesBlock}
-
-Which option would you like to go with, or would you like my recommendation?
-
-Start directly with the Step 2 line shown above.
-Do NOT add any extra intro line before Step 2 (for example: "Let's compare your options.").`,
-        });
+        forcedAssistantResponse = buildQuoteSelectionReply(state);
       }
     }
 
     // --- QUOTES STEP: questions about insurers ---
     if (intent.intent === USER_INTENTS.ASK_QUESTION && state.step === FLOW_STEPS.QUOTES) {
       const latestMsg = messages[messages.length - 1]?.content?.toLowerCase() || '';
-      const mentionsUnavailablePreferredInsurer = /\b(tokio\s*marine|tokio|zurich|axa|generali|msig|sompo|rhb|liberty)\b/i.test(latestMsg);
+      const mentionsUnavailablePreferredInsurer = UNAVAILABLE_INSURER_REGEX.test(latestMsg);
       const isDilemma = /can'?t (choose|decide|pick|select)|torn between|stuck between|not sure which|help me (choose|decide|pick)|between .+ and/i.test(latestMsg);
       const isAskingRecommendation = /recommend|which (one|should)|which is better|what(?:'s| is) better|better one|best one|what.*(suggest|think|pick)|help me (choose|decide|pick)|your (pick|choice|suggestion)/i.test(latestMsg);
       const asksBetterment = /betterment|zero betterment|waiver of betterment|depreciation/i.test(latestMsg);
       const asksToSeeQuotesAgain =
         /(?:show|list|repeat|remind(?: me)?|display)\b.*\b(?:quote|quotes|options|price|prices)\b|\b(?:quote|quotes|options|price list)\b.*\b(?:again|repeat)\b|what are the options|show me (?:the )?quotes/i.test(latestMsg);
 
-      const quotesBlock = buildQuotesBlock(state);
       const rankedQuotes = getQuotesFromState(state)
         .slice()
         .sort((a, b) => Number(a?.pricing?.finalPremium || 0) - Number(b?.pricing?.finalPremium || 0));
@@ -3468,7 +3610,7 @@ Do NOT add any extra intro line before Step 2 (for example: "Let's compare your 
       if (mentionsUnavailablePreferredInsurer) {
         openAiMessages.push({
           role: "system",
-          content: `User mentioned a preferred insurer that is not in today's available panel (for example: Tokio Marine).
+          content: `User mentioned a preferred insurer that is not in today's available panel.
 Do NOT dump the full quote list unless explicitly requested.
 
 Your response must:
@@ -3488,7 +3630,7 @@ Answer directly using PostgreSQL-grounded facts only.
 If data is missing for any insurer, say "not found in current insurer database" and ask one clarifying follow-up.
 Then give one practical recommendation line based on current quote pricing (avoid unsupported policy claims).
 End with one clear close question:
-"Would you like my recommendation now, or do you want **Takaful**, **Etiqa**, or **Allianz**?"`,
+"Would you like my recommendation now, or do you want one of these: ${AVAILABLE_INSURER_NAMES_TEXT}?"`,
         });
       } else if (isAskingRecommendation) {
         // User wants a recommendation - give a CONFIDENT, DIRECT answer
@@ -3523,14 +3665,7 @@ Do NOT show quotes again. Do NOT make a recommendation yet. Wait for their answe
         });
       } else {
         if (asksToSeeQuotesAgain) {
-          openAiMessages.push({
-            role: "system",
-            content: `Answer briefly (2-3 sentences max), then show the full quotes block because the user asked to see options again:
-
-${quotesBlock}
-
-Which option would you like to go with?`,
-          });
+          forcedAssistantResponse = buildQuoteSelectionReply(state);
         } else {
           openAiMessages.push({
             role: "system",
@@ -3538,7 +3673,7 @@ Which option would you like to go with?`,
 If the question relates to something LAJOO can help with, answer genuinely then add a natural bridge like "Good news — I can help you with that right here!" or "I can handle this end-to-end for you here."
 Do NOT reprint the full quotes block unless user asks to see options again.
 End with one consultative next-step question that keeps momentum without forcing an immediate pick, for example:
-"Want a quick side-by-side on this point for **Takaful**, **Etiqa**, and **Allianz**, or should I recommend one now?"`,
+"Want a quick side-by-side on this point for the available insurers, or should I recommend one now?"`,
           });
         }
       }
@@ -3549,8 +3684,8 @@ End with one consultative next-step question that keeps momentum without forcing
       const latestMsg = messages[messages.length - 1]?.content?.toLowerCase() || '';
       const asksDirectCheaperOutside =
         /direct|directly|save\s*\d+%|cheaper|lower|discount|better deal|better price/i.test(latestMsg) &&
-        /(takaful|etiqa|allianz|insur|renew)/i.test(latestMsg);
-      const asksUnavailableInsurerAtAddons = /\b(tokio\s*marine|tokio|zurich|axa|generali|msig|sompo|rhb|liberty)\b/i.test(latestMsg);
+        (AVAILABLE_INSURER_MENTION_REGEX.test(latestMsg) || /(insur|renew)/i.test(latestMsg));
+      const asksUnavailableInsurerAtAddons = UNAVAILABLE_INSURER_REGEX.test(latestMsg);
       const asksBetterment = /betterment|zero betterment|waiver of betterment|depreciation/i.test(latestMsg);
       const isAskingWhichNeeded = /which (do i|one|should)|what (do i|should)|need|recommend/i.test(latestMsg);
       const asksToSeeAddOnsAgain = /show|list|options|again|repeat|what add-?ons|addon menu/i.test(latestMsg);
@@ -3575,7 +3710,7 @@ Do NOT sound scripted or repetitive.`,
       } else if (asksUnavailableInsurerAtAddons) {
         openAiMessages.push({
           role: "system",
-          content: `User asked about an insurer that's not in today's panel (e.g., Tokio Marine) while at add-ons step.
+          content: `User asked about an insurer that's not in today's panel while at add-ons step.
 Respond clearly and naturally:
 1) Confirm that insurer is not available in current panel.
 2) Explain the user can still renew directly with that insurer outside LAJOO.
@@ -3726,15 +3861,7 @@ Do NOT alter prices. You may add a brief line but MUST include the Step 3 block 
           content: `STOP. User hasn't provided vehicle info yet. Ask for: 1) Vehicle Plate Number, 2) Owner ID. Nothing else.`,
         });
       } else if (!state.selectedQuote) {
-        const quotesBlock = buildQuotesBlock(state);
-        openAiMessages.push({
-          role: "system",
-          content: `User mentioned add-ons but hasn't selected an insurer yet. Show quotes and ask them to choose first:
-
-${quotesBlock}
-
-Which insurer would you like to go with?`,
-        });
+        forcedAssistantResponse = buildQuoteSelectionReply(state);
       } else {
         const summaryBox = buildSummaryBox(state);
         const roadTaxStepBlock = buildRoadTaxStepBlock(summaryBox, state);
@@ -3779,7 +3906,8 @@ Ask clearly: "Reply **ok** for 12-month digital, or **no road tax**."`,
     // --- SELECT_ROADTAX → transition to personal details ---
     if (intent.intent === USER_INTENTS.SELECT_ROADTAX && state.selectedRoadTax && !roadTaxDeliveryBlocked) {
       const summaryBox = buildSummaryBox(state);
-      const roadTaxName = state.selectedRoadTax?.name || 'No Road Tax';
+      const rawRoadTaxName = state.selectedRoadTax?.name || 'No Road Tax';
+      const roadTaxName = rawRoadTaxName === 'No Road Tax' ? rawRoadTaxName : getRoadTaxDisplayName(state.selectedRoadTax);
       openAiMessages.push({
         role: "system",
         content: `User selected road tax: ${roadTaxName}. Your response MUST include:
@@ -3790,8 +3918,7 @@ ${formatStepLine(5, 'Your Details')}
 
 ${summaryBox}
 
-Almost done! Please share:
-${buildPersonalDetailExampleList()}
+${buildPersonalDetailsRequest()}
 
 Do NOT alter the summary. MUST include all 3 items to collect.`,
       });
@@ -3818,16 +3945,14 @@ Do NOT alter the summary. MUST include all 3 items to collect.`,
         content: missing.length === 0
           ? `All 3 required details are collected. Ask the user to confirm before sending OTP. Your response MUST follow this format:
 
-Just to make sure I've got everything right 👇
+Thanks — here are the details I captured:
 
 - **Email:** ${canonicalDetails.email || '(provided)'}
 - **Phone:** ${canonicalDetails.phone || '(provided)'}
 - **Address:** ${canonicalDetails.address || '(provided)'}
 
-Is this correct?
-
-Reply **ok** / **yes** and I'll send the OTP to verify.
-If anything's wrong, just tell me what to fix.
+Does everything look **correct** ?
+If yes, I will send the OTP now. If not, tell me what to change.
 
 Do NOT send OTP yet. Wait for user confirmation first.`
           : `User is submitting personal details.
@@ -3845,7 +3970,7 @@ Do NOT proceed to OTP until all 3 are collected.`,
         role: "system",
         content: `User confirmed their personal details are correct. Now ask for OTP. Your response MUST be:
 
-"Please key in the **OTP** sent to your phone or email now. 📱📧"`,
+"${OTP_PROMPT_COPY}"`,
       });
     }
 
@@ -3863,7 +3988,7 @@ Do NOT proceed to OTP until all 3 are collected.`,
 
 ${summaryBox}
 
-Please key in the **OTP** sent to your phone to continue. 📱📧"`,
+${OTP_PROMPT_COPY}"`,
         });
         state.refreshQuoteTimestamps();
       } else {
@@ -3927,10 +4052,10 @@ Do NOT alter the payment link URL or amounts.`,
     if (intent.intent === USER_INTENTS.CHANGE_QUOTE && intent.data) {
       const currentInsurer = state.selectedQuote?.insurer || 'current insurer';
       const newKey = intent.data.newInsurer;
-      const nameMap = { takaful: 'Takaful Ikhlas', etiqa: 'Etiqa', allianz: 'Allianz' };
+      const nextInsurerName = getInsurerByKey(newKey)?.displayName || newKey;
       openAiMessages.push({
         role: "system",
-        content: `User wants to change from ${currentInsurer} to ${nameMap[newKey] || newKey}. This will reset all selections (add-ons, road tax). Ask for confirmation: "Switching from **${currentInsurer}** to **${nameMap[newKey]}** will restart from the insurer step. Are you sure?"`,
+        content: `User wants to change from ${currentInsurer} to ${nextInsurerName}. This will reset all selections (add-ons, road tax). Ask for confirmation: "Switching from **${currentInsurer}** to **${nextInsurerName}** will restart from the insurer step. Are you sure?"`,
       });
     }
 
@@ -3941,11 +4066,16 @@ Do NOT alter the payment link URL or amounts.`,
       if (state.step === FLOW_STEPS.QUOTES && !state.selectedQuote) {
         const isBudgetSignal = /cheap|cheapest|save|saving|budget|broke|lower|lowest|value/.test(latest);
         if (isBudgetSignal) {
+          const lowestQuote = getQuotesFromState(state)
+            .slice()
+            .sort((a, b) => Number(a?.pricing?.finalPremium || 0) - Number(b?.pricing?.finalPremium || 0))[0];
+          const lowestName = lowestQuote?.insurer?.displayName || 'the lowest premium option';
+          const lowestPrice = formatRmAmount(lowestQuote?.pricing?.finalPremium || 0);
           openAiMessages.push({
             role: "system",
             content: `User gave a playful/unclear response with budget signal. Reply naturally:
 1) acknowledge casually in one short line,
-2) give one confident recommendation: **Takaful Ikhlas (RM 796)** with one reason,
+2) give one confident recommendation: **${lowestName} (${lowestPrice})** with one reason,
 3) ask: "Want me to lock this in?"`,
           });
         } else {
@@ -3998,26 +4128,11 @@ Ask for whichever is missing first.`,
         });
       } else if (state.step === FLOW_STEPS.QUOTES && !state.selectedQuote && !vehicleRejectionHandled) {
         const latestMsg = messages[messages.length - 1]?.content?.toLowerCase() || '';
-        const mentionsUnavailablePreferredInsurer = /\b(tokio\s*marine|tokio|zurich|axa|generali|msig|sompo|rhb|liberty)\b/i.test(latestMsg);
+        const mentionsUnavailablePreferredInsurer = UNAVAILABLE_INSURER_REGEX.test(latestMsg);
         const asksToSeeQuotesAgain =
           /(?:show|list|repeat|remind(?: me)?|display)\b.*\b(?:quote|quotes|options|price|prices)\b|\b(?:quote|quotes|options|price list)\b.*\b(?:again|repeat)\b|what are the options|show me (?:the )?quotes/i.test(latestMsg);
         if (asksToSeeQuotesAgain) {
-          const quotesBlock = buildQuotesBlock(state);
-          openAiMessages.push({
-            role: "system",
-            content: `User asked to see quotes again. Your response MUST include this exact quotes block:
-
-${formatStepLine(2, 'Choose Insurer')}
-
-Great, here's what we have:
-
-${quotesBlock}
-
-Which option would you like to go with, or would you like my recommendation?
-
-Start directly with the Step 2 line shown above.
-Do NOT add any extra intro line before Step 2 (for example: "Let's compare your options.").`,
-          });
+          forcedAssistantResponse = buildQuoteSelectionReply(state);
         } else if (mentionsUnavailablePreferredInsurer) {
           openAiMessages.push({
             role: "system",
@@ -4045,9 +4160,11 @@ Keep tone persuasive but respectful, non-pushy.`,
         const looksLikeInsuranceQuestion =
           (
             /^(which|what|how|why|when|where|can|could|would|is|are|do|does|should)\b/i.test(latestMsg) &&
-            /\b(insurer|policy|coverage|cover|claims?|betterment|waiver|depreciation|premium|sum insured|ncd|takaful|etiqa|allianz)\b/i.test(latestMsg)
+            (/\b(insurer|policy|coverage|cover|claims?|betterment|waiver|depreciation|premium|sum insured|ncd)\b/i.test(latestMsg) || AVAILABLE_INSURER_MENTION_REGEX.test(latestMsg))
           ) ||
-          /betterment|zero betterment|clarify this|tokio\s*marine|tokio|zurich|axa|generali|msig|sompo|rhb|liberty|direct|directly|save\s*\d+%|cheaper|discount/i.test(latestMsg);
+          /betterment|zero betterment|clarify this|direct|directly|save\s*\d+%|cheaper|discount/i.test(latestMsg) ||
+          UNAVAILABLE_INSURER_REGEX.test(latestMsg) ||
+          AVAILABLE_INSURER_MENTION_REGEX.test(latestMsg);
 
         if (looksLikeInsuranceQuestion) {
           openAiMessages.push({
@@ -4270,9 +4387,7 @@ This summary box must appear in EVERY response from now on until payment is comp
 
       if (shouldForcePaymentStepStructure) {
         const paymentStepBlock = buildPaymentStepBlock(summaryBoxCanonical, paymentLinkFallback);
-        aiResponse = intent.intent === USER_INTENTS.VERIFY_OTP
-          ? `✅ All set!\n\n${paymentStepBlock}`
-          : paymentStepBlock;
+        aiResponse = paymentStepBlock;
       }
 
       if (shouldForceRoadTaxStepStructure) {
@@ -4294,6 +4409,12 @@ This summary box must appear in EVERY response from now on until payment is comp
       : null;
     const addOnsCard = state.selectedQuote && ADDONS_SECTION_REGEX.test(aiResponse)
       ? buildAddOnsCardData(state)
+      : null;
+    const roadTaxCard = state.selectedQuote && ROADTAX_SECTION_REGEX.test(aiResponse)
+      ? buildRoadTaxCardData(state)
+      : null;
+    const paymentCard = state.selectedQuote && PAYMENT_SECTION_REGEX.test(aiResponse)
+      ? buildPaymentCardData(state)
       : null;
 
     const captureReason = getIntentCaptureReason({
@@ -4334,6 +4455,8 @@ This summary box must appear in EVERY response from now on until payment is comp
             state: state.toJSON(),
             summaryCard,
             addOnsCard,
+            roadTaxCard,
+            paymentCard,
           })}\n\n`
         ));
 

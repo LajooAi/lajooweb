@@ -16,6 +16,10 @@ LAJOO should expose one stable contract to the chat/UI while supporting many ins
 - `allianz_direct` (direct template ready)
 - `etiqa_direct` (direct template ready)
 - `takaful_direct` (direct template ready)
+- `tokio_marine_direct` (direct template ready)
+- `lonpac_direct` (direct template ready)
+- `msig_direct` (direct template ready)
+- `generali_direct` (direct template ready)
 
 ## Environment switch
 
@@ -87,7 +91,7 @@ ALLIANZ_API_ENDPOINT_PAYMENTS_INTENTS_CONFIRM=/payments/intents/:paymentIntentId
 ALLIANZ_API_ENDPOINT_POLICIES_ISSUE=/policies/issue
 ```
 
-Use the same pattern for `ETIQA_API_*` and `TAKAFUL_API_*`.
+Use the same pattern for `ETIQA_API_*`, `TAKAFUL_API_*`, `TOKIO_MARINE_API_*`, `LONPAC_API_*`, `MSIG_API_*`, and `GENERALI_API_*`.
 
 ## Extension plan for new insurers
 

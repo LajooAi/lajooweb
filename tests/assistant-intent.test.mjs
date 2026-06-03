@@ -413,14 +413,27 @@ test('quotes step should treat insurer + noisy tail as selection', () => {
   assert.equal(intent.data.insurer, 'takaful');
 });
 
-test('quotes step should classify typo unavailable insurer mention as ask_question', () => {
+test('quotes step should allow typo Tokio Marine insurer selection', () => {
   const state = {
     step: FLOW_STEPS.QUOTES,
     selectedQuote: null,
     addOnsConfirmed: false,
   };
   const intent = detectUserIntent('my previous insurer was toki marine, i feel like taking it again', state);
-  assert.equal(intent.intent, 'ask_question');
+  assert.equal(intent.intent, 'select_quote');
+  assert.equal(intent.data.insurer, 'tokio');
+});
+
+test('quotes step should allow newly added insurer names as selections', () => {
+  const state = {
+    step: FLOW_STEPS.QUOTES,
+    selectedQuote: null,
+    addOnsConfirmed: false,
+  };
+
+  assert.equal(detectUserIntent('lonpac please', state).data.insurer, 'lonpac');
+  assert.equal(detectUserIntent('go with msig', state).data.insurer, 'msig');
+  assert.equal(detectUserIntent('generali', state).data.insurer, 'generali');
 });
 
 test('quotes step should ignore typo prompt-injection tails on explicit selection', () => {

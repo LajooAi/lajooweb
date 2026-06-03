@@ -19,7 +19,7 @@ test('should only parse a single explicit recommendation', () => {
   );
 
   assert.equal(
-    parseRecommendedInsurerFromAssistantMessage('Pick Takaful, Etiqa, Allianz, or say recommend for me.'),
+    parseRecommendedInsurerFromAssistantMessage('Pick Takaful, Tokio Marine, Etiqa, Allianz, Lonpac, MSIG, Generali, or say recommend for me.'),
     null
   );
 
@@ -35,6 +35,11 @@ test('should only parse a single explicit recommendation', () => {
       'Takaful: RM 796. Etiqa: RM 872. Allianz: RM 920. Which option would you like to go with?'
     ),
     null
+  );
+
+  assert.equal(
+    parseRecommendedInsurerFromAssistantMessage("Best option here is Generali Insurance for maximum sum insured."),
+    'generali'
   );
 });
 
@@ -54,7 +59,7 @@ test('vehicle confirmation context should detect the latest assistant context on
   const contextFalse = wasLastAssistantVehicleConfirmation([
     { role: 'assistant', content: 'Found your vehicle! 🚗\nIs this correct?' },
     { role: 'user', content: 'ok' },
-    { role: 'assistant', content: 'Pick Takaful, Etiqa, Allianz, or say recommend for me.' },
+    { role: 'assistant', content: 'Pick Takaful, Tokio Marine, Etiqa, Allianz, Lonpac, MSIG, Generali, or say recommend for me.' },
   ]);
   assert.equal(contextFalse, false);
 });

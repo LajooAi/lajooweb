@@ -1267,8 +1267,18 @@ body.home-route .mobile-header {
   gap: var(--space-3);
 }
 
+.chat-feed.chat-feed-terminal-payment {
+  min-height: 100%;
+  justify-content: flex-end;
+  padding-bottom: calc(82px + env(safe-area-inset-bottom));
+}
+
 .chat-feed.chat-feed-anchor-turn {
   padding-bottom: calc(var(--chat-overlay-space) + env(safe-area-inset-bottom));
+}
+
+.chat-feed.chat-feed-terminal-payment.chat-feed-anchor-turn {
+  padding-bottom: calc(82px + env(safe-area-inset-bottom));
 }
 
 .chat-anchor-spacer {
@@ -1617,7 +1627,7 @@ body.home-route .mobile-header {
 }
 
 .chat-feed .chat-row.assistant:last-child .chat-content {
-  padding-bottom: 0;
+  padding-bottom: 22px;
 }
 
 /* ===== RESET CARD COMPONENTS FROM CHAT TYPOGRAPHY ===== */
@@ -1816,7 +1826,7 @@ body.home-route .mobile-header {
 /* ===== ADD-ONS SELECTOR ===== */
 
 .assistant-addons-card {
-  width: min(100%, 520px);
+  width: min(100%, 480px);
   margin: 14px 0 14px;
   padding: 0;
   background: transparent;
@@ -1842,7 +1852,7 @@ body.home-route .mobile-header {
 .assistant-addons-card .assistant-addons-list {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 6.6px;
 }
 
 .assistant-addons-row {
@@ -1870,8 +1880,9 @@ body.home-route .mobile-header {
   flex: 0 0 24px;
   color: #000000;
   font-weight: 400;
-  text-align: right;
+  text-align: left;
   font-size: 15px;
+  font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
 
@@ -1883,6 +1894,11 @@ body.home-route .mobile-header {
   overflow: hidden;
   text-overflow: ellipsis;
   font-size: 15px;
+}
+
+.assistant-addons-left.is-selected .assistant-addons-number,
+.assistant-addons-left.is-selected .assistant-addons-name {
+  font-weight: 700;
 }
 
 .assistant-addons-coverage {
@@ -1958,16 +1974,28 @@ body.home-route .mobile-header {
   bottom: calc(100% + 6px);
   z-index: 6;
   width: max-content;
-  max-width: min(230px, 72vw);
+  max-width: min(260px, 72vw);
   transform: translateX(-50%);
-  padding: 7px 8px;
+  padding: 8px 10px;
   border-radius: 6px;
   background: #555555;
   color: #ffffff;
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 400;
-  line-height: 17px;
+  line-height: 18px;
   box-shadow: 0 8px 20px rgba(0, 0, 0, 0.16);
+}
+
+.assistant-addons-tooltip-title,
+.assistant-addons-tooltip-description {
+  display: block;
+}
+
+.assistant-addons-tooltip-title {
+  margin-bottom: 4px;
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 2px;
 }
 
 .assistant-addons-card .assistant-addons-price {
@@ -2032,13 +2060,14 @@ body.home-route .mobile-header {
 }
 
 .assistant-addons-confirm {
-  min-width: 92px;
-  min-height: 30px;
+  min-width: 101px;
+  min-height: 33px;
   justify-self: end;
-  padding: 4px 18px;
+  padding: 5px 20px;
   border: 1.4px solid #0062ff;
   border-radius: 9px;
   background: #ffffff;
+  font-size: 15px;
 }
 
 .assistant-addons-confirm.is-active {
@@ -2071,19 +2100,479 @@ body.home-route .mobile-header {
   line-height: 22px;
 }
 
+/* ===== ROAD TAX SELECTOR ===== */
+
+.assistant-roadtax-card {
+  width: min(100%, 420px);
+  margin: 18px 0 18px;
+  padding: 0;
+  color: #000000;
+  font-size: 16px;
+  line-height: 22px;
+  letter-spacing: 0;
+}
+
+.assistant-roadtax-question {
+  margin: 0 0 16px 0;
+  color: #000000;
+  font-size: 16px;
+  font-weight: 400;
+  line-height: 22px;
+  letter-spacing: 0;
+}
+
+.assistant-roadtax-question strong {
+  color: #000000;
+  font-weight: 700;
+}
+
+.assistant-roadtax-options {
+  display: flex;
+  flex-direction: column;
+  gap: 11px;
+}
+
+.assistant-roadtax-option {
+  width: 100%;
+  min-height: 62px;
+  display: grid;
+  grid-template-columns: 30px minmax(0, 1fr) max-content;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  border: 1px solid #d8d8d8;
+  border-radius: 12px;
+  background: #ffffff;
+  color: #000000;
+  font: inherit;
+  font-size: 16px;
+  line-height: 20px;
+  text-align: left;
+  letter-spacing: 0;
+  cursor: pointer;
+}
+
+.assistant-roadtax-option.is-active {
+  border-color: #0062ff;
+  background: #0062ff;
+  color: #ffffff;
+}
+
+.assistant-roadtax-option.is-disabled {
+  min-height: 74px;
+  grid-template-columns: minmax(0, 1fr) max-content;
+  column-gap: 8px;
+  align-content: center;
+  row-gap: 2px;
+  border-color: #d8d8d8;
+  background: #eeeeee;
+  color: #000000;
+  cursor: not-allowed;
+}
+
+.assistant-roadtax-option.is-disabled .assistant-roadtax-copy {
+  display: contents;
+}
+
+.assistant-roadtax-option.is-disabled .assistant-roadtax-title {
+  grid-column: 1;
+  grid-row: 1;
+  font-size: 15px;
+  line-height: 18px;
+  white-space: nowrap;
+}
+
+.assistant-roadtax-option.is-disabled .assistant-roadtax-description {
+  grid-column: 1 / -1;
+  grid-row: 2;
+}
+
+.assistant-roadtax-option.is-disabled .assistant-roadtax-badge {
+  grid-column: 2;
+  grid-row: 1;
+  align-self: center;
+  transform: translateY(-2px);
+  padding-inline: 8px;
+  font-size: 13px;
+}
+
+.assistant-roadtax-option.is-none {
+  min-height: 44px;
+  padding-top: 8px;
+  padding-bottom: 8px;
+}
+
+.assistant-roadtax-radio {
+  width: 26px;
+  height: 26px;
+  display: grid;
+  place-items: center;
+  border: 1.5px solid #d8d8d8;
+  border-radius: 999px;
+  background: #ffffff;
+  color: #0062ff;
+  font-size: 16px;
+  font-weight: 800;
+  line-height: 0;
+}
+
+.assistant-roadtax-option.is-active .assistant-roadtax-radio {
+  border-color: #ffffff;
+  color: #0062ff;
+}
+
+.assistant-roadtax-radio span {
+  display: block;
+  transform: translateY(1px);
+  line-height: 1;
+}
+
+.assistant-roadtax-copy {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.assistant-roadtax-title,
+.assistant-roadtax-description {
+  display: block;
+  color: inherit;
+  font-size: 16px;
+  line-height: 20px;
+}
+
+.assistant-roadtax-title {
+  font-weight: 700;
+}
+
+.assistant-roadtax-description {
+  font-weight: 400;
+  font-size: 15px;
+  line-height: 19px;
+}
+
+.assistant-roadtax-price {
+  color: inherit;
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 20px;
+  white-space: nowrap;
+}
+
+.assistant-roadtax-option.is-active .assistant-roadtax-price {
+  color: #ffffff;
+}
+
+.assistant-roadtax-badge {
+  align-self: start;
+  margin-top: 1px;
+  padding: 3px 10px;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #000000;
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 18px;
+  white-space: nowrap;
+}
+
+/* ===== PAYMENT CHECKOUT CARD ===== */
+
+.assistant-payment-card {
+  width: min(100%, 420px);
+  margin: 22px 0 18px;
+  padding: 0;
+  color: #000000;
+  font-size: 16px;
+  line-height: 22px;
+  letter-spacing: 0;
+}
+
+.assistant-payment-card p {
+  margin: 0;
+  color: #000000;
+  font-size: 16px;
+  font-weight: 400;
+  line-height: 22px;
+  letter-spacing: 0;
+}
+
+.assistant-payment-intro {
+  margin-bottom: 14px;
+}
+
+.assistant-payment-card .assistant-payment-review {
+  font-weight: 700;
+}
+
+.assistant-payment-methods {
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr);
+  align-items: start;
+  gap: 10px;
+  margin: 0 0 27.2px;
+  color: #818181;
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 19px;
+}
+
+.assistant-payment-methods img {
+  width: 28px;
+  height: 28px;
+  display: block;
+  margin: 0;
+}
+
+.assistant-payment-button {
+  width: 100%;
+  min-height: 74px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  margin: 0;
+  padding: 14px 18px;
+  border-radius: 17px;
+  background: #0062ff;
+  color: #ffffff;
+  font-size: 20px;
+  font-weight: 700;
+  line-height: 24px;
+  text-align: center;
+  text-decoration: none;
+  letter-spacing: 0;
+}
+
+.assistant-payment-button:hover {
+  color: #ffffff;
+  text-decoration: none;
+}
+
+.assistant-payment-button span {
+  color: #ffffff;
+  font-weight: 700;
+}
+
+.assistant-payment-button img {
+  width: 34px;
+  height: 34px;
+  display: block;
+  margin: 0;
+  flex: 0 0 auto;
+}
+
+.assistant-payment-secure {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin: 10.8px 0 21.6px;
+  color: #818181;
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 19px;
+  text-align: center;
+}
+
+.assistant-payment-secure img {
+  width: 24px;
+  height: 24px;
+  display: block;
+  margin: 0;
+  flex: 0 0 auto;
+}
+
+.assistant-payment-card .assistant-payment-after {
+  color: #000000;
+  font-weight: 400;
+}
+
+/* ===== PAYMENT SUCCESS CARD ===== */
+
+.assistant-payment-success-card {
+  width: min(100%, 420px);
+  margin: 22px 0 96px;
+  padding: 0;
+  color: #000000;
+  font-size: 16px;
+  line-height: 22px;
+  letter-spacing: 0;
+}
+
+.assistant-payment-success-panel {
+  display: grid;
+  grid-template-columns: 46px minmax(0, 1fr);
+  column-gap: 8px;
+  row-gap: 0;
+  align-items: start;
+  margin: 0 0 16px;
+  padding: 20px 16px 20px;
+  border: 2px solid #16a34a;
+  border-radius: 12px;
+  background: rgba(22, 163, 74, 0.1);
+}
+
+.assistant-payment-success-icon {
+  width: 46px;
+  height: 46px;
+  display: block;
+  margin: 0;
+}
+
+.chat-content .assistant-payment-success-icon {
+  width: 46px;
+  height: 46px;
+  margin: 0;
+  border-radius: 0;
+}
+
+.assistant-payment-success-copy h3 {
+  margin: 2px 0 0;
+  color: #000000;
+  font-size: 20px;
+  font-weight: 700;
+  line-height: 24px;
+  letter-spacing: 0;
+}
+
+.assistant-payment-success-copy p,
+.assistant-payment-documents p,
+.assistant-payment-success-after {
+  margin: 0;
+  color: #000000;
+  font-size: 16px;
+  font-weight: 400;
+  line-height: 22px;
+  letter-spacing: 0;
+}
+
+.assistant-payment-success-table {
+  margin-top: 14px;
+  margin-left: -54px;
+  width: calc(100% + 54px);
+  padding: 4px 12px;
+  border: 1px solid rgb(216, 216, 216);
+  border-radius: 10px;
+  background: #ffffff;
+}
+
+.assistant-payment-success-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) max-content;
+  align-items: center;
+  gap: 12px;
+  min-height: 28px;
+  color: #000000;
+  font-size: 16px;
+  line-height: 20px;
+}
+
+.assistant-payment-success-row + .assistant-payment-success-row {
+  border-top: 1px solid rgb(216, 216, 216);
+}
+
+.assistant-payment-success-row strong {
+  color: #000000;
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 20px;
+}
+
+.assistant-payment-success-row span {
+  color: #000000;
+  font-size: 16px;
+  font-weight: 500;
+  line-height: 20px;
+  text-align: right;
+}
+
+.assistant-payment-success-row .assistant-payment-success-amount {
+  font-weight: 500;
+}
+
+.assistant-payment-documents {
+  margin: 0 0 14px;
+}
+
+.assistant-payment-document-list {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  margin-top: 14px;
+}
+
+.assistant-payment-document-link {
+  min-height: 36px;
+  display: grid;
+  grid-template-columns: 33px minmax(0, 1fr) 28px;
+  align-items: center;
+  gap: 10px;
+  padding: 2px 12px;
+  border: 1px solid rgb(216, 216, 216);
+  border-radius: 8px;
+  background: #ffffff;
+  color: #000000;
+  text-decoration: none !important;
+}
+
+.assistant-payment-document-link:hover {
+  color: #000000;
+  text-decoration: none !important;
+}
+
+.assistant-payment-document-link,
+.assistant-payment-document-link * {
+  text-decoration: none !important;
+}
+
+.assistant-payment-pdf-icon {
+  width: 28px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1.4px solid #000000;
+  border-radius: 6px;
+  color: #000000;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.assistant-payment-document-link span:nth-child(2) {
+  color: #000000;
+  font-size: 16px;
+  font-weight: 500;
+  line-height: 20px;
+  text-decoration: none !important;
+}
+
+.assistant-payment-document-link svg {
+  width: 26px;
+  height: 26px;
+  justify-self: end;
+  color: #0062ff;
+}
+
+.assistant-payment-success-after {
+  margin-top: 16px;
+}
+
 /* ===== QUOTE CARDS STYLING ===== */
 
 .assistant-quote-card-stack {
   display: flex;
   flex-direction: column;
   gap: 10px;
-  width: 100%;
+  width: min(100%, 480px);
   margin: 10px 0 18px;
 }
 
 .assistant-quote-card {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 112px;
+  grid-template-columns: minmax(0, 1fr) max-content;
   gap: 10px;
   width: 100%;
   padding: 12px 14px;
@@ -2236,6 +2725,8 @@ body.home-route .mobile-header {
 
 .assistant-quote-side {
   min-width: 0;
+  width: max-content;
+  min-width: 74px;
   display: flex;
   flex-direction: column;
   align-items: flex-end;
@@ -2246,7 +2737,7 @@ body.home-route .mobile-header {
 .assistant-quote-card .assistant-quote-logo {
   display: block;
   width: var(--assistant-quote-logo-width, 82px);
-  max-width: none;
+  max-width: 100px;
   height: var(--assistant-quote-logo-height, 44px);
   margin-right: 0;
   border-radius: 0;
@@ -2270,12 +2761,12 @@ body.home-route .mobile-header {
 }
 
 .assistant-quote-logo[data-insurer="allianz"] {
-  --assistant-quote-logo-width: 112px;
+  --assistant-quote-logo-width: 100px;
   --assistant-quote-logo-height: 42px;
 }
 
 .assistant-quote-logo[data-insurer="lonpac"] {
-  --assistant-quote-logo-width: 112px;
+  --assistant-quote-logo-width: 100px;
   --assistant-quote-logo-height: 46px;
 }
 
@@ -3924,7 +4415,7 @@ body.home-route .mobile-header {
   .input-area {
     padding-left: var(--space-2);
     padding-right: 2px;
-    font-size: 15px;
+    font-size: 16px;
   }
 
   .terms-privacy p {

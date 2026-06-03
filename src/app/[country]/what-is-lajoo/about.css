@@ -454,7 +454,7 @@
   position: relative;
   z-index: 1;
   width: min(395px, calc(100vw - 48px));
-  margin: 74px auto 0;
+  margin: 84px auto 0;
   color: #000000;
   text-align: left;
 }
@@ -480,15 +480,15 @@
 }
 
 .about-hero-cta .cta-primary {
-  min-width: 189px;
-  height: 55px;
-  gap: 9px;
-  padding: 0 22px;
+  min-width: 208px;
+  height: 61px;
+  gap: 10px;
+  padding: 0 24px;
   border: 1.5px solid #000000;
-  border-radius: 18px;
+  border-radius: 999px;
   background: #0062ff;
   color: #ffffff;
-  font-size: 20px;
+  font-size: 22px;
   font-weight: 700;
   line-height: 1;
   box-shadow: 0 2px 5px rgba(0, 0, 0, 0.28);
@@ -3432,7 +3432,7 @@
   display: block;
   width: 80px;
   height: 4px;
-  background: #eae8e9;
+  background: #484848;
 }
 
 .trusted-insurers-section {
@@ -3867,7 +3867,7 @@
 }
 
 .payment-options-panel {
-  width: min(100%, 350px);
+  width: min(100%, 374px);
   margin: 0 auto;
   padding: 0;
   gap: 18px;
@@ -3876,30 +3876,30 @@
 }
 
 .payment-option-row {
-  min-height: 43px;
+  min-height: 50px;
   display: grid;
-  grid-template-columns: 164px minmax(0, 1fr);
-  gap: 8px;
+  grid-template-columns: 166px minmax(0, 1fr);
+  gap: 6px;
   align-items: center;
   padding: 0 10px;
-  border: 0.7px solid #575756;
+  border: 0;
   border-radius: 10px;
-  background: #ffffff;
+  background: #f1f1f1;
 }
 
 .payment-option-row--bnpl {
-  grid-template-columns: 154px minmax(0, 1fr);
+  grid-template-columns: 158px minmax(0, 1fr);
 }
 
 .payment-option-row--bank-grid {
-  min-height: 64px;
-  grid-template-columns: 126px minmax(0, 1fr);
+  min-height: 75px;
+  grid-template-columns: 132px minmax(0, 1fr);
   align-items: center;
 }
 
 .payment-option-label {
   color: #000000;
-  font-size: 17px;
+  font-size: 18px;
   font-weight: 600;
   line-height: 1.02;
   letter-spacing: 0;
@@ -3908,9 +3908,19 @@
 .payment-option-subtitle {
   margin-top: 2px;
   color: #000000;
-  font-size: 14px;
+  font-size: 15px;
   font-weight: 600;
   line-height: 1.04;
+}
+
+.payment-option-row--bnpl .payment-option-label,
+.payment-option-row--installment .payment-option-label {
+  line-height: 20px;
+}
+
+.payment-option-row--bnpl .payment-option-subtitle,
+.payment-option-row--installment .payment-option-subtitle {
+  line-height: 17px;
 }
 
 .payment-option-marks {
@@ -3921,15 +3931,15 @@
   gap: 5px;
 }
 
-.payment-option-mark--visa { width: 53px; height: 20px; }
-.payment-option-mark--mastercard { width: 24px; height: 17px; }
-.payment-option-mark--unionpay { width: 29px; height: 15px; }
-.payment-option-mark--amex { width: 24px; height: 15px; }
-.payment-option-mark--fpx { width: 50px; height: 20px; }
-.payment-option-mark--tng { width: 26px; height: 24px; }
-.payment-option-mark--grabpay { width: 37px; height: 20px; }
-.payment-option-mark--shopee { width: 53px; height: 20px; }
-.payment-option-mark--atome { width: 59px; height: 18px; }
+.payment-option-mark--visa { width: 58px; height: 21px; }
+.payment-option-mark--mastercard { width: 27px; height: 19px; }
+.payment-option-mark--unionpay { width: 33px; height: 17px; }
+.payment-option-mark--amex { width: 27px; height: 17px; }
+.payment-option-mark--fpx { width: 55px; height: 22px; }
+.payment-option-mark--tng { width: 29px; height: 27px; }
+.payment-option-mark--grabpay { width: 43px; height: 23px; }
+.payment-option-mark--shopee { width: 61px; height: 23px; }
+.payment-option-mark--atome { width: 64px; height: 20px; }
 
 .payment-option-marks--bnpl {
   grid-template-columns: max-content max-content;
@@ -3939,48 +3949,49 @@
 
 .payment-option-mark--spaylater {
   gap: 3px;
-  font-size: 11px;
+  font-size: 12px;
 }
 
 .payment-option-mark__badge {
-  width: 11px;
-  height: 11px;
+  width: 12px;
+  height: 12px;
   border-radius: 2px;
-  font-size: 8px;
+  font-size: 9px;
 }
 
 .payment-option-mark--grab-paylater {
-  font-size: 11px;
+  font-size: 12px;
 }
 
 .payment-option-marks--bank-grid {
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  column-gap: 4px;
+  column-gap: 3px;
   row-gap: 3px;
 }
 
 .payment-option-marks--bank-grid .payment-option-mark--image {
-  width: min(100%, calc(var(--payment-mark-width, 56px) * 0.68));
-  height: calc(var(--payment-mark-height, 16px) * 0.9);
+  width: min(100%, calc(var(--payment-mark-width, 56px) * 0.78));
+  height: calc(var(--payment-mark-height, 16px) * 1);
 }
 
 .payment-options-ask-card {
-  --payment-ask-width: min(100vw - 48px, 406px);
+  --payment-ask-width: min(100%, 374px);
   align-self: flex-start;
   width: var(--payment-ask-width);
-  min-height: 73px;
-  grid-template-columns: 43px minmax(0, 1fr);
-  gap: 16px;
-  margin: 24px calc((100% - var(--payment-ask-width)) / 2) 0;
-  padding: 12px 20px;
+  min-height: 50px;
+  height: 50px;
+  grid-template-columns: 30px minmax(0, 1fr);
+  gap: 12px;
+  margin: 2px calc((100% - var(--payment-ask-width)) / 2) 0;
+  padding: 6px 18px;
   border: 0;
   border-radius: 12px;
   background: #eaf2ff;
 }
 
 .payment-options-ask-card .understand-unsure-card__icon {
-  width: 43px;
-  height: 43px;
+  width: 30px;
+  height: 30px;
 }
 
 .payment-options-ask-card .understand-unsure-card__copy {
@@ -4045,7 +4056,7 @@
 .reviews-link {
   margin: 0;
   color: #0062ff;
-  font-size: 16px;
+  font-size: 17px;
   font-weight: 500;
   line-height: 1.15;
   text-decoration: underline;
@@ -4056,23 +4067,24 @@
   margin-top: 13px;
   gap: 6px;
   color: #000000;
-  font-size: 17px;
+  font-size: 18px;
   font-weight: 500;
   line-height: 1.12;
 }
 
 .reviews-carousel {
-  width: min(100%, 342px);
+  width: min(100%, 374px);
   gap: 40px;
 }
 
 .review-card {
   width: 100%;
-  height: 365px;
-  min-height: 365px;
+  height: 245px;
+  min-height: 245px;
+  position: relative;
   display: flex;
   flex-direction: column;
-  padding: 27px 29px 18px;
+  padding: 27px 29px 52px;
   border: 0.8px solid #f1f1f1;
   border-radius: 8px;
   background: #ffffff;
@@ -4115,14 +4127,20 @@
 
 .review-card__body {
   color: #000000;
-  font-size: 15px;
+  font-size: 16px;
   font-weight: 500;
-  line-height: 1.18;
+  line-height: 19px;
+  max-height: 89px;
+  overflow: hidden;
 }
 
 .review-card__footer {
-  margin-top: auto;
-  padding-top: 20px;
+  position: absolute;
+  right: 29px;
+  bottom: 18px;
+  left: 29px;
+  margin-top: 0;
+  padding-top: 0;
 }
 
 .review-card__stars {
@@ -4136,7 +4154,7 @@
 .review-card__view {
   gap: 2px;
   color: #0062ff;
-  font-size: 14px;
+  font-size: 16px;
   font-weight: 600;
   line-height: 1;
 }
@@ -4147,16 +4165,16 @@
 }
 
 .reviews-control {
-  width: 42px;
-  height: 42px;
-  min-width: 42px;
-  min-height: 42px;
+  width: 51px;
+  height: 51px;
+  min-width: 51px;
+  min-height: 51px;
   box-shadow: none;
 }
 
 .reviews-control__icon {
-  width: 22px;
-  height: 22px;
+  width: 26px;
+  height: 26px;
 }
 
 .reviews-control__icon svg {
@@ -4165,7 +4183,11 @@
   stroke-linejoin: round;
 }
 
-.reviews-control--prev,
+.reviews-control--prev {
+  background: #0062ff;
+  color: #ffffff;
+}
+
 .reviews-control--prev:disabled {
   background: #bbbbbb;
   color: #ffffff;
@@ -4200,7 +4222,7 @@
 .ai-simple-title {
   margin: 0;
   color: #000000;
-  font-size: 25px;
+  font-size: 28px;
   font-weight: 500;
   line-height: 1.12;
   letter-spacing: 0;
@@ -4208,7 +4230,7 @@
 }
 
 .ai-simple-grid {
-  width: min(388px, calc(100vw - 58px));
+  width: min(402px, calc(100vw - 44px));
   margin: 0 auto;
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -4239,10 +4261,10 @@
 }
 
 .ai-simple-card__icon {
-  width: 58px;
-  height: 58px;
-  min-width: 58px;
-  min-height: 58px;
+  width: 65px;
+  height: 65px;
+  min-width: 65px;
+  min-height: 65px;
   border-radius: 0;
   background: transparent;
   color: currentColor;
@@ -4285,7 +4307,7 @@
 .ai-simple-card__value {
   margin: 0;
   color: currentColor;
-  font-size: 35px;
+  font-size: 37px;
   font-weight: 500;
   line-height: 0.95;
   letter-spacing: 0;
@@ -4295,13 +4317,18 @@
 .ai-simple-card__label {
   margin: 0;
   color: currentColor;
-  font-size: clamp(13px, 3.15vw, 16px);
+  font-size: clamp(12px, 3.35vw, 17px);
   font-weight: 500;
   line-height: 1.1;
   letter-spacing: 0;
   text-align: left;
   text-transform: lowercase;
   white-space: nowrap;
+  max-width: 100%;
+}
+
+.ai-simple-card__label {
+  font-size: 18px;
 }
 
 .renew-cta-band {
@@ -4309,11 +4336,11 @@
   margin: 0 calc(50% - 50vw);
   background-color: #01245e;
   background-image:
-    radial-gradient(ellipse 62% 96% at 111% 0%, rgba(255, 255, 255, 0.42) 0%, rgba(255, 255, 255, 0.25) 35%, rgba(255, 255, 255, 0.08) 66%, rgba(255, 255, 255, 0) 100%),
-    radial-gradient(ellipse 84% 74% at 108% 108%, rgba(93, 155, 255, 0.96) 0%, rgba(93, 155, 255, 0.7) 34%, rgba(93, 155, 255, 0.31) 65%, rgba(93, 155, 255, 0) 100%),
-    radial-gradient(ellipse 94% 58% at -12% 112%, rgba(255, 255, 255, 0.43) 0%, rgba(255, 255, 255, 0.24) 39%, rgba(255, 255, 255, 0.07) 72%, rgba(255, 255, 255, 0) 100%),
-    radial-gradient(ellipse 112% 90% at 36% 16%, rgba(1, 36, 94, 0.99) 0%, rgba(1, 36, 94, 0.97) 40%, rgba(1, 36, 94, 0.68) 64%, rgba(1, 36, 94, 0.12) 92%, rgba(1, 36, 94, 0) 100%),
-    linear-gradient(180deg, #18386d 0%, #062862 32%, #254f8b 64%, #6090d4 86%, #ced6e5 100%);
+    radial-gradient(ellipse 62% 96% at 116% 9%, rgba(255, 255, 255, 0.42) 0%, rgba(255, 255, 255, 0.25) 35%, rgba(255, 255, 255, 0.08) 66%, rgba(255, 255, 255, 0) 100%),
+    radial-gradient(ellipse 84% 74% at 113% 117%, rgba(93, 155, 255, 0.96) 0%, rgba(93, 155, 255, 0.7) 34%, rgba(93, 155, 255, 0.31) 65%, rgba(93, 155, 255, 0) 100%),
+    radial-gradient(ellipse 94% 58% at -7% 121%, rgba(255, 255, 255, 0.43) 0%, rgba(255, 255, 255, 0.24) 39%, rgba(255, 255, 255, 0.07) 72%, rgba(255, 255, 255, 0) 100%),
+    radial-gradient(ellipse 112% 90% at 41% 25%, rgba(1, 36, 94, 0.99) 0%, rgba(1, 36, 94, 0.97) 40%, rgba(1, 36, 94, 0.68) 64%, rgba(1, 36, 94, 0.12) 92%, rgba(1, 36, 94, 0) 100%),
+    linear-gradient(180deg, #18386d 0%, #062862 41%, #254f8b 73%, #6090d4 95%, #ced6e5 100%);
 }
 
 .renew-cta-inner {
@@ -4338,7 +4365,7 @@
 }
 
 .renew-cta-copy {
-  margin: 32px auto 0;
+  margin: 36px auto 0;
   color: #ffffff;
   font-size: 21px;
   font-weight: 400;
@@ -4358,7 +4385,7 @@
   align-items: center;
   justify-content: center;
   gap: 11px;
-  margin-top: 48px;
+  margin-top: 60px;
   padding: 0 22px;
   border: 1.5px solid #ffffff;
   border-radius: 999px;
@@ -4385,8 +4412,8 @@
 }
 
 .hero-top {
-  padding-top: 60px;
-  padding-bottom: 60px;
+  padding-top: 35px;
+  padding-bottom: 35px;
 }
 
 .hero-bottom {
@@ -4432,17 +4459,6 @@
 }
 
 .renew-cta-inner {
-  padding-top: 60px;
-  padding-bottom: 60px;
-}
-
-.about-wrap > footer {
-  width: 100vw;
-  margin-right: calc(50% - 50vw);
-  margin-left: calc(50% - 50vw);
-}
-
-.about-wrap > footer > div {
-  padding-right: 29px;
-  padding-left: 29px;
+  padding-top: 67px;
+  padding-bottom: 67px;
 }

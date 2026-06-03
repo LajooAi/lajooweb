@@ -18,9 +18,15 @@
     "expected": "allianz"
   },
   {
+    "name": "Recommend Generali from direct recommendation",
+    "type": "recommended_insurer",
+    "assistantMessage": "Best option here is Generali Insurance for maximum sum insured.",
+    "expected": "generali"
+  },
+  {
     "name": "Do not infer recommendation from insurer list",
     "type": "recommended_insurer",
-    "assistantMessage": "Pick Takaful, Etiqa, Allianz, or say recommend for me.",
+    "assistantMessage": "Pick Takaful, Tokio Marine, Etiqa, Allianz, Lonpac, MSIG, Generali, or say recommend for me.",
     "expected": null
   },
   {
@@ -77,7 +83,7 @@
     "name": "Vehicle confirmation context false for quote picker",
     "type": "vehicle_confirmation_context",
     "messages": [
-      { "role": "assistant", "content": "Pick Takaful, Etiqa, Allianz, or say recommend for me." }
+      { "role": "assistant", "content": "Pick Takaful, Tokio Marine, Etiqa, Allianz, Lonpac, MSIG, Generali, or say recommend for me." }
     ],
     "expected": false
   },
@@ -87,7 +93,7 @@
     "messages": [
       { "role": "assistant", "content": "Found your vehicle! 🚗\nIs this correct?" },
       { "role": "user", "content": "ok" },
-      { "role": "assistant", "content": "Pick Takaful, Etiqa, Allianz, or say recommend for me." }
+      { "role": "assistant", "content": "Pick Takaful, Tokio Marine, Etiqa, Allianz, Lonpac, MSIG, Generali, or say recommend for me." }
     ],
     "expected": false
   },

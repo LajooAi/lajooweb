@@ -1,6 +1,7 @@
 import crypto from 'node:crypto';
 import fs from 'node:fs/promises';
 import path from 'node:path';
+import { getInsurerKeysFromText } from "./insurerCatalog.js";
 
 const DEFAULT_CAPTURE_FILE = 'tests/evals/captured/unknown-intents.jsonl';
 const LOW_CONFIDENCE_THRESHOLD = 0.68;
@@ -62,7 +63,7 @@ function hasVehicleIdentifierSignal(message) {
 }
 
 function hasInsurerSelectionSignal(message) {
-  return /(takaful|ikhlas|etiqa|allianz)/i.test(message) &&
+  return getInsurerKeysFromText(message).length > 0 &&
     /(choose|pick|go with|select|take|ok maybe|recommend|which)/i.test(message);
 }
 
@@ -227,4 +228,3 @@ export async function appendIntentCaptureSample({
     return false;
   }
 }
-

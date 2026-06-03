@@ -2,6 +2,7 @@
  * Shared flow guard helpers used by route-level orchestration and tests/evals.
  * Keep these pure and deterministic.
  */
+import { getInsurerKeysFromText } from "./insurerCatalog.js";
 
 export function parseRecommendedInsurerFromAssistantMessage(lastAIMessage) {
   const text = String(lastAIMessage || '');
@@ -9,16 +10,11 @@ export function parseRecommendedInsurerFromAssistantMessage(lastAIMessage) {
   if (!lower) return null;
 
   const mapInsurerFromChunk = (chunk) => {
-    const mentions = [];
-    if (/\btakaful\b|\bikhlas\b/i.test(chunk)) mentions.push('takaful');
-    if (/\betiqa\b/i.test(chunk)) mentions.push('etiqa');
-    if (/\ballianz\b/i.test(chunk)) mentions.push('allianz');
-    if (mentions.length !== 1) return null;
-    return mentions[0];
+    const mentions = getInsurerKeysFromText(chunk);
+    return mentions.length === 1 ? mentions[0] : null;
   };
 
-  const hasAllThreeMentions =
-    /(takaful).*(etiqa).*(allianz)|(allianz).*(etiqa).*(takaful)|(etiqa).*(takaful).*(allianz)/i.test(lower);
+  const hasMultipleInsurerMentions = getInsurerKeysFromText(lower).length > 1;
 
   // First, try to parse an explicit recommendation clause even if other insurers are also mentioned.
   const recommendationPatterns = [
@@ -35,7 +31,7 @@ export function parseRecommendedInsurerFromAssistantMessage(lastAIMessage) {
   // Explicit list/choice prompt with all insurers and no explicit recommendation should not auto-select.
   if (
     /pick|choose|select|which|or say recommend for me|if you need help deciding/i.test(lower) &&
-    hasAllThreeMentions
+    hasMultipleInsurerMentions
   ) {
     return null;
   }

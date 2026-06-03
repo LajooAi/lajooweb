@@ -25,6 +25,8 @@ export default function EqualWidthTitle({
     if (!titleEl || !primaryEl || !secondaryEl) return;
 
     secondaryEl.style.fontSize = "";
+    secondaryEl.style.transform = "";
+    secondaryEl.style.transformOrigin = "";
     titleEl.style.width = "";
 
     const primaryWidth = primaryEl.getBoundingClientRect().width;
@@ -35,6 +37,21 @@ export default function EqualWidthTitle({
     if (!Number.isFinite(secondarySize) || secondarySize <= 0) return;
 
     let nextSize = (secondarySize * primaryWidth) / secondaryWidth;
+    const maxSecondarySize = Number.parseFloat(
+      window.getComputedStyle(titleEl).getPropertyValue("--equal-width-secondary-max-size")
+    );
+
+    if (Number.isFinite(maxSecondarySize) && maxSecondarySize > 0 && nextSize > maxSecondarySize) {
+      secondaryEl.style.fontSize = `${maxSecondarySize}px`;
+      const cappedWidth = secondaryEl.getBoundingClientRect().width;
+      if (cappedWidth > 0) {
+        secondaryEl.style.transformOrigin = "center center";
+        secondaryEl.style.transform = `scaleX(${primaryWidth / cappedWidth})`;
+      }
+      titleEl.style.width = `${primaryWidth}px`;
+      return;
+    }
+
     secondaryEl.style.fontSize = `${nextSize}px`;
 
     // Converge width over a few tiny passes to avoid residual mismatch from font rounding.

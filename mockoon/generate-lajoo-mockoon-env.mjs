@@ -5,16 +5,24 @@ import { randomUUID } from 'node:crypto';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-const OUTPUT_FILE = path.join(__dirname, 'lajoo-insurer-sandbox-v33.json');
+const OUTPUT_FILES = [
+  path.join(__dirname, 'lajoo-insurer-sandbox-import.json'),
+  path.join(__dirname, 'lajoo-insurer-sandbox.json'),
+  path.join(__dirname, 'lajoo-insurer-sandbox-v33.json'),
+];
 
 const API_VERSION = 'v1';
 const STATIC_TIMESTAMP = '2026-03-06T10:00:00Z';
 const AUTH_TOKEN = 'Bearer mock-access-token';
 
 const BASE_PREMIUMS = {
-  TAKAFUL: { base: 995, final: 796, sumInsured: 34000, name: 'Takaful Ikhlas' },
-  ETIQA: { base: 1090, final: 872, sumInsured: 35000, name: 'Etiqa Insurance' },
-  ALLIANZ: { base: 1150, final: 920, sumInsured: 36000, name: 'Allianz Insurance' },
+  TAKAFUL: { base: 995, final: 796, sumInsured: 34000, name: 'Takaful Ikhlas', type: 'takaful' },
+  TOKIO: { base: 1000, final: 800, sumInsured: 35000, name: 'Tokio Marine', type: 'conventional' },
+  ETIQA: { base: 1090, final: 872, sumInsured: 35000, name: 'Etiqa Insurance', type: 'conventional' },
+  ALLIANZ: { base: 1150, final: 920, sumInsured: 36000, name: 'Allianz Insurance', type: 'conventional' },
+  LONPAC: { base: 1200, final: 960, sumInsured: 37000, name: 'Lonpac', type: 'conventional' },
+  MSIG: { base: 1250, final: 1000, sumInsured: 37000, name: 'MSIG', type: 'conventional' },
+  GENERALI: { base: 1350, final: 1080, sumInsured: 40000, name: 'Generali Insurance', type: 'conventional' },
 };
 
 const SCENARIO_LOADING = {
@@ -508,11 +516,11 @@ function buildEnvironment() {
         statusCode: 200,
         defaultResponse: true,
         body: envelope('req-ref-ins-001', {
-          insurers: [
-            { code: 'TAKAFUL', name: 'Takaful Ikhlas', type: 'takaful' },
-            { code: 'ETIQA', name: 'Etiqa Insurance', type: 'conventional' },
-            { code: 'ALLIANZ', name: 'Allianz Insurance', type: 'conventional' },
-          ],
+          insurers: Object.entries(BASE_PREMIUMS).map(([code, insurer]) => ({
+            code,
+            name: insurer.name,
+            type: insurer.type,
+          })),
         }),
       }),
     ])
@@ -1424,8 +1432,11 @@ function buildEnvironment() {
 
 async function main() {
   const env = buildEnvironment();
-  await fs.writeFile(OUTPUT_FILE, `${JSON.stringify(env, null, 2)}\n`, 'utf8');
-  console.log(`Wrote Mockoon environment: ${OUTPUT_FILE}`);
+  const payload = `${JSON.stringify(env, null, 2)}\n`;
+  for (const outputFile of OUTPUT_FILES) {
+    await fs.writeFile(outputFile, payload, 'utf8');
+    console.log(`Wrote Mockoon environment: ${outputFile}`);
+  }
 }
 
 main().catch((err) => {

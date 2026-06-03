@@ -3,6 +3,7 @@
  * This file contains mock implementations of all insurance-related APIs.
  * Later, replace these with real API calls when you get insurer API access.
  */
+import { AVAILABLE_INSURERS } from './insurerCatalog.js';
 
 // Mock database of previous policies
 const MOCK_POLICIES = {
@@ -36,34 +37,16 @@ const MOCK_POLICIES = {
   }
 };
 
-// Mock quotes data - ONLY 3 INSURERS with EXACT prices
-const MOCK_INSURERS = [
-  {
-    id: "takaful-ikhlas",
-    name: "Takaful Ikhlas",
-    logoUrl: "/partners/takaful.svg",
-    // EXACT fixed values - do not randomize
-    sumInsured: 34000,
-    priceBefore: 995,
-    priceAfter: 796  // after 20% NCD - CHEAPEST
-  },
-  {
-    id: "etiqa",
-    name: "Etiqa Insurance",
-    logoUrl: "/partners/etiqa.svg",
-    sumInsured: 35000,
-    priceBefore: 1090,
-    priceAfter: 872  // after 20% NCD
-  },
-  {
-    id: "allianz",
-    name: "Allianz Insurance",
-    logoUrl: "/partners/allianz.svg",
-    sumInsured: 36000,
-    priceBefore: 1150,
-    priceAfter: 920  // after 20% NCD - HIGHEST COVERAGE
-  }
-];
+// Mock quotes data with exact fixed prices. Do not randomize.
+const MOCK_INSURERS = AVAILABLE_INSURERS.map((insurer) => ({
+  id: insurer.id,
+  name: insurer.displayName,
+  logoUrl: insurer.logoUrl,
+  sumInsured: insurer.sumInsured,
+  priceBefore: insurer.priceBefore,
+  priceAfter: insurer.priceAfter,
+  benefits: insurer.features,
+}));
 
 /**
  * Look up user's previous insurance policy by registration number
@@ -108,11 +91,7 @@ export async function getInsuranceQuotes(vehicleInfo) {
       ncdPercent: ncd,
       ncdAmount: insurer.priceBefore - insurer.priceAfter,
       priceAfter: insurer.priceAfter,
-      benefits: insurer.id === "takaful-ikhlas"
-        ? ["Shariah-compliant (Islamic insurance)", "Fast claim payout", "CHEAPEST option", "Great value for money"]
-        : insurer.id === "etiqa"
-        ? ["Free towing service up to 200km", "Good customer service", "Balanced price and coverage", "Well-established local insurer"]
-        : ["Highest sum insured (RM36,000)", "Premium service quality", "Excellent claims network", "Best customer service ratings"]
+      benefits: insurer.benefits
     };
   }).sort((a, b) => a.priceAfter - b.priceAfter); // Sort by price (Takaful first as cheapest)
 

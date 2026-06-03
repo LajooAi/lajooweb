@@ -101,7 +101,7 @@ export default function FAQPage() {
                     <path
                       d={isOpen ? "M6 12.8L10 7.2L14 12.8" : "M6 7.2L10 12.8L14 7.2"}
                       stroke="currentColor"
-                      strokeWidth="2.2"
+                      strokeWidth="2.7"
                       strokeLinecap="round"
                       strokeLinejoin="round"
                     />

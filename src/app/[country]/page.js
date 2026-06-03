@@ -60,6 +60,8 @@ const isSummaryTotalLine = (text) => /^(?:💰\s*)?total:\s*rm\s*\d[\d,]*/i.test
 const quoteBlockRegex = /<span[^>]*>\s*<img\s+src="([^"]+)"\s+alt="([^"]+)"[^>]*\/>\s*<strong>([^<]+)<\/strong>\s*—\s*<strong>RM\s*([\d,]+)<\/strong>\s*<\/span>\s*\n<span[^>]*>Sum Insured:\s*RM\s*([\d,]+)<\/span>\s*\n([\s\S]*?)\n<span[^>]*>~~RM\s*([\d,]+)~~\s*→\s*RM\s*([\d,]+)(?:\s*\(([^)]*)\))?<\/span>/g;
 const summarySectionRegex = /(?:^|\n)\s*(?:<span[^>]*>\s*)?(?:\*{0,2})?✓?\s*renewal summary(?:\*{0,2})?[^\n]*(?:<\/span>)?[\s\S]*?(?:\n\s*(?:\*{0,2})?(?:💰\s*)?total:?(?:\*{0,2})?\s*(?:&nbsp;)?\s*(?:<u>)?\s*rm[^\n]*)/i;
 const addOnsSectionRegex = /(?:^|\n)\s*(?:\*{0,2})?step\s+(?:\*{0,2})?3(?:\*{0,2})?\s+of\s+(?:\*{0,2})?6(?:\*{0,2})?\s*[—-]\s*add-ons(?:\*{0,2})?[\s\S]*?(?:\n\s*based on your situation,[^\n]*reply skip\.?)/i;
+const roadTaxSectionRegex = /(?:^|\n)\s*(?:\*{0,2})?step\s+(?:\*{0,2})?4(?:\*{0,2})?\s+of\s+(?:\*{0,2})?6(?:\*{0,2})?\s*[—-]\s*road tax(?:\*{0,2})?[\s\S]*?(?:printed road tax is only for Foreign ID or Company vehicles\.?)/i;
+const paymentSectionRegex = /(?:^|\n)\s*(?:\*{0,2})?step\s+(?:\*{0,2})?6(?:\*{0,2})?\s+of\s+(?:\*{0,2})?6(?:\*{0,2})?\s*[—-]\s*payment(?:\*{0,2})?[\s\S]*?(?:policy documents and payment receipt will be sent to your WhatsApp and email\.?)/i;
 const WINDSCREEN_PREMIUM_RATE = 0.15;
 
 const getQuoteSelectionText = (insurerName = "") => {
@@ -115,6 +117,46 @@ const formatWholeMoney = (value = "") => {
   });
 };
 
+const canUsePhysicalRoadTax = (state = null) =>
+  state?.ownerIdType === "foreign_id" || state?.ownerIdType === "company_reg";
+
+const buildRoadTaxCardFallback = (state = null) => {
+  const physicalAvailable = canUsePhysicalRoadTax(state);
+
+  return {
+    defaultOptionId: "12month-digital",
+    physicalAvailable,
+    options: [
+      {
+        id: "12month-digital",
+        label: "12 months digital road tax",
+        description: "Updates instantly in MYJPJ app",
+        price: 90,
+        available: true,
+        message: "12 months digital road tax",
+      },
+      {
+        id: "12month-physical",
+        label: "12 months physical + delivery",
+        description: physicalAvailable
+          ? "MYJPJ app and delivered to you"
+          : "Only for Foreign ID or Company Vehicles",
+        price: physicalAvailable ? 100 : null,
+        available: physicalAvailable,
+        unavailableLabel: physicalAvailable ? null : "Not available",
+        message: "12 months physical + delivery",
+      },
+      {
+        id: "none",
+        label: "No, just insurance",
+        price: null,
+        available: true,
+        message: "No, just insurance",
+      },
+    ],
+  };
+};
+
 const hasSummarySignal = (content = "") =>
   /renewal summary|policy (?:effective|period):|sum insured:|cover type:|add-ons:|road tax:|(?:💰\s*)?total:/i.test(content);
 
@@ -149,6 +191,40 @@ const parseAssistantAddOnsPresentation = (content = "", addOnsCard = null) => {
     before: content.slice(0, addOnsStart).trim(),
     addOns: addOnsCard,
     after: content.slice(addOnsEnd).trim(),
+  };
+};
+
+const parseAssistantRoadTaxPresentation = (content = "", roadTaxCard = null) => {
+  if (!roadTaxCard || !/step\s+(?:\*{0,2})?4(?:\*{0,2})?\s+of\s+(?:\*{0,2})?6(?:\*{0,2})?\s*[—-]\s*road tax/i.test(content)) return null;
+  const match = content.match(roadTaxSectionRegex);
+  if (!match) return null;
+
+  const rawMatch = match[0] || "";
+  const leadingNewline = rawMatch.startsWith("\n") ? 1 : 0;
+  const roadTaxStart = match.index + leadingNewline;
+  const roadTaxEnd = match.index + rawMatch.length;
+
+  return {
+    before: content.slice(0, roadTaxStart).trim(),
+    roadTax: roadTaxCard,
+    after: content.slice(roadTaxEnd).trim(),
+  };
+};
+
+const parseAssistantPaymentPresentation = (content = "", paymentCard = null) => {
+  if (!paymentCard || !/step\s+(?:\*{0,2})?6(?:\*{0,2})?\s+of\s+(?:\*{0,2})?6(?:\*{0,2})?\s*[—-]\s*payment/i.test(content)) return null;
+  const match = content.match(paymentSectionRegex);
+  if (!match) return null;
+
+  const rawMatch = match[0] || "";
+  const leadingNewline = rawMatch.startsWith("\n") ? 1 : 0;
+  const paymentStart = match.index + leadingNewline;
+  const paymentEnd = match.index + rawMatch.length;
+
+  return {
+    before: content.slice(0, paymentStart).trim(),
+    payment: paymentCard,
+    after: content.slice(paymentEnd).trim(),
   };
 };
 
@@ -263,8 +339,153 @@ const parseMoneyInput = (value) => {
   return Number.isFinite(numeric) ? numeric : 0;
 };
 
-function AddOnInfoButton({ label, info, activeInfoId, setActiveInfoId, id }) {
+const formatAddOnsUserReply = (labels = []) => {
+  const items = labels.filter(Boolean);
+  if (items.length === 0) return "";
+  if (items.length === 1) return `Add ${items[0]}`;
+  if (items.length === 2) return `Add ${items[0]} and ${items[1]}`;
+
+  return `Add ${items.slice(0, -1).join(", ")}, and ${items[items.length - 1]}`;
+};
+
+const normalizeRoadTaxReply = (value = "") =>
+  String(value)
+    .toLowerCase()
+    .replace(/&/g, " and ")
+    .replace(/[^a-z0-9]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+
+const getRoadTaxOptionAliases = (option = {}) => {
+  const aliases = [option.id, option.label, option.message].filter(Boolean);
+
+  if (option.id === "12month-digital") {
+    aliases.push("12 months digital", "digital road tax", "yes", "ok");
+  }
+
+  if (option.id === "12month-physical") {
+    aliases.push("12 months physical delivery", "physical road tax", "physical delivery");
+  }
+
+  if (option.id === "none") {
+    aliases.push("no road tax", "no just insurance", "just insurance");
+  }
+
+  return aliases.map(normalizeRoadTaxReply).filter(Boolean);
+};
+
+const getSelectedRoadTaxOptionId = (messages = [], assistantIndex = -1, roadTaxCard = null) => {
+  const options = Array.isArray(roadTaxCard?.options) ? roadTaxCard.options : [];
+  if (assistantIndex < 0 || options.length === 0) return null;
+
+  const nextUserMessage = messages.slice(assistantIndex + 1).find((message) => message?.role === "user");
+  const userReply = normalizeRoadTaxReply(nextUserMessage?.content || "");
+  if (!userReply) return null;
+
+  const selectedOption = options.find((option) =>
+    getRoadTaxOptionAliases(option).some((alias) =>
+      userReply === alias || (alias.length > 3 && userReply.includes(alias))
+    )
+  );
+
+  return selectedOption?.available ? selectedOption.id : null;
+};
+
+const normalizeAddOnReply = (value = "") =>
+  String(value)
+    .toLowerCase()
+    .replace(/&/g, " and ")
+    .replace(/[^a-z0-9]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+
+const isNegatedAddOnAlias = (normalizedReply = "", alias = "") =>
+  [
+    `no ${alias}`,
+    `not ${alias}`,
+    `without ${alias}`,
+    `dont need ${alias}`,
+    `do not need ${alias}`,
+  ].some((phrase) => normalizedReply.includes(phrase));
+
+const getAddOnOptionAliases = (option = {}) => {
+  const aliases = [option.id, option.name].filter(Boolean);
+
+  switch (option.id) {
+    case "windscreen":
+      aliases.push("windscreen coverage", "glass coverage");
+      break;
+    case "flood":
+      aliases.push("special perils", "flood", "inclusion of special perils");
+      break;
+    case "ehailing":
+      aliases.push("e hailing", "e hailing grab", "grab", "ride sharing");
+      break;
+    case "all_drivers":
+      aliases.push("all drivers", "additional drivers");
+      break;
+    case "legal_liability_passengers":
+      aliases.push("legal liability", "legal liability to passengers");
+      break;
+    case "lltp_negligence":
+      aliases.push("lltp", "negligence acts");
+      break;
+    case "strike_riot":
+      aliases.push("strike riot", "civil commotion", "riot");
+      break;
+    case "betterment_waiver":
+      aliases.push("betterment", "betterment waiver");
+      break;
+    case "ncd_relief":
+      aliases.push("ncd relief", "current year ncd relief");
+      break;
+    case "body_painting":
+      aliases.push("body painting", "full vehicle body painting");
+      break;
+    case "personal_accident":
+      aliases.push("personal accident", "personal accident for all");
+      break;
+    default:
+      break;
+  }
+
+  return aliases.map(normalizeAddOnReply).filter(Boolean);
+};
+
+const getSelectedAddOnIds = (messages = [], assistantIndex = -1, addOnsCard = null) => {
+  const options = Array.isArray(addOnsCard?.options) ? addOnsCard.options : [];
+  if (assistantIndex < 0 || options.length === 0) return null;
+
+  const nextUserMessage = messages.slice(assistantIndex + 1).find((message) => message?.role === "user");
+  if (!nextUserMessage) return null;
+
+  const rawReply = String(nextUserMessage.content || "");
+  const normalizedReply = normalizeAddOnReply(rawReply);
+  if (!normalizedReply) return null;
+  if (/\bskip(?: add ons?)?\b/.test(normalizedReply)) return [];
+
+  const replyWithoutMoney = rawReply.replace(/\brm\s*\d[\d,]*(?:\.\d+)?\b/gi, " ");
+  const selectedNumbers = new Set(
+    Array.from(replyWithoutMoney.matchAll(/\b\d{1,2}\b/g), (match) => Number(match[0]))
+  );
+
+  return options
+    .filter((option) => {
+      if (selectedNumbers.has(Number(option.number))) return true;
+
+      return getAddOnOptionAliases(option).some((alias) =>
+        alias.length > 2 &&
+        !isNegatedAddOnAlias(normalizedReply, alias) &&
+        (normalizedReply === alias || normalizedReply.includes(alias))
+      );
+    })
+    .map((option) => option.id);
+};
+
+function AddOnInfoButton({ label, number, info, activeInfoId, setActiveInfoId, id }) {
   const isOpen = activeInfoId === id;
+  const tooltipId = `addon-info-${id}`;
+
   return (
     <span className="assistant-addons-info-wrap">
       <button
@@ -272,20 +493,24 @@ function AddOnInfoButton({ label, info, activeInfoId, setActiveInfoId, id }) {
         className="assistant-addons-info"
         aria-label={`About ${label}`}
         aria-expanded={isOpen}
+        aria-describedby={isOpen ? tooltipId : undefined}
         onClick={() => setActiveInfoId(isOpen ? null : id)}
       >
         i
       </button>
       {isOpen && (
-        <span className="assistant-addons-tooltip" role="tooltip">
-          {info}
+        <span className="assistant-addons-tooltip" id={tooltipId} role="tooltip">
+          <span className="assistant-addons-tooltip-title">
+            {number}. {label}
+          </span>
+          <span className="assistant-addons-tooltip-description">{info}</span>
         </span>
       )}
     </span>
   );
 }
 
-function AssistantAddOnsSelector({ addOnsCard, onConfirm, onSkip }) {
+function AssistantAddOnsSelector({ addOnsCard, onConfirm, onSkip, selectedOptionIds = null }) {
   const options = Array.isArray(addOnsCard?.options) ? addOnsCard.options : [];
   const initialSelected = Array.isArray(addOnsCard?.selectedIds) ? addOnsCard.selectedIds : [];
   const defaultCoverage = Number(addOnsCard?.defaultWindscreenCoverage ?? 0);
@@ -315,7 +540,8 @@ function AssistantAddOnsSelector({ addOnsCard, onConfirm, onSkip }) {
 
   const windscreenCoverage = Math.max(0, parseMoneyInput(windscreenCoverageInput));
   const windscreenPrice = windscreenCoverage * WINDSCREEN_PREMIUM_RATE;
-  const hasSelection = selectedIds.length > 0;
+  const displayedSelectedIds = Array.isArray(selectedOptionIds) ? selectedOptionIds : selectedIds;
+  const hasSelection = displayedSelectedIds.length > 0;
 
   const toggleAddOn = (id) => {
     setSelectedIds((prev) =>
@@ -333,7 +559,7 @@ function AssistantAddOnsSelector({ addOnsCard, onConfirm, onSkip }) {
   const handleConfirm = () => {
     if (!hasSelection) return;
     onConfirm?.({
-      selectedIds,
+      selectedIds: displayedSelectedIds,
       options,
       windscreenCoverage,
     });
@@ -347,13 +573,13 @@ function AssistantAddOnsSelector({ addOnsCard, onConfirm, onSkip }) {
 
       <div className="assistant-addons-list">
         {options.map((option) => {
-          const isSelected = selectedIds.includes(option.id);
+          const isSelected = displayedSelectedIds.includes(option.id);
           const isWindscreen = option.hasCoverageInput;
           const price = isWindscreen ? windscreenPrice : Number(option.price || 0);
 
           return (
             <div className="assistant-addons-row" key={option.id}>
-              <div className="assistant-addons-left">
+              <div className={`assistant-addons-left${isSelected ? " is-selected" : ""}`}>
                 <span className="assistant-addons-number">{option.number}.</span>
                 <span className="assistant-addons-name">{option.name}</span>
                 {isWindscreen && (
@@ -375,6 +601,7 @@ function AssistantAddOnsSelector({ addOnsCard, onConfirm, onSkip }) {
                 <AddOnInfoButton
                   id={option.id}
                   label={option.name}
+                  number={option.number}
                   info={option.info}
                   activeInfoId={activeInfoId}
                   setActiveInfoId={setActiveInfoId}
@@ -422,6 +649,182 @@ function AssistantAddOnsSelector({ addOnsCard, onConfirm, onSkip }) {
         </ul>
         <p>Or ask me for recommendations.</p>
       </div>
+    </section>
+  );
+}
+
+function AssistantRoadTaxSelector({ roadTaxCard, onSelect, selectedOptionId = null }) {
+  const options = Array.isArray(roadTaxCard?.options) ? roadTaxCard.options : [];
+  const hasUnavailablePhysicalOption = options.some((option) => option.id === "12month-physical" && !option.available);
+  const visibleOptions = hasUnavailablePhysicalOption
+    ? [
+        ...options.filter((option) => option.id !== "12month-physical"),
+        ...options.filter((option) => option.id === "12month-physical"),
+      ]
+    : options;
+
+  return (
+    <section className="assistant-roadtax-card" aria-label="Road tax selection">
+      <p className="assistant-roadtax-question">
+        Would you like to renew <strong>road tax</strong> together ?
+      </p>
+
+      <div className="assistant-roadtax-options">
+        {visibleOptions.map((option) => {
+          const isActive = option.available && option.id === selectedOptionId;
+          const isNone = option.id === "none";
+          const disabled = !option.available;
+
+          return (
+            <button
+              type="button"
+              key={option.id}
+              className={`assistant-roadtax-option${isActive ? " is-active" : ""}${disabled ? " is-disabled" : ""}${isNone ? " is-none" : ""}`}
+              disabled={disabled}
+              aria-label={option.unavailableLabel ? `${option.label}. ${option.unavailableLabel}` : option.label}
+              onClick={() => !disabled && onSelect?.(option)}
+            >
+              {!disabled && (
+                <span className="assistant-roadtax-radio" aria-hidden="true">
+                  {isActive && <span>✓</span>}
+                </span>
+              )}
+
+              <span className="assistant-roadtax-copy">
+                {isNone ? (
+                  <span className="assistant-roadtax-title">
+                    <strong>No,</strong> just insurance
+                  </span>
+                ) : (
+                  <>
+                    <span className="assistant-roadtax-title">{option.label}</span>
+                    {option.description && (
+                      <span className="assistant-roadtax-description">{option.description}</span>
+                    )}
+                  </>
+                )}
+              </span>
+
+              {option.unavailableLabel ? (
+                <span className="assistant-roadtax-badge">{option.unavailableLabel}</span>
+              ) : Number.isFinite(Number(option.price)) && !isNone ? (
+                <strong className="assistant-roadtax-price">RM {formatWholeMoney(option.price)}</strong>
+              ) : null}
+            </button>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
+
+function AssistantPaymentCard({ paymentCard, sessionKey }) {
+  if (!paymentCard?.href) return null;
+
+  const hrefWithSession = !/[?&]session=/.test(paymentCard.href)
+    ? `${paymentCard.href}${paymentCard.href.includes("?") ? "&" : "?"}session=${encodeURIComponent(sessionKey)}`
+    : paymentCard.href;
+  const icons = paymentCard.icons || {};
+
+  return (
+    <section className="assistant-payment-card" aria-label="Payment checkout">
+      <div className="assistant-payment-intro">
+        <p className="assistant-payment-review">
+          Please review your quotation before payment.
+        </p>
+        <p>If anything needs to be changed, let me know.</p>
+      </div>
+
+      <div className="assistant-payment-methods">
+        <Image src={icons.card || "/icons/payment-card.svg"} alt="" width={28} height={28} aria-hidden="true" />
+        <span>Credit/Debit card, FPX, E-Wallet, Buy Now Pay Later, and Credit Card Instalments.</span>
+      </div>
+
+      <a
+        className="assistant-payment-button"
+        href={hrefWithSession}
+        target="_blank"
+        rel="noopener noreferrer"
+      >
+        <Image src={icons.lock || "/icons/payment-lock.svg"} alt="" width={34} height={34} aria-hidden="true" />
+        <span>Pay securely - RM {formatQuoteMoney(paymentCard.total)}</span>
+      </a>
+
+      <div className="assistant-payment-secure">
+        <Image src={icons.guard || "/icons/payment-shield.svg"} alt="" width={24} height={24} aria-hidden="true" />
+        <span>Payment opens in a secure checkout page.</span>
+      </div>
+
+      <p className="assistant-payment-after">
+        After successful payment, your policy documents and payment receipt will be sent to your WhatsApp and email.
+      </p>
+    </section>
+  );
+}
+
+function AssistantPaymentSuccessCard({ paymentSuccessCard }) {
+  if (!paymentSuccessCard?.paymentId) return null;
+  const documents = Array.isArray(paymentSuccessCard.documents) ? paymentSuccessCard.documents : [];
+
+  return (
+    <section className="assistant-payment-success-card" aria-label="Payment successful">
+      <div className="assistant-payment-success-panel">
+        <Image
+          src={paymentSuccessCard.icon || "/icons/payment-success-check.svg"}
+          alt=""
+          width={62}
+          height={62}
+          aria-hidden="true"
+          className="assistant-payment-success-icon"
+        />
+
+        <div className="assistant-payment-success-copy">
+          <h3>Payment Successful</h3>
+          <p>Your renewal is now done.</p>
+
+          <div className="assistant-payment-success-table">
+            <div className="assistant-payment-success-row">
+              <strong>Paid</strong>
+              <span className="assistant-payment-success-amount">RM {formatQuoteMoney(paymentSuccessCard.total)}</span>
+            </div>
+            <div className="assistant-payment-success-row">
+              <strong>Reference</strong>
+              <span>{paymentSuccessCard.paymentId}</span>
+            </div>
+            <div className="assistant-payment-success-row">
+              <strong>Status</strong>
+              <span>Completed</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="assistant-payment-documents">
+        <p>The <strong>documents</strong> were sent to your WhatsApp and email. You can also download copies here.</p>
+
+        <div className="assistant-payment-document-list">
+          {documents.map((document) => (
+            <a
+              key={document.href}
+              className="assistant-payment-document-link"
+              href={document.href}
+              target="_blank"
+              rel="noopener noreferrer"
+              download
+            >
+              <span className="assistant-payment-pdf-icon" aria-hidden="true">PDF</span>
+              <span>{document.label}</span>
+              <svg aria-hidden="true" viewBox="0 0 24 24" fill="none">
+                <path d="M12 4V19M5 12L12 19L19 12" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </a>
+          ))}
+        </div>
+      </div>
+
+      <p className="assistant-payment-success-after">
+        Your coverage starts immediately. Thank you and drive safe.
+      </p>
     </section>
   );
 }
@@ -1151,7 +1554,12 @@ export default function Home() {
   useEffect(() => {
     const formatMoney = (value) => {
       const n = Number(value);
-      return Number.isFinite(n) ? n.toLocaleString() : "0";
+      return Number.isFinite(n)
+        ? n.toLocaleString("en-MY", {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2,
+          })
+        : "0.00";
     };
 
     const showPaymentSuccess = (data) => {
@@ -1159,40 +1567,69 @@ export default function Home() {
       if (processedPaymentsRef.current.has(data.paymentId)) return;
       processedPaymentsRef.current.add(data.paymentId);
 
-      const successMessage = {
-        id: createId(),
-        role: "assistant",
-        content: `🎉 **Payment Successful!**
-
-Thank you for your payment of **RM ${formatMoney(data.total)}**!
-
-**Order Confirmation**
-<span style="display:block"><strong>Reference:</strong> ${data.paymentId}</span>
-<span style="display:block"><strong>Insurer:</strong> ${data.insurer}</span>
-<span style="display:block"><strong>Vehicle:</strong> ${data.plate}</span>
-<span style="display:block"><strong>Insurance:</strong> RM ${formatMoney(data.insurance)}</span>
-${Number(data.addons) > 0 ? `<span style="display:block"><strong>Add-ons:</strong> RM ${formatMoney(data.addons)}</span>` : ''}
-${Number(data.roadtax) > 0 ? `<span style="display:block"><strong>Road Tax:</strong> RM ${formatMoney(data.roadtax)}</span>` : ''}
-<span style="display:block"><strong>Total Paid:</strong> RM ${formatMoney(data.total)}</span>
-
-✅ Your policy documents have been sent to your **WhatsApp** and **email**.
-
-📄 **Download your documents:**
-- <a href="/documents/cover-note-${data.paymentId}.pdf" target="_blank" rel="noopener noreferrer" download><strong>Insurance Cover Note (PDF)</strong></a>
-- <a href="/documents/policy-${data.paymentId}.pdf" target="_blank" rel="noopener noreferrer" download><strong>Insurance Policy (PDF)</strong></a>
-- <a href="/documents/roadtax-${data.paymentId}.pdf" target="_blank" rel="noopener noreferrer" download><strong>Road Tax Receipt (PDF)</strong></a>
-
-Your coverage starts immediately. Drive safe!`
+      const paymentSuccessCard = {
+        paymentId: data.paymentId,
+        total: Number(data.total || 0),
+        icon: "/icons/payment-success-check.svg",
+        documents: [
+          {
+            label: "Insurance Cover Note",
+            href: `/documents/cover-note-${data.paymentId}.pdf`,
+          },
+          {
+            label: "Insurance Policy",
+            href: `/documents/policy-${data.paymentId}.pdf`,
+          },
+          ...(Number(data.roadtax) > 0
+            ? [{
+                label: "Road Tax Receipt",
+                href: `/documents/roadtax-${data.paymentId}.pdf`,
+              }]
+            : []),
+        ],
       };
 
       setMessages(prev => {
         const alreadyShown = prev.some(
-          (msg) => msg.role === "assistant" && msg.content.includes(`<strong>Reference:</strong> ${data.paymentId}`)
+          (msg) => msg.role === "assistant" && msg.paymentSuccessCard?.paymentId === data.paymentId
         );
-        return alreadyShown ? prev : [...prev, successMessage];
+        if (alreadyShown) return prev;
+
+        const paymentMessageIndex = [...prev]
+          .map((msg, index) => ({ msg, index }))
+          .reverse()
+          .find(({ msg }) => (
+            msg.role === "assistant" &&
+            (
+              msg.paymentCard ||
+              /step\s+(?:\*{0,2})?6(?:\*{0,2})?\s+of\s+(?:\*{0,2})?6(?:\*{0,2})?\s*[—-]\s*payment/i.test(msg.content || "") ||
+              /\/payment\/[^)\s]+/i.test(msg.content || "")
+            )
+          ))?.index;
+
+        if (paymentMessageIndex !== undefined) {
+          return prev.map((msg, index) => (
+            index === paymentMessageIndex
+              ? {
+                  ...msg,
+                  paymentSuccessCard,
+                }
+              : msg
+          ));
+        }
+
+        return [
+          ...prev,
+          {
+            id: createId(),
+            role: "assistant",
+            content: `Payment Successful\n\nPaid RM ${formatMoney(data.total)}\nReference ${data.paymentId}\nStatus Completed`,
+            paymentSuccessCard,
+          },
+        ];
       });
 
-      // Scroll to bottom after adding success message
+      // Scroll to the updated paid section after payment status returns.
       setTimeout(() => {
         if (threadRef.current) {
           threadRef.current.scrollTo({
@@ -1317,6 +1754,8 @@ Your coverage starts immediately. Drive safe!`
                     content: cleanedReply,
                     summaryCard: data.summaryCard || null,
                     addOnsCard: data.addOnsCard || null,
+                    roadTaxCard: data.roadTaxCard || null,
+                    paymentCard: data.paymentCard || null,
                   }
                 : msg
             ))
@@ -1441,19 +1880,24 @@ Your coverage starts immediately. Drive safe!`
       .map((option) => {
         if (option.hasCoverageInput) {
           return windscreenCoverage > 0
-            ? `windscreen coverage RM ${formatQuoteMoney(windscreenCoverage)}`
-            : "windscreen";
+            ? `Windscreen coverage RM ${formatQuoteMoney(windscreenCoverage)}`
+            : "Windscreen";
         }
         return option.name;
       });
 
     if (selectedLabels.length > 0) {
-      handleQuickStart(`add ${selectedLabels.join(",  \n")}`);
+      handleQuickStart(formatAddOnsUserReply(selectedLabels));
     }
   };
 
   const handleAddOnsSkip = () => {
     handleQuickStart("skip add-ons");
+  };
+
+  const handleRoadTaxSelect = (option) => {
+    if (!option?.available || !option.message) return;
+    handleQuickStart(option.message);
   };
 
   const markdownComponents = {
@@ -1474,7 +1918,7 @@ Your coverage starts immediately. Drive safe!`
       const paymentButtonStyle = isPaymentLink
         ? {
             display: "inline-block",
-            background: "#00B14F",
+            background: "#0062ff",
             color: "#ffffff",
             textDecoration: "none",
             padding: "10px 18px",
@@ -1567,6 +2011,21 @@ Your coverage starts immediately. Drive safe!`
       window.removeEventListener("keydown", handleEscape);
     };
   }, [isAddMenuOpen]);
+
+  const latestAssistantMessage = hasMessages
+    ? [...messages].reverse().find((message) => message?.role === "assistant")
+    : null;
+  const shouldTightenTerminalPaymentSpacing = Boolean(
+    latestAssistantMessage?.paymentCard ||
+    latestAssistantMessage?.paymentSuccessCard ||
+    /step\s+(?:\*{0,2})?6(?:\*{0,2})?\s+of\s+(?:\*{0,2})?6(?:\*{0,2})?\s*[—-]\s*payment/i.test(latestAssistantMessage?.content || "") ||
+    /\/payment\//i.test(latestAssistantMessage?.content || "")
+  );
+  const chatFeedClassName = [
+    "chat-feed",
+    isTurnAnchoring ? "chat-feed-anchor-turn" : null,
+    shouldTightenTerminalPaymentSpacing ? "chat-feed-terminal-payment" : null,
+  ].filter(Boolean).join(" ");
 
   return (
     <>
@@ -1663,8 +2122,8 @@ Your coverage starts immediately. Drive safe!`
               onWheel={handleWheel}
               onTouchMove={handleTouchMove}
             >
-              <div className={`chat-feed ${isTurnAnchoring ? "chat-feed-anchor-turn" : ""}`}>
-                {messages.map((msg) => {
+              <div className={chatFeedClassName}>
+                {messages.map((msg, messageIndex) => {
                   // Clean markers from displayed content
                   const cleanedContent = (msg.content || "")
                     .replace(/\[SHOW_QUOTES\]/g, "")
@@ -1696,11 +2155,24 @@ Your coverage starts immediately. Drive safe!`
                     msg.role === "assistant"
                       ? parseAssistantAddOnsPresentation(cleanedContent, msg.addOnsCard)
                       : null;
+                  const roadTaxPresentation =
+                    msg.role === "assistant"
+                      ? parseAssistantRoadTaxPresentation(
+                          cleanedContent,
+                          msg.roadTaxCard || buildRoadTaxCardFallback(conversationStateRef.current)
+                        )
+                      : null;
+                  const paymentPresentation =
+                    msg.role === "assistant"
+                      ? parseAssistantPaymentPresentation(cleanedContent, msg.paymentCard)
+                      : null;
 
                   return (
                     <div key={msg.id} id={`msg-${msg.id}`} className={`chat-row ${msg.role}`}>
                       <div className="chat-content">
-                        {quotePresentation ? (
+                        {msg.paymentSuccessCard && !summaryPresentation && !paymentPresentation ? (
+                          <AssistantPaymentSuccessCard paymentSuccessCard={msg.paymentSuccessCard} />
+                        ) : quotePresentation ? (
                           <>
                             {quotePresentation.before && (
                               <ReactMarkdown
@@ -1744,45 +2216,117 @@ Your coverage starts immediately. Drive safe!`
                                 summaryPresentation.after,
                                 msg.addOnsCard
                               );
-                              if (!nestedAddOnsPresentation) {
-                                return summaryPresentation.after ? (
-                                  <ReactMarkdown
-                                    remarkPlugins={[remarkGfm]}
-                                    rehypePlugins={[rehypeRaw, [rehypeSanitize, sanitizeSchema]]}
-                                    components={markdownComponents}
-                                  >
-                                    {summaryPresentation.after}
-                                  </ReactMarkdown>
-                                ) : null;
+                              const nestedRoadTaxPresentation = parseAssistantRoadTaxPresentation(
+                                summaryPresentation.after,
+                                msg.roadTaxCard || buildRoadTaxCardFallback(conversationStateRef.current)
+                              );
+                              const nestedPaymentPresentation = parseAssistantPaymentPresentation(
+                                summaryPresentation.after,
+                                msg.paymentCard
+                              );
+                              if (nestedAddOnsPresentation) {
+                                return (
+                                  <>
+                                    {nestedAddOnsPresentation.before && (
+                                      <ReactMarkdown
+                                        remarkPlugins={[remarkGfm]}
+                                        rehypePlugins={[rehypeRaw, [rehypeSanitize, sanitizeSchema]]}
+                                        components={markdownComponents}
+                                      >
+                                        {nestedAddOnsPresentation.before}
+                                      </ReactMarkdown>
+                                    )}
+                                    <AssistantAddOnsSelector
+                                      addOnsCard={nestedAddOnsPresentation.addOns}
+                                      onConfirm={isStreaming ? undefined : handleAddOnsConfirm}
+                                      onSkip={isStreaming ? undefined : handleAddOnsSkip}
+                                      selectedOptionIds={getSelectedAddOnIds(messages, messageIndex, nestedAddOnsPresentation.addOns)}
+                                    />
+                                    {nestedAddOnsPresentation.after && (
+                                      <ReactMarkdown
+                                        remarkPlugins={[remarkGfm]}
+                                        rehypePlugins={[rehypeRaw, [rehypeSanitize, sanitizeSchema]]}
+                                        components={markdownComponents}
+                                      >
+                                        {nestedAddOnsPresentation.after}
+                                      </ReactMarkdown>
+                                    )}
+                                  </>
+                                );
                               }
 
-                              return (
-                                <>
-                                  {nestedAddOnsPresentation.before && (
-                                    <ReactMarkdown
-                                      remarkPlugins={[remarkGfm]}
-                                      rehypePlugins={[rehypeRaw, [rehypeSanitize, sanitizeSchema]]}
-                                      components={markdownComponents}
-                                    >
-                                      {nestedAddOnsPresentation.before}
-                                    </ReactMarkdown>
-                                  )}
-                                  <AssistantAddOnsSelector
-                                    addOnsCard={nestedAddOnsPresentation.addOns}
-                                    onConfirm={isStreaming ? undefined : handleAddOnsConfirm}
-                                    onSkip={isStreaming ? undefined : handleAddOnsSkip}
-                                  />
-                                  {nestedAddOnsPresentation.after && (
-                                    <ReactMarkdown
-                                      remarkPlugins={[remarkGfm]}
-                                      rehypePlugins={[rehypeRaw, [rehypeSanitize, sanitizeSchema]]}
-                                      components={markdownComponents}
-                                    >
-                                      {nestedAddOnsPresentation.after}
-                                    </ReactMarkdown>
-                                  )}
-                                </>
-                              );
+                              if (nestedRoadTaxPresentation) {
+                                return (
+                                  <>
+                                    {nestedRoadTaxPresentation.before && (
+                                      <ReactMarkdown
+                                        remarkPlugins={[remarkGfm]}
+                                        rehypePlugins={[rehypeRaw, [rehypeSanitize, sanitizeSchema]]}
+                                        components={markdownComponents}
+                                      >
+                                        {nestedRoadTaxPresentation.before}
+                                      </ReactMarkdown>
+                                    )}
+                                    <AssistantRoadTaxSelector
+                                      roadTaxCard={nestedRoadTaxPresentation.roadTax}
+                                      onSelect={isStreaming ? undefined : handleRoadTaxSelect}
+                                      selectedOptionId={getSelectedRoadTaxOptionId(messages, messageIndex, nestedRoadTaxPresentation.roadTax)}
+                                    />
+                                    {nestedRoadTaxPresentation.after && (
+                                      <ReactMarkdown
+                                        remarkPlugins={[remarkGfm]}
+                                        rehypePlugins={[rehypeRaw, [rehypeSanitize, sanitizeSchema]]}
+                                        components={markdownComponents}
+                                      >
+                                        {nestedRoadTaxPresentation.after}
+                                      </ReactMarkdown>
+                                    )}
+                                  </>
+                                );
+                              }
+
+                              if (nestedPaymentPresentation) {
+                                return (
+                                  <>
+                                    {nestedPaymentPresentation.before && (
+                                      <ReactMarkdown
+                                        remarkPlugins={[remarkGfm]}
+                                        rehypePlugins={[rehypeRaw, [rehypeSanitize, sanitizeSchema]]}
+                                        components={markdownComponents}
+                                      >
+                                        {nestedPaymentPresentation.before}
+                                      </ReactMarkdown>
+                                    )}
+                                    {msg.paymentSuccessCard ? (
+                                      <AssistantPaymentSuccessCard paymentSuccessCard={msg.paymentSuccessCard} />
+                                    ) : (
+                                      <AssistantPaymentCard
+                                        paymentCard={nestedPaymentPresentation.payment}
+                                        sessionKey={sessionKey}
+                                      />
+                                    )}
+                                    {nestedPaymentPresentation.after && (
+                                      <ReactMarkdown
+                                        remarkPlugins={[remarkGfm]}
+                                        rehypePlugins={[rehypeRaw, [rehypeSanitize, sanitizeSchema]]}
+                                        components={markdownComponents}
+                                      >
+                                        {nestedPaymentPresentation.after}
+                                      </ReactMarkdown>
+                                    )}
+                                  </>
+                                );
+                              }
+
+                              return summaryPresentation.after ? (
+                                <ReactMarkdown
+                                  remarkPlugins={[remarkGfm]}
+                                  rehypePlugins={[rehypeRaw, [rehypeSanitize, sanitizeSchema]]}
+                                  components={markdownComponents}
+                                >
+                                  {summaryPresentation.after}
+                                </ReactMarkdown>
+                              ) : null;
                             })()}
                           </>
                         ) : addOnsPresentation ? (
@@ -1800,6 +2344,7 @@ Your coverage starts immediately. Drive safe!`
                               addOnsCard={addOnsPresentation.addOns}
                               onConfirm={isStreaming ? undefined : handleAddOnsConfirm}
                               onSkip={isStreaming ? undefined : handleAddOnsSkip}
+                              selectedOptionIds={getSelectedAddOnIds(messages, messageIndex, addOnsPresentation.addOns)}
                             />
                             {addOnsPresentation.after && (
                               <ReactMarkdown
@@ -1808,6 +2353,61 @@ Your coverage starts immediately. Drive safe!`
                                 components={markdownComponents}
                               >
                                 {addOnsPresentation.after}
+                              </ReactMarkdown>
+                            )}
+                          </>
+                        ) : roadTaxPresentation ? (
+                          <>
+                            {roadTaxPresentation.before && (
+                              <ReactMarkdown
+                                remarkPlugins={[remarkGfm]}
+                                rehypePlugins={[rehypeRaw, [rehypeSanitize, sanitizeSchema]]}
+                                components={markdownComponents}
+                              >
+                                {roadTaxPresentation.before}
+                              </ReactMarkdown>
+                            )}
+                            <AssistantRoadTaxSelector
+                              roadTaxCard={roadTaxPresentation.roadTax}
+                              onSelect={isStreaming ? undefined : handleRoadTaxSelect}
+                              selectedOptionId={getSelectedRoadTaxOptionId(messages, messageIndex, roadTaxPresentation.roadTax)}
+                            />
+                            {roadTaxPresentation.after && (
+                              <ReactMarkdown
+                                remarkPlugins={[remarkGfm]}
+                                rehypePlugins={[rehypeRaw, [rehypeSanitize, sanitizeSchema]]}
+                                components={markdownComponents}
+                              >
+                                {roadTaxPresentation.after}
+                              </ReactMarkdown>
+                            )}
+                          </>
+                        ) : paymentPresentation ? (
+                          <>
+                            {paymentPresentation.before && (
+                              <ReactMarkdown
+                                remarkPlugins={[remarkGfm]}
+                                rehypePlugins={[rehypeRaw, [rehypeSanitize, sanitizeSchema]]}
+                                components={markdownComponents}
+                              >
+                                {paymentPresentation.before}
+                              </ReactMarkdown>
+                            )}
+                            {msg.paymentSuccessCard ? (
+                              <AssistantPaymentSuccessCard paymentSuccessCard={msg.paymentSuccessCard} />
+                            ) : (
+                              <AssistantPaymentCard
+                                paymentCard={paymentPresentation.payment}
+                                sessionKey={sessionKey}
+                              />
+                            )}
+                            {paymentPresentation.after && (
+                              <ReactMarkdown
+                                remarkPlugins={[remarkGfm]}
+                                rehypePlugins={[rehypeRaw, [rehypeSanitize, sanitizeSchema]]}
+                                components={markdownComponents}
+                              >
+                                {paymentPresentation.after}
                               </ReactMarkdown>
                             )}
                           </>
@@ -1833,7 +2433,7 @@ Your coverage starts immediately. Drive safe!`
                   </div>
                 )}
 
-                {anchorSpacerPx > 0 && (
+                {anchorSpacerPx > 0 && !shouldTightenTerminalPaymentSpacing && (
                   <div
                     className="chat-anchor-spacer"
                     style={{ height: `${anchorSpacerPx}px` }}

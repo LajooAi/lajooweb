@@ -13,6 +13,15 @@
  */
 
 import { extractPersonalInfo, extractVehicleInfo } from '../utils/nlpExtractor.js';
+import {
+  AVAILABLE_INSURERS,
+  AVAILABLE_INSURER_CHOICE_TEXT,
+  getInsurerByKey,
+  getInsurerKeysFromText,
+  findInsurerKeyByText,
+  isKnownInsurerKey,
+  UNAVAILABLE_INSURER_REGEX,
+} from './insurerCatalog.js';
 
 // ============================================================================
 // FLOW STEPS - The insurance renewal journey
@@ -47,7 +56,7 @@ export class ConversationState {
     this.nricNumber = null;
     this.ownerIdType = null; // nric | foreign_id | army_ic | police_ic | company_reg | other_id
     this.selectedQuote = null;
-    this.lastRecommendedInsurer = null; // takaful | etiqa | allianz
+    this.lastRecommendedInsurer = null; // key from insurerCatalog
     this.quoteGeneratedAt = null;    // Timestamp when quotes were fetched
     this.quoteValidUntil = null;     // Timestamp when quotes expire
     this.selectedAddOns = [];
@@ -160,7 +169,7 @@ export class ConversationState {
     }
     state.vehicleInfo = json.vehicleInfo || null;
     state.selectedQuote = json.selectedQuote || null;
-    state.lastRecommendedInsurer = ['takaful', 'etiqa', 'allianz'].includes(json.lastRecommendedInsurer)
+    state.lastRecommendedInsurer = isKnownInsurerKey(json.lastRecommendedInsurer)
       ? json.lastRecommendedInsurer
       : null;
     state.quoteGeneratedAt = json.quoteGeneratedAt || null;
@@ -254,7 +263,7 @@ export class ConversationState {
         if (meta.selectedQuote) {
           state.selectedQuote = meta.selectedQuote;
         }
-        if (['takaful', 'etiqa', 'allianz'].includes(meta.lastRecommendedInsurer)) {
+        if (isKnownInsurerKey(meta.lastRecommendedInsurer)) {
           state.lastRecommendedInsurer = meta.lastRecommendedInsurer;
         }
         if (meta.quoteGeneratedAt) {
@@ -297,12 +306,17 @@ export class ConversationState {
 
         // Only match explicit selection verbs (NOT "want" / "interested" / "like")
         if (/\b(go with|choose|select|pick|i'll take|i will take|confirm)\b/i.test(content)) {
-          if (/takaful|ikhlas/i.test(content)) {
-            state.selectedQuote = { insurer: 'Takaful Ikhlas', priceAfter: 796 };
-          } else if (/etiqa/i.test(content)) {
-            state.selectedQuote = { insurer: 'Etiqa Insurance', priceAfter: 872 };
-          } else if (/allianz/i.test(content)) {
-            state.selectedQuote = { insurer: 'Allianz Insurance', priceAfter: 920 };
+          const insurerKey = findInsurerKeyByText(content);
+          const insurer = getInsurerByKey(insurerKey);
+          if (insurer) {
+            state.selectedQuote = {
+              insurer: insurer.displayName,
+              priceAfter: insurer.priceAfter,
+              priceBefore: insurer.priceBefore,
+              ncdPercent: insurer.ncdPercent,
+              sumInsured: insurer.sumInsured,
+              coverType: 'Comprehensive',
+            };
           }
         }
       }
@@ -537,12 +551,8 @@ export class ConversationState {
         parts.push(`Quote valid for: ${mins} minute${mins !== 1 ? 's' : ''}`);
       }
     } else if (this.lastRecommendedInsurer && this.step === FLOW_STEPS.QUOTES) {
-      const labelMap = {
-        takaful: 'Takaful Ikhlas',
-        etiqa: 'Etiqa Insurance',
-        allianz: 'Allianz Insurance',
-      };
-      parts.push(`Last recommendation: ${labelMap[this.lastRecommendedInsurer] || this.lastRecommendedInsurer}`);
+      const insurer = getInsurerByKey(this.lastRecommendedInsurer);
+      parts.push(`Last recommendation: ${insurer?.displayName || this.lastRecommendedInsurer}`);
     }
     if (this.selectedAddOns.length > 0) {
       const status = this.addOnsConfirmed ? 'Confirmed' : 'Pre-selected (waiting for confirmation)';
@@ -690,17 +700,14 @@ function isStartGreetingMessage(text) {
 
 function detectSingleInsurerKey(text) {
   const msg = String(text || '').toLowerCase();
-  const hits = new Set();
-
-  if (/\btakaful\b|\bikhlas\b/i.test(msg)) hits.add('takaful');
-  if (/\betiqa\b/i.test(msg)) hits.add('etiqa');
-  if (/\ballianz\b/i.test(msg)) hits.add('allianz');
+  const hits = new Set(getInsurerKeysFromText(msg));
 
   const tokens = tokenizeIntentText(msg);
   for (const token of tokens) {
-    if (fuzzyMatch(token, ['takaful', 'ikhlas'], 2)) hits.add('takaful');
-    if (fuzzyMatch(token, ['etiqa'], 2)) hits.add('etiqa');
-    if (fuzzyMatch(token, ['allianz'], 2)) hits.add('allianz');
+    for (const insurer of AVAILABLE_INSURERS) {
+      const fuzzyAliases = insurer.aliases.filter((alias) => !alias.includes(' '));
+      if (fuzzyMatch(token, fuzzyAliases, 2)) hits.add(insurer.key);
+    }
   }
 
   if (hits.size !== 1) return null;
@@ -923,21 +930,15 @@ export function detectUserIntent(message, currentState) {
     // Check if user is asking to change/switch to a different insurer
     // Require explicit change/selection verbs — NOT "want" alone (that's interest, not selection)
     const wantsToChange = /change|switch|go with|choose|pick|select|can i change|can i switch/i.test(msg);
-    const mentionsInsurer = /takaful|ikhlas|etiqa|allianz/i.test(msg);
+    const mentionsInsurer = getInsurerKeysFromText(msg).length > 0;
 
     if (wantsToChange && mentionsInsurer) {
       // Determine which insurer they want to change to
-      let newInsurer = null;
-      if (/takaful|ikhlas/i.test(msg)) newInsurer = 'takaful';
-      else if (/etiqa/i.test(msg)) newInsurer = 'etiqa';
-      else if (/allianz/i.test(msg)) newInsurer = 'allianz';
+      const newInsurer = findInsurerKeyByText(msg);
 
       // Determine current insurer (normalize to simple key)
       const currentInsurerRaw = currentState.selectedQuote?.insurer?.toLowerCase() || '';
-      let currentInsurerKey = null;
-      if (/takaful|ikhlas/i.test(currentInsurerRaw)) currentInsurerKey = 'takaful';
-      else if (/etiqa/i.test(currentInsurerRaw)) currentInsurerKey = 'etiqa';
-      else if (/allianz/i.test(currentInsurerRaw)) currentInsurerKey = 'allianz';
+      const currentInsurerKey = findInsurerKeyByText(currentInsurerRaw);
 
       // Check if it's a different insurer than currently selected
       const isDifferentInsurer = newInsurer && currentInsurerKey && newInsurer !== currentInsurerKey;
@@ -1009,9 +1010,9 @@ export function detectUserIntent(message, currentState) {
       return { intent: USER_INTENTS.ASK_QUESTION, confidence: 0.95 };
     }
 
-    // User may mention a preferred insurer that's outside current panel (e.g., Tokio Marine).
+    // User may mention a preferred insurer that's outside current panel.
     // Treat this as a consultative question so AI can acknowledge and map to best available option.
-    const mentionsUnavailableInsurer = /\b(tokio\s*marine|toki(?:o)?\s*marine|tokio|toki|okio\s*marine|okio|zurich|axa|generali|msig|sompo|rhb|liberty)\b/i.test(msg);
+    const mentionsUnavailableInsurer = UNAVAILABLE_INSURER_REGEX.test(msg);
     if (mentionsUnavailableInsurer) {
       return { intent: USER_INTENTS.ASK_QUESTION, confidence: 0.9 };
     }
@@ -1038,7 +1039,8 @@ export function detectUserIntent(message, currentState) {
 
     // Treat as question if message contains question markers or inquiry words + insurer
     const isRecommendationQuestion = /\brecommend(?:ation)?\b|your (pick|choice|suggestion)|suggest/i.test(msg) || hasApproxToken(msg, ['recommend'], 2);
-    const isQuestion = hasGeneralQuestionSignal(msg) || /tell me|what about|how about|about\s+(takaful|ikhlas|etiqa|allianz)|interested|want to know|more about|details|which is better|what(?:'s| is) better|better one|best one/i.test(msg);
+    const mentionsKnownInsurer = getInsurerKeysFromText(msg).length > 0;
+    const isQuestion = hasGeneralQuestionSignal(msg) || (/\b(tell me|what about|how about|about|interested|want to know|more about|details)\b/i.test(msg) && mentionsKnownInsurer) || /which is better|what(?:'s| is) better|better one|best one/i.test(msg);
     const isDiscussion = /\b(which|what|why|compare|difference|better|best)\b/i.test(msg) || isRecommendationQuestion;
 
     if (isQuestion || isDiscussion) {
@@ -1063,7 +1065,7 @@ export function detectUserIntent(message, currentState) {
     const hasSelectionVerb = /\b(go with|choose|select|pick|i'll take|i will take|confirm)\b/i.test(msg) && !/can'?t|cannot|couldn'?t/i.test(msg);
 
     // Soft selection: "ok takaful", "okay etiqa", "maybe allianz", "ok maybe takaful"
-    const hasSoftSelection = /\b(ok|okay|maybe)\b/i.test(msg) && /\b(takaful|ikhlas|etiqa|allianz)\b/i.test(msg);
+    const hasSoftSelection = /\b(ok|okay|maybe)\b/i.test(msg) && getInsurerKeysFromText(msg).length > 0;
 
     // Bare insurer selection: "takaful", "etiqa please", "allianz lah"
     // Keep this strict to avoid hijacking question/inquiry messages.
@@ -1078,16 +1080,12 @@ export function detectUserIntent(message, currentState) {
 
     let bareInsurer = null;
     if (!hasInquiryCue && !hasNegationCue && candidateWords.length >= 1 && candidateWords.length <= 2) {
-      const insurerMappings = {
-        takaful: ['takaful', 'ikhlas'],
-        etiqa: ['etiqa'],
-        allianz: ['allianz'],
-      };
       const matchedInsurers = new Set();
       for (const word of candidateWords) {
-        for (const [insurer, variants] of Object.entries(insurerMappings)) {
+        for (const insurer of AVAILABLE_INSURERS) {
+          const variants = insurer.aliases.filter((alias) => !alias.includes(' '));
           if (fuzzyMatch(word, variants, 2)) {
-            matchedInsurers.add(insurer);
+            matchedInsurers.add(insurer.key);
           }
         }
       }
@@ -1109,24 +1107,19 @@ export function detectUserIntent(message, currentState) {
       const words = msg.toLowerCase().split(/\s+/);
 
       // Insurer name variations to match against
-      const insurerMappings = {
-        'takaful': ['takaful', 'ikhlas'],
-        'etiqa': ['etiqa'],
-        'allianz': ['allianz'],
-      };
-
       for (const word of words) {
         if (word.length < 3) continue; // Skip short words
 
         // Check each insurer
-        for (const [insurer, variants] of Object.entries(insurerMappings)) {
+        for (const insurer of AVAILABLE_INSURERS) {
           // Try fuzzy match against each variant
+          const variants = insurer.aliases.filter((alias) => !alias.includes(' '));
           const match = fuzzyMatch(word, variants, 2);
           if (match) {
             return {
               intent: USER_INTENTS.SELECT_QUOTE,
               confidence: 0.9,
-              data: { insurer }
+              data: { insurer: insurer.key }
             };
           }
         }
@@ -1312,9 +1305,13 @@ export function detectUserIntent(message, currentState) {
       return { intent: USER_INTENTS.SELECT_ROADTAX, confidence: 0.87, data: { option: '12month-digital' } };
     }
 
-    // Delivery/printed requests are clarified in conversational response.
+    // Physical/printed delivery can be selected from the road tax card.
+    // Eligibility is enforced by the route-level road tax guard.
     if (/deliver|delivery|printed|physical|sticker/i.test(msg)) {
-      return { intent: USER_INTENTS.ASK_QUESTION, confidence: 0.8 };
+      if (hasGeneralQuestionSignal(msg)) {
+        return { intent: USER_INTENTS.ASK_QUESTION, confidence: 0.8 };
+      }
+      return { intent: USER_INTENTS.SELECT_ROADTAX, confidence: 0.9, data: { option: '12month-physical' } };
     }
 
     if (/12.*month.*digital|digital.*12|year.*digital/i.test(msg)) {
