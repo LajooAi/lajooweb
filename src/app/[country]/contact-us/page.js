@@ -11,13 +11,9 @@ export default function ContactUsPage() {
     <main className={styles.wrap}>
       <section className={styles.hero}>
         <h1 className={styles.title}>
-          <span className={styles.titleAccent}>Hello,</span>
-          <span className={styles.titleMain}>we&rsquo;re here to help.</span>
+          <span className={styles.titleAccent}>Hello</span>
+          <span className={styles.titleMain}>We are here to help.</span>
         </h1>
-        <p className={styles.introCopy}>
-          <span>LAJOO AI answers instantly, 24/7.</span>
-          <span>Need extra help ? We&apos;re here daily.</span>
-        </p>
         <div className={styles.humansBlock}>
           <span className={styles.humansIconTile} aria-hidden="true">
             <img className={styles.humansIcon} src="/icons/contact-human-support.svg" alt="" />
@@ -32,7 +28,6 @@ export default function ContactUsPage() {
 
       <section className={styles.contactStack} aria-label="Contact details">
         <div className={styles.whatsappGroup}>
-          <p className={styles.whatsappNote}>We usually reply fastest on WhatsApp.</p>
           <a
             className={`${styles.contactCard} ${styles.contactCardWhatsapp}`}
             href={whatsappHref}

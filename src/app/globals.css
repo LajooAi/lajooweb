@@ -2404,7 +2404,7 @@ body.home-route .mobile-header {
 .assistant-payment-success-panel {
   display: grid;
   grid-template-columns: 46px minmax(0, 1fr);
-  column-gap: 8px;
+  column-gap: 16px;
   row-gap: 0;
   align-items: start;
   margin: 0 0 16px;
@@ -2450,8 +2450,8 @@ body.home-route .mobile-header {
 
 .assistant-payment-success-table {
   margin-top: 14px;
-  margin-left: -54px;
-  width: calc(100% + 54px);
+  margin-left: -62px;
+  width: calc(100% + 62px);
   padding: 4px 12px;
   border: 1px solid rgb(216, 216, 216);
   border-radius: 10px;

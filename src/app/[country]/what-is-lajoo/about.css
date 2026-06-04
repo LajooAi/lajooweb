@@ -98,7 +98,7 @@
     #0062ff 0%,
     #0062ff 18%,
     #6ba8ff 48%,
-    #ffffff 70%,
+    #ffffff 65%,
     #ffffff 100%
   );
   border-bottom-left-radius: 0;
@@ -460,9 +460,9 @@
 }
 
 .about-hero-promises p {
-  margin: 0 0 31.7px;
+  margin: 0 0 47.6px;
   color: #000000;
-  font-size: 34px;
+  font-size: 37px;
   font-weight: 600;
   line-height: 1.13;
   letter-spacing: 0;
@@ -514,7 +514,7 @@
   }
 
   .about-hero-promises p {
-    font-size: clamp(32px, 8.9vw, 34px);
+    font-size: clamp(35px, 8.9vw, 37px);
   }
 }
 
@@ -3325,7 +3325,7 @@
   flex-direction: column;
   gap: 0;
   overflow: hidden;
-  border: 0.8px solid #818181;
+  border: 1px solid #000000;
   border-radius: 10px;
   background: #f8f8f8;
 }
@@ -3347,7 +3347,7 @@
 }
 
 .service-card--car {
-  border-bottom: 0.8px solid #818181;
+  border-bottom: 1px solid #000000;
 }
 
 .service-card__content {
@@ -3374,7 +3374,7 @@
 }
 
 .service-card__product {
-  color: #000000;
+  color: #0062ff;
   font-size: 32px;
   font-weight: 700;
   line-height: 1.03;
@@ -3432,7 +3432,7 @@
   display: block;
   width: 80px;
   height: 4px;
-  background: #484848;
+  background: #383838;
 }
 
 .trusted-insurers-section {
@@ -3700,9 +3700,10 @@
   align-items: center;
   gap: 10px;
   padding: 0 16px 0 15px;
-  border: 0;
+  border: solid #000000;
+  border-width: 0.8px;
   border-radius: 9px;
-  background: #f1f1f1;
+  background: #ffffff;
   color: #000000;
   text-align: left;
 }

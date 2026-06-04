@@ -876,13 +876,13 @@ export default function PaymentPage() {
 
         .pay-button {
           width: 100%;
-          min-height: 89px;
-          padding: 18px 24px;
+          min-height: 65px;
+          padding: 12px 18px;
           border: none;
           border-radius: 14px;
-          font-size: 26px;
+          font-size: 19px;
           font-weight: 700;
-          line-height: 32px;
+          line-height: 24px;
           cursor: pointer;
           transition: all 0.2s;
           background: #b1b1b1;
@@ -890,7 +890,7 @@ export default function PaymentPage() {
           display: flex;
           align-items: center;
           justify-content: center;
-          gap: 16px;
+          gap: 13px;
           letter-spacing: 0;
         }
 
@@ -916,8 +916,8 @@ export default function PaymentPage() {
         }
 
         .pay-button :global(.pay-button-lock) {
-          width: 48px;
-          height: 48px;
+          width: 36px;
+          height: 36px;
           flex: 0 0 auto;
         }
 
@@ -938,26 +938,26 @@ export default function PaymentPage() {
           display: flex;
           align-items: center;
           justify-content: center;
-          gap: 18px;
+          gap: 10px;
           flex-wrap: nowrap;
-          margin: 19px 0 0;
+          margin: 17px 0 0;
         }
 
         .security-note span {
           display: inline-flex;
           align-items: center;
-          gap: 7px;
+          gap: 5px;
           color: #818181;
-          font-size: 19px;
+          font-size: 13px;
           font-weight: 400;
-          line-height: 23px;
+          line-height: 17px;
           letter-spacing: 0;
           white-space: nowrap;
         }
 
         .security-note img {
-          width: 24px;
-          height: 24px;
+          width: 18px;
+          height: 18px;
           flex: 0 0 auto;
         }
 
