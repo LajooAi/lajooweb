@@ -1,5 +1,17 @@
 import { FLOW_STEPS, USER_INTENTS } from '../../lib/conversationState.js';
 import { getInsurerKeysFromText } from '../../lib/insurerCatalog.js';
+import {
+  calculateSummaryAmounts,
+  getQuotesFromState,
+} from '../insurance/quoteEngine.js';
+import {
+  ADD_ON_CATALOG,
+  calculateWindscreenPremium,
+} from '../insurance/addonEngine.js';
+import {
+  canUseDeliveredRoadTax,
+  getRoadTaxDisplayName,
+} from '../insurance/roadTaxEngine.js';
 
 export const CONVERSATION_MODES = {
   FLOW_ANSWER: 'flow_answer',
@@ -54,6 +66,18 @@ function looksLikeQuoteComparison(text) {
     getInsurerKeysFromText(text).length > 0;
 }
 
+function shouldTreatAsQuoteComparison(text, state) {
+  if (state?.step === FLOW_STEPS.QUOTES) {
+    return looksLikeQuoteComparison(text);
+  }
+
+  if (getInsurerKeysFromText(text).length > 0) {
+    return true;
+  }
+
+  return /\b(compare|comparison|vs\.?|versus|which insurer|which company|insurer|quote|premium|sum insured|cheaper|cheapest|claims?|claim support)\b/i.test(text);
+}
+
 function looksLikeInsuranceQuestion(text) {
   return /\b(ncd|no claim discount|windscreen|flood|special perils|betterment|excess|market value|agreed value|sum insured|road\s*tax|roadtax|policy|coverage|cover|claims?|premium|insurer|deductible|loading|endorsement|e-hailing|ehailing)\b/i.test(text);
 }
@@ -103,13 +127,13 @@ function resolveMode({ message, intent, state }) {
   }
 
   if (intent?.intent === USER_INTENTS.ASK_QUESTION) {
-    if (state?.step === FLOW_STEPS.QUOTES || looksLikeQuoteComparison(text)) {
+    if (shouldTreatAsQuoteComparison(text, state)) {
       return CONVERSATION_MODES.QUOTE_COMPARISON;
     }
     return CONVERSATION_MODES.INSURANCE_QUESTION;
   }
 
-  if (looksLikeQuoteComparison(text) && hasQuestionShape(text)) {
+  if (shouldTreatAsQuoteComparison(text, state) && hasQuestionShape(text)) {
     return CONVERSATION_MODES.QUOTE_COMPARISON;
   }
 
@@ -126,6 +150,157 @@ function resolveMode({ message, intent, state }) {
   }
 
   return CONVERSATION_MODES.FLOW_ANSWER;
+}
+
+function formatMoney(value) {
+  const numeric = Number(value || 0);
+  if (!Number.isFinite(numeric)) return 'RM 0';
+  return `RM ${numeric.toLocaleString('en-MY', {
+    minimumFractionDigits: Number.isInteger(numeric) ? 0 : 2,
+    maximumFractionDigits: 2,
+  })}`;
+}
+
+function summarizeQuote(quote) {
+  if (!quote) return null;
+  return {
+    insurer: quote?.insurer?.displayName || quote?.insurer || 'Unknown insurer',
+    price: Number(quote?.pricing?.finalPremium ?? quote?.priceAfter ?? 0),
+    priceLabel: formatMoney(quote?.pricing?.finalPremium ?? quote?.priceAfter ?? 0),
+    sumInsured: Number(quote?.sumInsured ?? 0),
+    sumInsuredLabel: formatMoney(quote?.sumInsured ?? 0),
+    quoteId: quote?.id || quote?.quoteId || null,
+  };
+}
+
+function summarizeSelectedQuote(state) {
+  const quote = state?.selectedQuote;
+  if (!quote) return null;
+  return {
+    insurer: quote.insurer || 'Selected insurer',
+    price: Number(quote.priceAfter || 0),
+    priceLabel: formatMoney(quote.priceAfter || 0),
+    priceBeforeLabel: formatMoney(quote.priceBefore || 0),
+    sumInsured: Number(quote.sumInsured || 0),
+    sumInsuredLabel: formatMoney(quote.sumInsured || 0),
+    coverType: quote.coverType || 'Comprehensive',
+    quoteId: quote.quoteId || null,
+  };
+}
+
+function summarizeAddOns(state) {
+  const selected = Array.isArray(state?.selectedAddOns) ? state.selectedAddOns : [];
+  return {
+    confirmed: !!state?.addOnsConfirmed,
+    status: selected.length > 0
+      ? (state?.addOnsConfirmed ? 'confirmed' : 'preselected_waiting_for_confirm')
+      : (state?.addOnsConfirmed ? 'confirmed_none' : 'not_selected_yet'),
+    selected: selected.map((addOn) => ({
+      id: addOn?.id || null,
+      name: addOn?.name || 'Add-on',
+      price: Number(addOn?.price || 0),
+      priceLabel: formatMoney(addOn?.price || 0),
+      coverageAmount: Number(addOn?.coverageAmount || 0) || null,
+    })),
+    available: ADD_ON_CATALOG.map((addOn) => ({
+      id: addOn.id,
+      number: addOn.number,
+      name: addOn.name,
+      price: addOn.hasCoverageInput
+        ? null
+        : Number(addOn.price || 0),
+      priceLabel: addOn.hasCoverageInput
+        ? 'depends on coverage amount'
+        : formatMoney(addOn.price || 0),
+      defaultCoverage: addOn.defaultCoverage || null,
+      defaultPriceLabel: addOn.hasCoverageInput
+        ? formatMoney(calculateWindscreenPremium(addOn.defaultCoverage || 0))
+        : null,
+      recommended: !!addOn.recommended,
+    })),
+    windscreenFormula: 'Windscreen premium = selected coverage amount x 15%. Example: RM 2,000 coverage costs RM 300.',
+  };
+}
+
+function summarizeRoadTax(state) {
+  const selected = state?.selectedRoadTax || null;
+  const physicalAvailable = canUseDeliveredRoadTax(state);
+  return {
+    status: selected ? 'selected' : 'not_selected_yet',
+    selected: selected ? {
+      name: getRoadTaxDisplayName(selected),
+      price: Number(selected.price || 0),
+      priceLabel: formatMoney(selected.price || 0),
+    } : null,
+    digitalOption: {
+      name: '12 months digital road tax',
+      price: 90,
+      priceLabel: 'RM 90',
+    },
+    printedOrDeliveredAvailable: physicalAvailable,
+    printedRule: 'Printed road tax is only for Foreign ID or Company vehicles from 1 Feb 2026.',
+  };
+}
+
+function buildNextActionHints(state, engineContext) {
+  const step = state?.step;
+  if (step === FLOW_STEPS.QUOTES && !state?.selectedQuote) {
+    return [
+      'Compare current insurers using premium, sum insured, and approved facts only.',
+      'If user asks LAJOO to choose, recommend one insurer and ask if they want to go with it.',
+      'If user is unsure, ask what matters most: lowest premium, claims comfort, or higher coverage.',
+    ];
+  }
+  if (step === FLOW_STEPS.ADDONS) {
+    return [
+      'Answer add-on questions first, then return to add-on choice.',
+      'If windscreen is selected without coverage amount, ask only for the coverage amount.',
+      'Do not move to road tax until add-ons are confirmed or skipped.',
+    ];
+  }
+  if (step === FLOW_STEPS.ROADTAX) {
+    return [
+      'Offer digital road tax or no road tax.',
+      engineContext?.roadTax?.printedOrDeliveredAvailable
+        ? 'Printed/physical delivery can be discussed because owner type is eligible.'
+        : 'Do not offer printed/physical delivery for individual NRIC-owned vehicles.',
+    ];
+  }
+  if (step === FLOW_STEPS.PERSONAL_DETAILS) {
+    return ['Collect email, phone, and address before OTP. Ask only for missing fields.'];
+  }
+  if (step === FLOW_STEPS.PAYMENT) {
+    return ['Do not confirm payment or policy issuance unless payment state confirms it.'];
+  }
+  return ['Ask only for the next missing required item.'];
+}
+
+function buildEngineContext(state = {}) {
+  const quotes = getQuotesFromState(state);
+  const quoteSummaries = quotes.map(summarizeQuote).filter(Boolean);
+  const cheapestQuote = quoteSummaries.slice().sort((a, b) => a.price - b.price)[0] || null;
+  const highestSumInsuredQuote = quoteSummaries.slice().sort((a, b) => b.sumInsured - a.sumInsured)[0] || null;
+  const totals = state?.selectedQuote
+    ? calculateSummaryAmounts(state)
+    : { insurance: 0, addOns: 0, roadTax: 0, tax: 0, total: 0 };
+  const engineContext = {
+    quoteOptions: quoteSummaries,
+    cheapestQuote,
+    highestSumInsuredQuote,
+    selectedQuote: summarizeSelectedQuote(state),
+    addOns: summarizeAddOns(state),
+    roadTax: summarizeRoadTax(state),
+    totals: {
+      insurance: totals.insurance,
+      addOns: totals.addOns,
+      roadTax: totals.roadTax,
+      tax: totals.tax,
+      total: totals.total,
+      totalLabel: formatMoney(totals.total),
+    },
+  };
+  engineContext.nextActionHints = buildNextActionHints(state, engineContext);
+  return engineContext;
 }
 
 function resolveAction(mode, intent, state) {
@@ -149,6 +324,7 @@ function resolveAction(mode, intent, state) {
 export function buildConversationDecision({ message, intent, state, messages = [], stepBeforeMutation = null } = {}) {
   const mode = resolveMode({ message, intent, state });
   const action = resolveAction(mode, intent, state);
+  const engineContext = buildEngineContext(state);
   const shouldAdvanceFlow = action === CONVERSATION_ACTIONS.ADVANCE_FLOW;
   const shouldAnswerFirst =
     action === CONVERSATION_ACTIONS.ANSWER_ONLY ||
@@ -178,6 +354,7 @@ export function buildConversationDecision({ message, intent, state, messages = [
     shouldShowStepLabel,
     shouldAvoidStepLanguage: !shouldShowStepLabel,
     turnCount: Array.isArray(messages) ? messages.length : 0,
+    engineContext,
   };
 }
 

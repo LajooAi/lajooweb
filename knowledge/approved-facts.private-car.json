@@ -1,0 +1,1110 @@
+{
+  "schemaVersion": 1,
+  "scope": {
+    "country": "MY",
+    "productType": "private-car",
+    "coverageFamily": "comprehensive",
+    "verifiedAt": "2026-06-06",
+    "approvalStatus": "approved_seed_facts",
+    "importantNote": "These are approved seed facts for LAJOO advisor/recommendation use. They are not a replacement for final policy wording, live insurer quotes, or legal/compliance review."
+  },
+  "approvalRules": [
+    "Use these facts to explain insurer tradeoffs in simple Malaysian terms.",
+    "Do not say an add-on is included unless the fact clearly says included; otherwise say available as add-on or optional.",
+    "Do not quote premium, sum insured, or promotion values from this file unless the live quote engine provides them.",
+    "For exact limits, conditions, eligibility, and exclusions, tell the user the policy wording/product disclosure sheet should be checked before payment.",
+    "When a user asks for a recommendation, combine these facts with the live quote price, sum insured, user preferences, vehicle age, location flood risk, and driving usage.",
+    "Treat source URLs and local PDF paths as evidence references only. Do not browse insurer websites live during chat; use approved facts and live quote data instead."
+  ],
+  "sources": {
+    "allianz-special-perils-windscreen": {
+      "type": "official_web",
+      "insurerSlug": "allianz",
+      "title": "Allianz Special Perils and Windscreen Add-On Coverages",
+      "url": "https://www.allianz.com.my/personal/help-and-services/a-z-reads/automotive/special-perils-windscreen.html"
+    },
+    "allianz-road-rangers": {
+      "type": "official_web",
+      "insurerSlug": "allianz",
+      "title": "Allianz Road Rangers",
+      "url": "https://www.allianz.com.my/personal/whats-new/allianz-road-rangers.html"
+    },
+    "allianz-ev-shield": {
+      "type": "official_web",
+      "insurerSlug": "allianz",
+      "title": "Allianz EV Shield",
+      "url": "https://www.allianz.com.my/personal/home-motor-and-travel/car-and-motorcycle/ev-shield.html"
+    },
+    "allianz-ehailing": {
+      "type": "official_web",
+      "insurerSlug": "allianz",
+      "title": "Allianz e-Hailing Add On",
+      "url": "https://www.allianz.com.my/personal/home-motor-and-travel/car-and-motorcycle/e-hailing-add-on-insurance.html"
+    },
+    "allianz-road-assist-pdf": {
+      "type": "local_pdf",
+      "insurerSlug": "allianz",
+      "path": "knowledge/raw-pdfs/allianz/private-car/private-car-road-assistant-tnc-en.pdf"
+    },
+    "allianz-policy-wording-pdf": {
+      "type": "local_pdf",
+      "insurerSlug": "allianz",
+      "path": "knowledge/raw-pdfs/allianz/private-car/private-car-policy-wording-en.pdf"
+    },
+    "etiqa-car": {
+      "type": "official_web",
+      "insurerSlug": "etiqa",
+      "title": "Etiqa Comprehensive Car Insurance",
+      "url": "https://www.etiqa.com.my/car/comprehensive-car-insurance"
+    },
+    "etiqa-auto-assist-pdf": {
+      "type": "official_pdf",
+      "insurerSlug": "etiqa",
+      "title": "Etiqa Auto Assist Program Benefits and Services",
+      "url": "https://www.etiqa.com.my/pdfs/en/insurance/Etiqa_Auto_Assist_Program_Benefits_n_Services.pdf"
+    },
+    "etiqa-tesla": {
+      "type": "official_web",
+      "insurerSlug": "etiqa",
+      "title": "Etiqa Tesla Ensure",
+      "url": "https://www.etiqa.com.my/car-ev/tesla-ensure"
+    },
+    "etiqa-driving-less": {
+      "type": "official_web",
+      "insurerSlug": "etiqa",
+      "title": "Etiqa Cashback by Driving Less",
+      "url": "https://etiqa.com/newsroom/drive-less-save-more-dlsm/"
+    },
+    "etiqa-addons-pdf": {
+      "type": "local_pdf",
+      "insurerSlug": "etiqa",
+      "path": "knowledge/raw-pdfs/etiqa/private-car/private-car-add-on-cover.pdf"
+    },
+    "etiqa-policy-wording-pdf": {
+      "type": "local_pdf",
+      "insurerSlug": "etiqa",
+      "path": "knowledge/raw-pdfs/etiqa/private-car/private-car-policy-wording-en.pdf"
+    },
+    "generali-addons": {
+      "type": "official_web",
+      "insurerSlug": "generali",
+      "title": "Generali Private Car Insurance and Add Ons",
+      "url": "https://www.generali.com.my/motor-home/private-car-insurance-add-ons"
+    },
+    "generali-roadside": {
+      "type": "official_web",
+      "insurerSlug": "generali",
+      "title": "Generali Roadside Assistance",
+      "url": "https://www.generali.com.my/roadside-assistance"
+    },
+    "generali-direct": {
+      "type": "official_web",
+      "insurerSlug": "generali",
+      "title": "Generali Car Insurance Direct",
+      "url": "https://online.generali.com.my/products/motor-insurance"
+    },
+    "generali-roadside-pdf": {
+      "type": "local_pdf",
+      "insurerSlug": "generali",
+      "path": "knowledge/raw-pdfs/generali/private-car/private-car-road-assistant-en.pdf"
+    },
+    "generali-ehailing-pdf": {
+      "type": "local_pdf",
+      "insurerSlug": "generali",
+      "path": "knowledge/raw-pdfs/generali/private-car/private-car-e-hailing-en.pdf"
+    },
+    "generali-rti-pdf": {
+      "type": "local_pdf",
+      "insurerSlug": "generali",
+      "path": "knowledge/raw-pdfs/generali/private-car/private-car-return-to-invoice-en.pdf"
+    },
+    "lonpac-additional-benefits-pdf": {
+      "type": "official_pdf",
+      "insurerSlug": "lonpac",
+      "title": "Lonpac Motor ezSecure Additional Benefits",
+      "url": "https://www.lonpac.com/downloads/additionalbenefits_motorezsecure.pdf"
+    },
+    "lonpac-faq-pdf": {
+      "type": "official_pdf",
+      "insurerSlug": "lonpac",
+      "title": "Lonpac Motor ezSecure FAQ",
+      "url": "https://www.lonpac.com/downloads/faq_motorezsecure.pdf"
+    },
+    "lonpac-road-assist-pdf": {
+      "type": "official_pdf",
+      "insurerSlug": "lonpac",
+      "title": "Lonpac Emergency Road Assist Terms and Conditions",
+      "url": "https://www.lonpac.com/downloads/emergency_road_assist_t%26c.pdf"
+    },
+    "msig-car": {
+      "type": "official_web",
+      "insurerSlug": "msig",
+      "title": "MSIG Comprehensive Private Car",
+      "url": "https://www.msig.com.my/products/personal/motor/comprehensive-private-car/"
+    },
+    "msig-faq": {
+      "type": "official_web",
+      "insurerSlug": "msig",
+      "title": "MSIG Online Motor FAQs",
+      "url": "https://takeiteasy.msig.com.my/msigonline/faqs/index.html"
+    },
+    "msig-ev-plus": {
+      "type": "official_web",
+      "insurerSlug": "msig",
+      "title": "MSIG EV Plus",
+      "url": "https://www.msig.com.my/products/personal/motor/ev-plus/"
+    },
+    "msig-ev-plus-pdf": {
+      "type": "local_pdf",
+      "insurerSlug": "msig",
+      "path": "knowledge/raw-pdfs/msig/private-car/private-car-ev-plus-leaflet-en-bm.pdf"
+    },
+    "msig-addons-pdf": {
+      "type": "local_pdf",
+      "insurerSlug": "msig",
+      "path": "knowledge/raw-pdfs/msig/private-car/private-car-add-on-optional-en.pdf"
+    },
+    "takaful-ikhlas-product": {
+      "type": "official_web",
+      "insurerSlug": "takaful-ikhlas",
+      "title": "IKHLAS Private Car Comprehensive Plus Takaful",
+      "url": "https://www.takaful-ikhlas.com.my/category/motor/product/ikhlas-private-car-comprehensive-plus-takaful"
+    },
+    "takaful-ikhlas-certificate-pdf": {
+      "type": "local_pdf",
+      "insurerSlug": "takaful-ikhlas",
+      "path": "knowledge/raw-pdfs/takaful-ikhlas/private-car/private-car-certificate-en.pdf"
+    },
+    "takaful-ikhlas-plus-certificate-pdf": {
+      "type": "local_pdf",
+      "insurerSlug": "takaful-ikhlas",
+      "path": "knowledge/raw-pdfs/takaful-ikhlas/private-car/private-car-comprehensive-plus-certificate-en.pdf"
+    },
+    "takaful-ikhlas-comprehensive-plus-pds-pdf": {
+      "type": "local_pdf",
+      "insurerSlug": "takaful-ikhlas",
+      "path": "knowledge/raw-pdfs/takaful-ikhlas/private-car/private-car-comprehensive-plus-pds-en.pdf"
+    },
+    "takaful-ikhlas-perodua-pds-pdf": {
+      "type": "local_pdf",
+      "insurerSlug": "takaful-ikhlas",
+      "path": "knowledge/raw-pdfs/takaful-ikhlas/private-car/private-car-perodua-pds-en.pdf"
+    },
+    "takaful-ikhlas-proton-pds-pdf": {
+      "type": "local_pdf",
+      "insurerSlug": "takaful-ikhlas",
+      "path": "knowledge/raw-pdfs/takaful-ikhlas/private-car/private-car-proton-pds-en.pdf"
+    },
+    "takaful-ikhlas-honda-pds-pdf": {
+      "type": "local_pdf",
+      "insurerSlug": "takaful-ikhlas",
+      "path": "knowledge/raw-pdfs/takaful-ikhlas/private-car/private-car-honda-pds-en.pdf"
+    },
+    "takaful-ikhlas-subaru-pds-pdf": {
+      "type": "local_pdf",
+      "insurerSlug": "takaful-ikhlas",
+      "path": "knowledge/raw-pdfs/takaful-ikhlas/private-car/private-car-subaru-pds-en.pdf"
+    },
+    "takaful-ikhlas-jetour-pds-pdf": {
+      "type": "local_pdf",
+      "insurerSlug": "takaful-ikhlas",
+      "path": "knowledge/raw-pdfs/takaful-ikhlas/private-car/private-car-jetour-pds-en.pdf"
+    },
+    "tokio-online-car": {
+      "type": "official_web",
+      "insurerSlug": "tokio-marine",
+      "title": "Tokio Marine Car Insurance",
+      "url": "https://www.tokiomarine.com/my/en/online/products/motor-insurance.html"
+    },
+    "tokio-autopro-brochure-pdf": {
+      "type": "official_pdf",
+      "insurerSlug": "tokio-marine",
+      "title": "Tokio Marine AutoPro Brochure",
+      "url": "https://www.tokiomarine.com/content/dam/tokiomarine/my/non-life/products/personal/motor/tokio-marine-autopro/documents/TM%20AutoPro-Brochure-EN.pdf"
+    },
+    "tokio-autopro-wording-pdf": {
+      "type": "local_pdf",
+      "insurerSlug": "tokio-marine",
+      "path": "knowledge/raw-pdfs/tokio-marine/private-car/private-car-comprehensive-autopro-policy-wording-en.pdf"
+    },
+    "tokio-plus-pds-pdf": {
+      "type": "local_pdf",
+      "insurerSlug": "tokio-marine",
+      "path": "knowledge/raw-pdfs/tokio-marine/private-car/private-car-plus-pds-en.pdf"
+    }
+  },
+  "facts": [
+    {
+      "id": "allianz-private-car-core-cover",
+      "insurerSlug": "allianz",
+      "insurerName": "Allianz Insurance",
+      "category": "core_cover",
+      "tags": ["comprehensive", "own_damage", "third_party", "fire", "theft"],
+      "statement": "Allianz Private Car Comprehensive covers loss or damage to the insured vehicle due to accident, accidental fire or theft, plus third-party death, bodily injury, and property damage liability.",
+      "advisorUse": "Use Allianz as a credible comprehensive option when the user wants a mainstream insurer with strong support infrastructure.",
+      "approvedForAi": true,
+      "confidence": "high",
+      "sourceRefs": ["allianz-policy-wording-pdf", "allianz-special-perils-windscreen"]
+    },
+    {
+      "id": "allianz-windscreen-addon",
+      "insurerSlug": "allianz",
+      "insurerName": "Allianz Insurance",
+      "category": "addon",
+      "tags": ["windscreen", "ncd_safe", "window", "sunroof"],
+      "statement": "Allianz windscreen coverage is an optional add-on for windscreen, windows and sunroof; Allianz describes windscreen add-on claims as not affecting NCD.",
+      "advisorUse": "Recommend checking windscreen cover when the user has an expensive windscreen, ADAS sensors, tinting, or wants to protect NCD from glass claims.",
+      "approvedForAi": true,
+      "confidence": "high",
+      "sourceRefs": ["allianz-special-perils-windscreen", "allianz-policy-wording-pdf"]
+    },
+    {
+      "id": "allianz-special-perils-addon",
+      "insurerSlug": "allianz",
+      "insurerName": "Allianz Insurance",
+      "category": "addon",
+      "tags": ["flood", "special_perils", "natural_disaster"],
+      "statement": "Allianz Special Perils is an optional add-on for natural-disaster damage such as flood, landslide, earthquake, volcanic eruption, storm and similar perils.",
+      "advisorUse": "For Klang Valley, Shah Alam, flood-prone, basement-parking, or monsoon users, explain that basic comprehensive may not cover flood unless Special Perils is added.",
+      "approvedForAi": true,
+      "confidence": "high",
+      "sourceRefs": ["allianz-special-perils-windscreen", "allianz-policy-wording-pdf"]
+    },
+    {
+      "id": "allianz-road-rangers",
+      "insurerSlug": "allianz",
+      "insurerName": "Allianz Insurance",
+      "category": "roadside_assistance",
+      "tags": ["roadside", "towing", "breakdown", "claims_support"],
+      "statement": "Allianz Road Rangers is complimentary for Allianz Motor Comprehensive private-car policyholders and provides 24/7 accident and breakdown support.",
+      "advisorUse": "Use this when the user values roadside support, claim help, workshop guidance, or a stronger support experience beyond cheapest price.",
+      "approvedForAi": true,
+      "confidence": "high",
+      "sourceRefs": ["allianz-road-rangers"]
+    },
+    {
+      "id": "allianz-breakdown-towing-150km",
+      "insurerSlug": "allianz",
+      "insurerName": "Allianz Insurance",
+      "category": "roadside_assistance",
+      "tags": ["roadside", "towing", "breakdown", "limit"],
+      "statement": "Allianz private-car roadside assistance terms mention complimentary 24-hour breakdown towing up to 150km round trip, minor roadside repair, Malaysia territorial limits, extra distance charges, and toll exclusions.",
+      "advisorUse": "Use this as a practical towing-limit answer, but tell the user to confirm the current policy/endorsement wording before payment.",
+      "approvedForAi": true,
+      "confidence": "high",
+      "sourceRefs": ["allianz-road-assist-pdf"]
+    },
+    {
+      "id": "allianz-betterment-waiver-available",
+      "insurerSlug": "allianz",
+      "insurerName": "Allianz Insurance",
+      "category": "betterment",
+      "tags": ["betterment", "older_car", "addon"],
+      "statement": "Allianz standard private-car wording applies betterment for older cars when new original parts improve the vehicle condition, and Allianz has a Waiver of Betterment Contribution endorsement/add-on.",
+      "advisorUse": "For cars aged 5 years or more, explain betterment risk and suggest considering Allianz only if the waiver/add-on is available in the quote.",
+      "approvedForAi": true,
+      "confidence": "high",
+      "sourceRefs": ["allianz-policy-wording-pdf"]
+    },
+    {
+      "id": "allianz-ehailing-addon",
+      "insurerSlug": "allianz",
+      "insurerName": "Allianz Insurance",
+      "category": "usage",
+      "tags": ["e_hailing", "grab", "private_hire", "addon"],
+      "statement": "Allianz offers an e-Hailing add-on for Allianz Comprehensive Motor policyholders, covering areas such as own vehicle damage, third-party liability, legal liability to fare-paying passengers, passenger negligent acts, and PA cover for the authorised e-hailing driver.",
+      "advisorUse": "If the user drives Grab/e-hailing, do not proceed as normal private use; explain that e-hailing needs the correct endorsement/add-on.",
+      "approvedForAi": true,
+      "confidence": "high",
+      "sourceRefs": ["allianz-ehailing"]
+    },
+    {
+      "id": "allianz-ev-shield",
+      "insurerSlug": "allianz",
+      "insurerName": "Allianz Insurance",
+      "category": "ev",
+      "tags": ["ev", "tesla", "charger", "charging_cable", "out_of_charge_towing"],
+      "statement": "Allianz EV Shield supports EV owners with coverage around home wall charger, portable charging cable, public-charging related compassionate cover, personal liability linked to home wall charger use, and 24-hour out-of-charge towing to the nearest charging station or home.",
+      "advisorUse": "For Tesla/EV users, Allianz is a strong consideration if EV charger/cable and out-of-charge assistance matter. Confirm EV Shield eligibility for the exact EV model and quote.",
+      "approvedForAi": true,
+      "confidence": "high",
+      "sourceRefs": ["allianz-ev-shield", "allianz-policy-wording-pdf"]
+    },
+    {
+      "id": "etiqa-core-cover",
+      "insurerSlug": "etiqa",
+      "insurerName": "Etiqa Insurance",
+      "category": "core_cover",
+      "tags": ["comprehensive", "own_damage", "third_party", "fire", "theft"],
+      "statement": "Etiqa Comprehensive Private Car covers own vehicle accident/fire/theft and third-party liability, with additional add-ons available for broader protection.",
+      "advisorUse": "Use Etiqa as a user-friendly online option, especially when the user values agreed value, app-driven assistance, cashback by driving less, or Tesla-specific coverage.",
+      "approvedForAi": true,
+      "confidence": "high",
+      "sourceRefs": ["etiqa-car", "etiqa-policy-wording-pdf"]
+    },
+    {
+      "id": "etiqa-auto-assist-200km",
+      "insurerSlug": "etiqa",
+      "insurerName": "Etiqa Insurance",
+      "category": "roadside_assistance",
+      "tags": ["roadside", "towing", "breakdown", "200km", "app"],
+      "statement": "Etiqa Auto Assist provides 24/7 accident and breakdown towing/roadside assistance for eligible private-car comprehensive customers, with up to 200km one-way towing mileage per incident and extra distance charges beyond that.",
+      "advisorUse": "For users asking about towing, explain Etiqa is strong if they value 200km free towing and app/hotline assistance, but remind them current service availability should be checked.",
+      "approvedForAi": true,
+      "confidence": "high",
+      "sourceRefs": ["etiqa-auto-assist-pdf"]
+    },
+    {
+      "id": "etiqa-auto-assist-current-delay",
+      "insurerSlug": "etiqa",
+      "insurerName": "Etiqa Insurance",
+      "category": "operational_notice",
+      "tags": ["roadside", "service_delay", "current_notice"],
+      "statement": "Etiqa published a 2026 notice that Etiqa Auto Assist Care was experiencing delays in towing assistance deployment until further notice.",
+      "advisorUse": "If recommending Etiqa for towing, mention that LAJOO should verify current towing service status before relying on it as a deciding factor.",
+      "approvedForAi": true,
+      "confidence": "medium",
+      "sourceRefs": ["etiqa-auto-assist-pdf"]
+    },
+    {
+      "id": "etiqa-driving-less-cashback",
+      "insurerSlug": "etiqa",
+      "insurerName": "Etiqa Insurance",
+      "category": "savings",
+      "tags": ["cashback", "low_mileage", "usage_based", "budget"],
+      "statement": "Etiqa Cashback by Driving Less rewards reduced mileage with up to 30% cashback for eligible Etiqa motor insurance/takaful customers.",
+      "advisorUse": "Recommend Etiqa as a good fit for low-mileage users who work from home, use public transport often, or want potential cashback beyond the upfront premium.",
+      "approvedForAi": true,
+      "confidence": "high",
+      "sourceRefs": ["etiqa-driving-less"]
+    },
+    {
+      "id": "etiqa-windscreen-addon",
+      "insurerSlug": "etiqa",
+      "insurerName": "Etiqa Insurance",
+      "category": "addon",
+      "tags": ["windscreen", "glass", "repair", "replacement"],
+      "statement": "Etiqa offers windscreen coverage as an add-on that can help pay repair or replacement costs for windscreen damage, including labour and installation according to Etiqa guidance.",
+      "advisorUse": "Suggest windscreen cover when the user has an expensive windscreen, tinting, ADAS sensors, or wants predictable glass-repair cost.",
+      "approvedForAi": true,
+      "confidence": "high",
+      "sourceRefs": ["etiqa-addons-pdf", "etiqa-car"]
+    },
+    {
+      "id": "etiqa-flood-addon",
+      "insurerSlug": "etiqa",
+      "insurerName": "Etiqa Insurance",
+      "category": "addon",
+      "tags": ["flood", "special_perils", "natural_disaster"],
+      "statement": "Etiqa add-on cover includes protection for loss or damage due to flood, thunderstorm, landslide and similar weather/natural-peril events, subject to terms.",
+      "advisorUse": "Recommend flood/special perils for flood-prone areas or users who park outdoors/basements, but confirm the exact add-on name and quote availability.",
+      "approvedForAi": true,
+      "confidence": "high",
+      "sourceRefs": ["etiqa-addons-pdf", "etiqa-policy-wording-pdf"]
+    },
+    {
+      "id": "etiqa-brand-new-spare-parts",
+      "insurerSlug": "etiqa",
+      "insurerName": "Etiqa Insurance",
+      "category": "betterment",
+      "tags": ["betterment", "brand_new_parts", "older_car", "addon"],
+      "statement": "Etiqa add-on material describes a brand-new-spare-parts benefit that can provide brand new parts for accident-damaged spare parts at no extra charge for eligible cars older than 5 years.",
+      "advisorUse": "For older cars, treat this as an Etiqa betterment-related benefit, but ask LAJOO/admin to confirm exact eligibility and quote availability before calling it zero betterment.",
+      "approvedForAi": true,
+      "confidence": "medium",
+      "sourceRefs": ["etiqa-addons-pdf"]
+    },
+    {
+      "id": "etiqa-tesla-ensure",
+      "insurerSlug": "etiqa",
+      "insurerName": "Etiqa Insurance",
+      "category": "ev",
+      "tags": ["tesla", "ev", "charger", "portable_charger", "towing", "genuine_parts"],
+      "statement": "Etiqa Tesla Ensure is available for new Tesla models purchased from Tesla Malaysia and includes EV-focused benefits such as EV home wall charger coverage, portable charging cable coverage, free 24/7 emergency towing up to 200km, NIL excess, genuine spare parts replacement, flood relief allowance, special relief allowance, PA cover, and optional unlimited towing top-up.",
+      "advisorUse": "For a new Tesla from Tesla Malaysia, Etiqa Tesla Ensure should be treated as one of the strongest suitability matches if available in the live quote.",
+      "approvedForAi": true,
+      "confidence": "high",
+      "sourceRefs": ["etiqa-tesla"]
+    },
+    {
+      "id": "generali-core-cover",
+      "insurerSlug": "generali",
+      "insurerName": "Generali Insurance",
+      "category": "core_cover",
+      "tags": ["comprehensive", "own_damage", "third_party", "fire", "theft"],
+      "statement": "Generali Private Car Comprehensive provides comprehensive protection for private cars, with many optional add-ons for protection needs and budget.",
+      "advisorUse": "Use Generali when the user wants a flexible menu of add-ons, road assistance, e-hailing option, or usage/mileage based features.",
+      "approvedForAi": true,
+      "confidence": "high",
+      "sourceRefs": ["generali-addons", "generali-direct"]
+    },
+    {
+      "id": "generali-roadside-rm300",
+      "insurerSlug": "generali",
+      "insurerName": "Generali Insurance",
+      "category": "roadside_assistance",
+      "tags": ["roadside", "towing", "breakdown", "rm300"],
+      "statement": "Generali Roadside Assistance is a complimentary roadside breakdown and accident assistance programme for eligible Private Car Comprehensive policyholders, with 24-hour nationwide support and towing services up to RM300 stated in the roadside material.",
+      "advisorUse": "Use Generali as a practical roadside-support option, but distinguish normal RM300 towing support from optional MDP+ unlimited towing.",
+      "approvedForAi": true,
+      "confidence": "high",
+      "sourceRefs": ["generali-roadside", "generali-roadside-pdf"]
+    },
+    {
+      "id": "generali-mdp-plus-unlimited-towing",
+      "insurerSlug": "generali",
+      "insurerName": "Generali Insurance",
+      "category": "roadside_assistance",
+      "tags": ["unlimited_towing", "mdp_plus", "personal_accident"],
+      "statement": "Generali Multi Drive Protector Plus includes 24-hour unlimited towing distance service and PA benefits for driver/passengers according to Generali add-on material.",
+      "advisorUse": "For long-distance drivers, outstation drivers, or users who fear breakdowns far from home, recommend checking MDP+ availability.",
+      "approvedForAi": true,
+      "confidence": "high",
+      "sourceRefs": ["generali-addons", "generali-direct"]
+    },
+    {
+      "id": "generali-windscreen-addon",
+      "insurerSlug": "generali",
+      "insurerName": "Generali Insurance",
+      "category": "addon",
+      "tags": ["windscreen", "ncd_safe", "window", "sunroof"],
+      "statement": "Generali windscreen/window/sunroof add-on covers repair or replacement of accidentally damaged windscreen, window or sunroof without affecting NCD.",
+      "advisorUse": "Suggest this for cars with costly glass, tinting, sensors, or users who want NCD-safe glass protection.",
+      "approvedForAi": true,
+      "confidence": "high",
+      "sourceRefs": ["generali-addons"]
+    },
+    {
+      "id": "generali-special-perils",
+      "insurerSlug": "generali",
+      "insurerName": "Generali Insurance",
+      "category": "addon",
+      "tags": ["flood", "special_perils", "natural_disaster"],
+      "statement": "Generali Special Perils protects the car from flood, typhoon, landslide and more, subject to terms.",
+      "advisorUse": "Recommend this for flood-prone areas, monsoon exposure, outdoor parking, or high-value cars.",
+      "approvedForAi": true,
+      "confidence": "high",
+      "sourceRefs": ["generali-addons"]
+    },
+    {
+      "id": "generali-waiver-betterment",
+      "insurerSlug": "generali",
+      "insurerName": "Generali Insurance",
+      "category": "betterment",
+      "tags": ["betterment", "older_car", "addon"],
+      "statement": "Generali offers Waiver of Betterment, covering the additional cost for replacement of damaged/broken parts with brand new original parts, subject to terms.",
+      "advisorUse": "For cars older than 5 years, check this add-on if the user wants lower surprise repair cost after accident.",
+      "approvedForAi": true,
+      "confidence": "high",
+      "sourceRefs": ["generali-addons"]
+    },
+    {
+      "id": "generali-ehailing",
+      "insurerSlug": "generali",
+      "insurerName": "Generali Insurance",
+      "category": "usage",
+      "tags": ["e_hailing", "grab", "private_hire", "addon"],
+      "statement": "Generali offers an e-hailing add-on for private car comprehensive users; coverage includes loss/damage to own car, third-party liability, legal liability to passengers, passenger negligent acts and driver PA, subject to terms.",
+      "advisorUse": "If the user drives Grab/e-hailing, explain normal private-use cover is not enough and the e-hailing add-on should be checked.",
+      "approvedForAi": true,
+      "confidence": "high",
+      "sourceRefs": ["generali-addons", "generali-ehailing-pdf"]
+    },
+    {
+      "id": "generali-rti-gap",
+      "insurerSlug": "generali",
+      "insurerName": "Generali Insurance",
+      "category": "addon",
+      "tags": ["return_to_invoice", "new_car", "total_loss", "theft"],
+      "statement": "Generali RTI Gap add-on covers the gap between insured declared value and original vehicle purchase cost if the car is stolen or damaged beyond repair; it applies only to vehicles aged 1 to 4 years according to the add-on flyer.",
+      "advisorUse": "For new or nearly-new cars, explain RTI Gap as protection against total-loss/theft payout gap, not small repairs.",
+      "approvedForAi": true,
+      "confidence": "high",
+      "sourceRefs": ["generali-rti-pdf", "generali-addons"]
+    },
+    {
+      "id": "generali-low-mileage-payd",
+      "insurerSlug": "generali",
+      "insurerName": "Generali Insurance",
+      "category": "savings",
+      "tags": ["pay_as_you_drive", "low_mileage", "budget"],
+      "statement": "Generali lists Pay As You Drive as an option using automatic mileage recording for pay-per-mile style insurance and auto top-up.",
+      "advisorUse": "For low-mileage users, compare Generali PAYD against Etiqa Cashback and MSIG EZ-Mile.",
+      "approvedForAi": true,
+      "confidence": "high",
+      "sourceRefs": ["generali-addons"]
+    },
+    {
+      "id": "lonpac-core-cover",
+      "insurerSlug": "lonpac",
+      "insurerName": "Lonpac Insurance",
+      "category": "core_cover",
+      "tags": ["comprehensive", "own_damage", "third_party", "fire", "theft"],
+      "statement": "Lonpac Private Car Secure / Motor ezSecure Comprehensive covers own damage/fire/theft and third-party liability, with optional add-ons for broader protection.",
+      "advisorUse": "Use Lonpac as a practical value option with useful additional benefit documentation, especially if live quote price is competitive.",
+      "approvedForAi": true,
+      "confidence": "high",
+      "sourceRefs": ["lonpac-faq-pdf"]
+    },
+    {
+      "id": "lonpac-windscreen-ncd-reinstatement",
+      "insurerSlug": "lonpac",
+      "insurerName": "Lonpac Insurance",
+      "category": "addon",
+      "tags": ["windscreen", "ncd_safe", "reinstatement"],
+      "statement": "Lonpac Motor ezSecure windscreen/window/sunroof add-on states that NCD is not affected, and if windscreen is repaired instead of replaced, the windscreen sum insured is automatically reinstated without additional premium.",
+      "advisorUse": "This is a strong glass-cover detail. Use Lonpac positively when the user cares about windscreen repair flexibility.",
+      "approvedForAi": true,
+      "confidence": "high",
+      "sourceRefs": ["lonpac-additional-benefits-pdf"]
+    },
+    {
+      "id": "lonpac-special-perils-full-limited",
+      "insurerSlug": "lonpac",
+      "insurerName": "Lonpac Insurance",
+      "category": "addon",
+      "tags": ["flood", "special_perils", "full_cover", "limited_cover"],
+      "statement": "Lonpac Motor ezSecure offers Special Perils/Flood Full Cover and Limited Cover. Full Cover includes natural perils such as flood, typhoon, hurricane, storm, earthquake, landslide and similar events; Limited Cover is subject to a maximum of 25% of policy sum insured.",
+      "advisorUse": "When explaining Lonpac flood choices, make clear that full and limited cover are different and the user should not assume limited cover equals full flood protection.",
+      "approvedForAi": true,
+      "confidence": "high",
+      "sourceRefs": ["lonpac-additional-benefits-pdf"]
+    },
+    {
+      "id": "lonpac-special-perils-towing-rm600",
+      "insurerSlug": "lonpac",
+      "insurerName": "Lonpac Insurance",
+      "category": "roadside_assistance",
+      "tags": ["flood", "special_perils", "towing", "rm600"],
+      "statement": "Lonpac Motor ezSecure Full Cover Special Perils material says if the car cannot be driven due to covered natural-peril damage, Lonpac reimburses towing cost up to RM600, excluding toll charges and repair cost, to the nearest approved repairer or safe storage.",
+      "advisorUse": "Use this as a strong practical flood-related support point, but avoid saying it covers all towing situations.",
+      "approvedForAi": true,
+      "confidence": "high",
+      "sourceRefs": ["lonpac-additional-benefits-pdf"]
+    },
+    {
+      "id": "lonpac-betterment-buyback",
+      "insurerSlug": "lonpac",
+      "insurerName": "Lonpac Insurance",
+      "category": "betterment",
+      "tags": ["betterment", "older_car", "buyback"],
+      "statement": "Lonpac Motor ezSecure additional benefits describe Betterment Buyback for cars aged 5 years and above, so the customer does not need to contribute to the betterment proportion of spare-part costs when new original parts are used, subject to terms.",
+      "advisorUse": "For 5+ year cars, treat Lonpac as a stronger option if Betterment Buyback is included/available in the live quote.",
+      "approvedForAi": true,
+      "confidence": "high",
+      "sourceRefs": ["lonpac-additional-benefits-pdf"]
+    },
+    {
+      "id": "lonpac-road-assist",
+      "insurerSlug": "lonpac",
+      "insurerName": "Lonpac Insurance",
+      "category": "roadside_assistance",
+      "tags": ["roadside", "towing", "emergency"],
+      "statement": "Lonpac Motor ezSecure materials include 24/7 roadside assistance and a Lonpac Road Assist emergency assistance number.",
+      "advisorUse": "Use as a normal road-assist support fact, but do not describe it as unlimited unless the exact product/terms state that.",
+      "approvedForAi": true,
+      "confidence": "high",
+      "sourceRefs": ["lonpac-faq-pdf", "lonpac-road-assist-pdf"]
+    },
+    {
+      "id": "lonpac-all-drivers-excess-waiver",
+      "insurerSlug": "lonpac",
+      "insurerName": "Lonpac Insurance",
+      "category": "driver_cover",
+      "tags": ["all_drivers", "excess", "unnamed_driver"],
+      "statement": "Lonpac PDS material describes waiver of excess for all drivers except drivers with Provisional/Learner licence or drivers below 21 years old.",
+      "advisorUse": "For family cars shared by multiple licensed adult drivers, mention this benefit if present in the live quote.",
+      "approvedForAi": true,
+      "confidence": "medium",
+      "sourceRefs": ["lonpac-faq-pdf"]
+    },
+    {
+      "id": "msig-core-cover",
+      "insurerSlug": "msig",
+      "insurerName": "MSIG Insurance",
+      "category": "core_cover",
+      "tags": ["comprehensive", "own_damage", "third_party", "fire", "theft"],
+      "statement": "MSIG Comprehensive Private Car covers third-party liability and loss or damage to the insured car due to accidental fire, theft or accident, with optional add-ons available.",
+      "advisorUse": "Use MSIG as a broad-coverage and add-on-rich option, especially when user wants EV support, unlimited towing, special perils, betterment waiver, or low-mileage insurance.",
+      "approvedForAi": true,
+      "confidence": "high",
+      "sourceRefs": ["msig-car", "msig-faq"]
+    },
+    {
+      "id": "msig-addons-menu",
+      "insurerSlug": "msig",
+      "insurerName": "MSIG Insurance",
+      "category": "addon",
+      "tags": ["addon_menu", "windscreen", "special_perils", "ncd_relief", "betterment", "cart"],
+      "statement": "MSIG official FAQ lists optional motor add-ons including 24-Hour Unlimited Towing, Accident Repair Allowance, Current Year NCD Relief, EZ-Mile, Windscreen, Legal Liability to Passengers, Special Perils, Limited Special Perils, SRCC, Smart Key Shield, Driver PA, Waiver of Betterment Cost, CART, and Waiver of Compulsory Excess.",
+      "advisorUse": "MSIG is strong when the user wants a highly configurable policy instead of just cheapest basic cover.",
+      "approvedForAi": true,
+      "confidence": "high",
+      "sourceRefs": ["msig-faq"]
+    },
+    {
+      "id": "msig-unlimited-towing",
+      "insurerSlug": "msig",
+      "insurerName": "MSIG Insurance",
+      "category": "roadside_assistance",
+      "tags": ["unlimited_towing", "roadside", "long_distance"],
+      "statement": "MSIG 24-hour unlimited towing service extends the existing prescribed towing limit under MSIG Motor Assist to unlimited distance for vehicle breakdown or accident, with territorial limits described by MSIG.",
+      "advisorUse": "For frequent highway/outstation drivers, MSIG can be recommended if unlimited towing is selected or bundled in the quote.",
+      "approvedForAi": true,
+      "confidence": "high",
+      "sourceRefs": ["msig-car", "msig-faq", "msig-addons-pdf"]
+    },
+    {
+      "id": "msig-special-perils",
+      "insurerSlug": "msig",
+      "insurerName": "MSIG Insurance",
+      "category": "addon",
+      "tags": ["flood", "special_perils", "limited_special_perils"],
+      "statement": "MSIG Special Perils covers loss or damage due to flood, typhoon, hurricane, storm, tempest, volcanic eruption, earthquake, landslide, landslip, subsidence or sinking of soil/earth and similar convulsions of nature; MSIG also has Limited Special Perils with limit conditions.",
+      "advisorUse": "Recommend full Special Perils over limited cover for flood-prone users unless budget forces a compromise.",
+      "approvedForAi": true,
+      "confidence": "high",
+      "sourceRefs": ["msig-car", "msig-addons-pdf"]
+    },
+    {
+      "id": "msig-waiver-betterment",
+      "insurerSlug": "msig",
+      "insurerName": "MSIG Insurance",
+      "category": "betterment",
+      "tags": ["betterment", "older_car", "addon"],
+      "statement": "MSIG Waiver of Betterment Cost add-on waives betterment charges arising from original spare part costs, subject to terms.",
+      "advisorUse": "For cars 5+ years old, MSIG is a strong candidate if waiver of betterment is included/available.",
+      "approvedForAi": true,
+      "confidence": "high",
+      "sourceRefs": ["msig-faq", "msig-addons-pdf"]
+    },
+    {
+      "id": "msig-windscreen-ncd-safe",
+      "insurerSlug": "msig",
+      "insurerName": "MSIG Insurance",
+      "category": "addon",
+      "tags": ["windscreen", "ncd_safe", "glass"],
+      "statement": "MSIG windscreen add-on covers breakage of windscreen/front/rear/side windows, sunroof and lamination/tinting film; MSIG add-on material states NCD is not affected for windscreen add-on claim.",
+      "advisorUse": "Suggest this to users with costly glass/tinting, but confirm selected sum insured is enough for their actual windscreen replacement cost.",
+      "approvedForAi": true,
+      "confidence": "high",
+      "sourceRefs": ["msig-addons-pdf"]
+    },
+    {
+      "id": "msig-ez-mile",
+      "insurerSlug": "msig",
+      "insurerName": "MSIG Insurance",
+      "category": "savings",
+      "tags": ["ez_mile", "low_mileage", "usage_based", "budget"],
+      "statement": "MSIG EZ-Mile is an optional add-on for eligible MSIG private-car policies, offering lower premiums for drivers who drive less than 15,000 km a year, with mileage tracking conditions.",
+      "advisorUse": "For low-mileage drivers, compare MSIG EZ-Mile against Etiqa Cashback and Generali PAYD.",
+      "approvedForAi": true,
+      "confidence": "high",
+      "sourceRefs": ["msig-faq", "msig-addons-pdf"]
+    },
+    {
+      "id": "msig-ev-plus",
+      "insurerSlug": "msig",
+      "insurerName": "MSIG Insurance",
+      "category": "ev",
+      "tags": ["ev", "charger", "portable_charging_cable", "flat_battery_towing"],
+      "statement": "MSIG EV Plus offers EV-focused cover such as EV home wall charger, cleaning cost allowance, personal liability from home wall charger use, portable charging cable coverage, inconvenience allowance at public charging station, and 24-hour towing due to flat battery, subject to the selected EV Plus option.",
+      "advisorUse": "For EV users, MSIG should be shortlisted if charger/cable protection and flat-battery towing are important.",
+      "approvedForAi": true,
+      "confidence": "high",
+      "sourceRefs": ["msig-ev-plus", "msig-ev-plus-pdf"]
+    },
+    {
+      "id": "msig-ehailing-not-car-sharing",
+      "insurerSlug": "msig",
+      "insurerName": "MSIG Insurance",
+      "category": "usage",
+      "tags": ["e_hailing", "car_sharing", "exclusion"],
+      "statement": "MSIG policy wording reviewed for car sharing states the car-sharing endorsement does not cover e-hailing/private hire or commercial rental that requires a different APAD/CVLB licence.",
+      "advisorUse": "If a user wants Grab/e-hailing, do not assume MSIG car-sharing language covers it; escalate to exact insurer/quote confirmation.",
+      "approvedForAi": true,
+      "confidence": "high",
+      "sourceRefs": ["msig-addons-pdf"]
+    },
+    {
+      "id": "takaful-ikhlas-core-cover",
+      "insurerSlug": "takaful-ikhlas",
+      "insurerName": "Takaful Ikhlas",
+      "category": "core_cover",
+      "tags": ["takaful", "shariah", "comprehensive", "own_damage", "third_party"],
+      "statement": "IKHLAS Private Car Comprehensive/Comprehensive Plus Takaful provides takaful-based private-car comprehensive protection with Shariah concepts such as Tabarru' and Wakalah explained in the PDS/certificate materials.",
+      "advisorUse": "Recommend Takaful Ikhlas when the user values Shariah-compliant takaful or wants an Islamic insurance structure, assuming the live quote is competitive.",
+      "approvedForAi": true,
+      "confidence": "high",
+      "sourceRefs": ["takaful-ikhlas-product", "takaful-ikhlas-certificate-pdf"]
+    },
+    {
+      "id": "takaful-ikhlas-betterment-standard-scale",
+      "insurerSlug": "takaful-ikhlas",
+      "insurerName": "Takaful Ikhlas",
+      "category": "betterment",
+      "tags": ["betterment", "older_car"],
+      "statement": "Takaful Ikhlas certificate wording applies betterment for older cars when new original parts improve the vehicle condition, with no betterment under 5 years and increasing percentages from age 5 onward in the certificate wording.",
+      "advisorUse": "For cars 5+ years old, explain betterment risk clearly before recommending Takaful Ikhlas unless waiver is included/available.",
+      "approvedForAi": true,
+      "confidence": "high",
+      "sourceRefs": ["takaful-ikhlas-certificate-pdf"]
+    },
+    {
+      "id": "takaful-ikhlas-waiver-betterment-plus",
+      "insurerSlug": "takaful-ikhlas",
+      "insurerName": "Takaful Ikhlas",
+      "category": "betterment",
+      "tags": ["betterment", "waiver", "comprehensive_plus", "older_car"],
+      "statement": "Takaful Ikhlas Comprehensive Plus certificate material includes a Waiver of Betterment endorsement, with wording indicating waiver of betterment assessment subject to conditions such as car age not more than 15 years.",
+      "advisorUse": "For older cars, Comprehensive Plus with waiver can be a stronger Takaful Ikhlas fit than a basic setup, if present in the quote.",
+      "approvedForAi": true,
+      "confidence": "high",
+      "sourceRefs": ["takaful-ikhlas-plus-certificate-pdf"]
+    },
+    {
+      "id": "takaful-ikhlas-special-perils",
+      "insurerSlug": "takaful-ikhlas",
+      "insurerName": "Takaful Ikhlas",
+      "category": "addon",
+      "tags": ["flood", "special_perils", "natural_disaster"],
+      "statement": "Takaful Ikhlas certificate wording has Inclusion of Special Perils endorsement covering loss or damage caused by flood, typhoon, hurricane, storm, tempest, volcanic eruption, earthquake, landslide, landslip, subsidence/sinking of soil/earth and similar convulsions of nature.",
+      "advisorUse": "Recommend adding Special Perils for flood-prone Malaysian users; do not imply it is included by default unless the live quote says so.",
+      "approvedForAi": true,
+      "confidence": "high",
+      "sourceRefs": ["takaful-ikhlas-certificate-pdf"]
+    },
+    {
+      "id": "takaful-ikhlas-windscreen",
+      "insurerSlug": "takaful-ikhlas",
+      "insurerName": "Takaful Ikhlas",
+      "category": "addon",
+      "tags": ["windscreen", "glass", "tinting"],
+      "statement": "Takaful Ikhlas certificate wording includes windscreen/window/sunroof glass cover with lamination/tinting film where applicable under endorsement terms.",
+      "advisorUse": "Suggest windscreen cover when the user has costly glass/tinting or wants separate glass protection.",
+      "approvedForAi": true,
+      "confidence": "high",
+      "sourceRefs": ["takaful-ikhlas-certificate-pdf"]
+    },
+    {
+      "id": "takaful-ikhlas-road-assist-aacc",
+      "insurerSlug": "takaful-ikhlas",
+      "insurerName": "Takaful Ikhlas",
+      "category": "roadside_assistance",
+      "tags": ["roadside", "towing", "claims", "aacc"],
+      "statement": "Takaful Ikhlas certificate wording tells users to call Accident Assist Call Centre 24-hour nationwide road accident helpline numbers for immediate road assistance or tow service in the event of a road accident.",
+      "advisorUse": "Use for accident-response guidance; if the user asks about breakdown towing distance, confirm exact current Road Assist/Bantuan IKHLAS terms.",
+      "approvedForAi": true,
+      "confidence": "high",
+      "sourceRefs": ["takaful-ikhlas-certificate-pdf"]
+    },
+    {
+      "id": "takaful-ikhlas-comprehensive-plus-enhanced-benefits",
+      "insurerSlug": "takaful-ikhlas",
+      "insurerName": "Takaful Ikhlas",
+      "category": "suitability",
+      "tags": ["takaful", "comprehensive_plus", "waiver_compulsory_excess", "personal_accident", "transportation_reimbursement", "brand_program"],
+      "statement": "Takaful Ikhlas Comprehensive Plus PDS materials describe enhanced benefits such as waiver of compulsory excess for unnamed driver, complimentary personal accident cover for the participant, and transportation fee reimbursement, subject to the selected certificate and PDS terms.",
+      "advisorUse": "Use this as a reason Takaful Ikhlas can be stronger than a basic takaful setup, but only if the live quote/product is Comprehensive Plus or another product that clearly includes these benefits.",
+      "approvedForAi": true,
+      "confidence": "high",
+      "sourceRefs": ["takaful-ikhlas-comprehensive-plus-pds-pdf", "takaful-ikhlas-plus-certificate-pdf"]
+    },
+    {
+      "id": "takaful-ikhlas-perodua-total-protect-plus",
+      "insurerSlug": "takaful-ikhlas",
+      "insurerName": "Takaful Ikhlas",
+      "category": "suitability",
+      "tags": ["takaful", "brand_program", "perodua", "myvi", "bezza", "axia", "alza", "ativa", "flood_allowance", "waiver_compulsory_excess", "personal_accident"],
+      "statement": "Takaful Ikhlas Perodua Total Protect Plus PDS is a Perodua-specific takaful programme for Perodua vehicles purchased through Perodua franchises and dealers. The PDS lists enhanced benefits such as waiver of compulsory excess for unnamed driver, flood allowance, and personal accident cover for the participant, subject to terms.",
+      "advisorUse": "For a Perodua/Myvi user, say Takaful Ikhlas can be a good fit if the quote is eligible for Perodua Total Protect Plus and the user values takaful plus Perodua-program benefits. Do not say Takaful is automatically best for every Perodua.",
+      "approvedForAi": true,
+      "confidence": "high",
+      "sourceRefs": ["takaful-ikhlas-perodua-pds-pdf"]
+    },
+    {
+      "id": "takaful-ikhlas-proton-insurance-program",
+      "insurerSlug": "takaful-ikhlas",
+      "insurerName": "Takaful Ikhlas",
+      "category": "suitability",
+      "tags": ["takaful", "brand_program", "proton", "saga", "x50", "x70", "all_drivers", "flood_relief", "key_care", "personal_accident"],
+      "statement": "Takaful Ikhlas Proton Insurance Program PDS is a Proton-specific takaful programme for Proton vehicles purchased through Proton franchises and dealers. The PDS lists enhanced benefits such as all drivers, flood relief allowance, key care cover, and personal accident coverage, subject to terms.",
+      "advisorUse": "For Proton users, consider Takaful Ikhlas positively if the live quote/product is the Proton programme; otherwise treat it as a normal takaful option and verify benefits.",
+      "approvedForAi": true,
+      "confidence": "high",
+      "sourceRefs": ["takaful-ikhlas-proton-pds-pdf"]
+    },
+    {
+      "id": "takaful-ikhlas-honda-takaful-program",
+      "insurerSlug": "takaful-ikhlas",
+      "insurerName": "Takaful Ikhlas",
+      "category": "suitability",
+      "tags": ["takaful", "brand_program", "honda", "city", "civic", "waiver_betterment", "unlimited_towing", "flood_allowance", "key_care", "personal_accident", "special_relief"],
+      "statement": "Takaful Ikhlas Honda Takaful Program PDS is a Honda-specific takaful programme for Honda vehicles purchased through Honda franchises and dealers. The PDS lists enhanced benefits such as waiver of compulsory excess for unnamed driver, flood allowance, key care, special relief allowance, personal accident coverage, waiver of betterment, and unlimited towing, subject to terms.",
+      "advisorUse": "For Honda users, Takaful Ikhlas can be especially interesting if the quote is the Honda Takaful Program because it may reduce surprise costs through waiver of betterment and unlimited towing benefits.",
+      "approvedForAi": true,
+      "confidence": "high",
+      "sourceRefs": ["takaful-ikhlas-honda-pds-pdf"]
+    },
+    {
+      "id": "takaful-ikhlas-subaru-takaful-program",
+      "insurerSlug": "takaful-ikhlas",
+      "insurerName": "Takaful Ikhlas",
+      "category": "suitability",
+      "tags": ["takaful", "brand_program", "subaru", "flood_allowance", "car_replacement_allowance", "key_care", "personal_accident", "road_assist"],
+      "statement": "Takaful Ikhlas Subaru Takaful Program PDS is a Subaru-specific takaful programme for Subaru vehicles purchased through Subaru franchises and dealers. The PDS lists enhanced benefits such as waiver of compulsory excess for unnamed driver, flood allowance, car replacement allowance, window snatch theft benefit, key care cover, additional cash payout, personal accident coverage, and Bantuan IKHLAS Road Assist, subject to terms.",
+      "advisorUse": "For Subaru users, Takaful Ikhlas can be positioned around brand-program convenience and accident support if the live quote confirms the Subaru programme.",
+      "approvedForAi": true,
+      "confidence": "high",
+      "sourceRefs": ["takaful-ikhlas-subaru-pds-pdf"]
+    },
+    {
+      "id": "takaful-ikhlas-jetour-takaful-program",
+      "insurerSlug": "takaful-ikhlas",
+      "insurerName": "Takaful Ikhlas",
+      "category": "suitability",
+      "tags": ["takaful", "brand_program", "jetour", "waiver_betterment", "unlimited_towing", "flood_allowance", "key_care", "personal_accident", "accident_inconvenience_allowance"],
+      "statement": "Takaful Ikhlas Jetour Takaful Program PDS is a Jetour-specific takaful programme for Jetour vehicles purchased through Jetour franchises and dealers. The PDS lists enhanced benefits such as waiver of compulsory excess for unnamed driver, flood allowance, accident inconvenience allowance, key care cover, personal accident coverage, waiver of betterment, and unlimited towing, subject to terms.",
+      "advisorUse": "For Jetour users, Takaful Ikhlas can be a strong fit if the live quote confirms the Jetour programme because waiver of betterment and unlimited towing are valuable newer-brand ownership benefits.",
+      "approvedForAi": true,
+      "confidence": "high",
+      "sourceRefs": ["takaful-ikhlas-jetour-pds-pdf"]
+    },
+    {
+      "id": "takaful-ikhlas-ehailing-endorsement",
+      "insurerSlug": "takaful-ikhlas",
+      "insurerName": "Takaful Ikhlas",
+      "category": "usage",
+      "tags": ["e_hailing", "private_hire", "endorsement"],
+      "statement": "Takaful Ikhlas certificate wording includes a private hire/e-hailing endorsement structure that extends cover for carriage of passengers for hire and reward under an e-hailing service licence during the endorsed period, subject to conditions.",
+      "advisorUse": "If the user uses Grab/e-hailing, require e-hailing endorsement confirmation before proceeding.",
+      "approvedForAi": true,
+      "confidence": "high",
+      "sourceRefs": ["takaful-ikhlas-certificate-pdf"]
+    },
+    {
+      "id": "tokio-autopro-core-cover",
+      "insurerSlug": "tokio-marine",
+      "insurerName": "Tokio Marine Insurance",
+      "category": "core_cover",
+      "tags": ["comprehensive", "autopro", "own_damage", "third_party", "fire", "theft"],
+      "statement": "Tokio Marine AutoPro combines private car comprehensive cover with enhanced non-tariff coverages such as all drivers, unlimited towing, zero betterment up to 15 years, PA, hospital income and flood allowance.",
+      "advisorUse": "Tokio Marine AutoPro should score strongly when the user wants fewer surprise costs and bundled enhanced cover, even if premium is higher.",
+      "approvedForAi": true,
+      "confidence": "high",
+      "sourceRefs": ["tokio-online-car", "tokio-autopro-brochure-pdf"]
+    },
+    {
+      "id": "tokio-zero-betterment-15-years",
+      "insurerSlug": "tokio-marine",
+      "insurerName": "Tokio Marine Insurance",
+      "category": "betterment",
+      "tags": ["zero_betterment", "older_car", "autopro"],
+      "statement": "Tokio Marine AutoPro materials state Zero Betterment up to 15 years, covering the cost of new original parts used to repair the damaged vehicle for eligible vehicles up to 15 years old.",
+      "advisorUse": "For cars aged 5 to 15 years, Tokio Marine AutoPro is a strong recommendation if the user wants lower surprise repair cost.",
+      "approvedForAi": true,
+      "confidence": "high",
+      "sourceRefs": ["tokio-online-car", "tokio-autopro-brochure-pdf"]
+    },
+    {
+      "id": "tokio-unlimited-towing",
+      "insurerSlug": "tokio-marine",
+      "insurerName": "Tokio Marine Insurance",
+      "category": "roadside_assistance",
+      "tags": ["unlimited_towing", "roadside", "long_distance", "autopro"],
+      "statement": "Tokio Marine AutoPro includes Auto Partner roadside assistance with unlimited towing distance within Malaysia during the policy period, subject to Auto Partner terms and conditions.",
+      "advisorUse": "For highway/outstation drivers or users worried about being stranded far from home, Tokio Marine AutoPro is strong if available.",
+      "approvedForAi": true,
+      "confidence": "high",
+      "sourceRefs": ["tokio-online-car", "tokio-autopro-brochure-pdf", "tokio-autopro-wording-pdf"]
+    },
+    {
+      "id": "tokio-all-drivers",
+      "insurerSlug": "tokio-marine",
+      "insurerName": "Tokio Marine Insurance",
+      "category": "driver_cover",
+      "tags": ["all_drivers", "unnamed_driver", "excess"],
+      "statement": "Tokio Marine AutoPro includes All Drivers, with compulsory excess for unnamed drivers waived according to the AutoPro brochure.",
+      "advisorUse": "For family/shared cars, Tokio AutoPro has a useful convenience benefit if the live quote includes AutoPro.",
+      "approvedForAi": true,
+      "confidence": "high",
+      "sourceRefs": ["tokio-autopro-brochure-pdf"]
+    },
+    {
+      "id": "tokio-flood-allowance",
+      "insurerSlug": "tokio-marine",
+      "insurerName": "Tokio Marine Insurance",
+      "category": "addon",
+      "tags": ["flood", "allowance", "autopro"],
+      "statement": "Tokio Marine AutoPro brochure states a flood allowance benefit, described as a lump sum allowance in the event of flood damage to the named vehicle, subject to policy terms.",
+      "advisorUse": "For flood-prone users, explain Tokio AutoPro has flood-related allowance but still check whether full Special Perils protection is included/needed.",
+      "approvedForAi": true,
+      "confidence": "high",
+      "sourceRefs": ["tokio-autopro-brochure-pdf"]
+    },
+    {
+      "id": "tokio-plus-ev-charger",
+      "insurerSlug": "tokio-marine",
+      "insurerName": "Tokio Marine Insurance",
+      "category": "ev",
+      "tags": ["ev", "charger", "charging_cable", "private_car_plus"],
+      "statement": "Tokio Marine Private Car Plus / AutoPro policy materials include a non-tariff endorsement for cover for private electric charger and charging cable, subject to schedule and policy terms.",
+      "advisorUse": "For EV owners, Tokio Marine should be shortlisted if EV charger/cable coverage is offered in the selected product.",
+      "approvedForAi": true,
+      "confidence": "high",
+      "sourceRefs": ["tokio-plus-pds-pdf", "tokio-autopro-wording-pdf"]
+    },
+    {
+      "id": "tokio-ehailing-endorsement",
+      "insurerSlug": "tokio-marine",
+      "insurerName": "Tokio Marine Insurance",
+      "category": "usage",
+      "tags": ["e_hailing", "private_hire", "endorsement"],
+      "statement": "Tokio Marine private-car wording includes a Private Hire/e-hailing endorsement structure for carriage of passengers for hire and reward under an e-hailing service licence, subject to endorsed dates and conditions.",
+      "advisorUse": "If a user drives Grab/e-hailing, require the correct e-hailing endorsement; normal private-use cover should not be assumed sufficient.",
+      "approvedForAi": true,
+      "confidence": "high",
+      "sourceRefs": ["tokio-autopro-wording-pdf"]
+    },
+    {
+      "id": "market-rule-brand-program-eligibility",
+      "insurerSlug": "market",
+      "insurerName": "Malaysia Motor Insurance Market",
+      "category": "suitability",
+      "tags": ["brand_program", "perodua", "proton", "honda", "subaru", "jetour", "recommendation", "eligibility"],
+      "statement": "Brand-specific motor insurance/takaful programmes can be a real recommendation advantage, but only when the selected live quote is actually that brand programme and the vehicle meets eligibility such as purchase through the relevant franchise or dealer.",
+      "advisorUse": "When a user asks whether an insurer is good for Perodua, Proton, Honda, Subaru, Jetour or another brand, answer with the known brand-program evidence, then ask or verify whether the quote/product is eligible before making it the final recommendation.",
+      "approvedForAi": true,
+      "confidence": "high",
+      "sourceRefs": ["takaful-ikhlas-perodua-pds-pdf", "takaful-ikhlas-proton-pds-pdf", "takaful-ikhlas-honda-pds-pdf", "takaful-ikhlas-subaru-pds-pdf", "takaful-ikhlas-jetour-pds-pdf"]
+    },
+    {
+      "id": "market-rule-flood-not-basic",
+      "insurerSlug": "market",
+      "insurerName": "Malaysia Motor Insurance Market",
+      "category": "general_advice",
+      "tags": ["flood", "special_perils", "compliance_safe"],
+      "statement": "For Malaysian private-car comprehensive policies, flood/natural-disaster damage is commonly not covered by the basic policy unless Special Perils/flood/act-of-nature cover is added or included in the selected product.",
+      "advisorUse": "Default recommendation: if the user lives, works or parks in flood-prone areas, advise adding Special Perils unless budget is the only priority.",
+      "approvedForAi": true,
+      "confidence": "high",
+      "sourceRefs": ["allianz-special-perils-windscreen", "generali-addons", "msig-car", "lonpac-additional-benefits-pdf", "takaful-ikhlas-certificate-pdf", "tokio-autopro-wording-pdf"]
+    },
+    {
+      "id": "market-rule-betterment-older-cars",
+      "insurerSlug": "market",
+      "insurerName": "Malaysia Motor Insurance Market",
+      "category": "general_advice",
+      "tags": ["betterment", "older_car", "repair_cost"],
+      "statement": "For cars aged 5 years and above, betterment can become a surprise repair cost when new original parts are used, unless the selected insurer/product/add-on provides waiver, buyback, zero betterment, or brand-new-parts benefit.",
+      "advisorUse": "Ask car age and explain betterment before recommending for older cars. Stronger matches include products/add-ons with zero/waiver/buyback betterment support.",
+      "approvedForAi": true,
+      "confidence": "high",
+      "sourceRefs": ["allianz-policy-wording-pdf", "msig-addons-pdf", "lonpac-additional-benefits-pdf", "tokio-autopro-brochure-pdf", "takaful-ikhlas-certificate-pdf", "generali-addons"]
+    },
+    {
+      "id": "market-rule-windscreen-sum-insured",
+      "insurerSlug": "market",
+      "insurerName": "Malaysia Motor Insurance Market",
+      "category": "general_advice",
+      "tags": ["windscreen", "sum_insured", "ncd"],
+      "statement": "Windscreen add-on should be matched to the real replacement cost of the car's windscreen, including tinting and sensor/ADAS-related costs where relevant; many insurer materials describe windscreen claims under the add-on as NCD-safe, subject to terms.",
+      "advisorUse": "Ask the user whether their windscreen has tinting, camera/sensor, or expensive model-specific glass before suggesting a sum insured.",
+      "approvedForAi": true,
+      "confidence": "high",
+      "sourceRefs": ["allianz-special-perils-windscreen", "generali-addons", "lonpac-additional-benefits-pdf", "msig-addons-pdf"]
+    },
+    {
+      "id": "market-rule-ev-shortlist",
+      "insurerSlug": "market",
+      "insurerName": "Malaysia Motor Insurance Market",
+      "category": "suitability",
+      "tags": ["ev", "tesla", "charger", "recommendation"],
+      "statement": "For EV users, especially Tesla owners, LAJOO should compare EV-specific support such as home wall charger cover, portable cable cover, out-of-charge towing, public charging incident cover, NIL excess, and genuine spare-part terms, not only premium.",
+      "advisorUse": "Initial EV shortlist: Etiqa Tesla Ensure for eligible new Tesla from Tesla Malaysia; Allianz EV Shield, MSIG EV Plus, and Tokio Marine EV charger/cable endorsements for broader EV support.",
+      "approvedForAi": true,
+      "confidence": "high",
+      "sourceRefs": ["etiqa-tesla", "allianz-ev-shield", "msig-ev-plus", "tokio-plus-pds-pdf"]
+    },
+    {
+      "id": "market-rule-long-distance-drivers",
+      "insurerSlug": "market",
+      "insurerName": "Malaysia Motor Insurance Market",
+      "category": "suitability",
+      "tags": ["towing", "long_distance", "highway", "outstation"],
+      "statement": "For long-distance or frequent highway drivers, towing distance/limit can matter more than a small premium difference.",
+      "advisorUse": "Compare unlimited or higher-limit towing options such as Tokio Marine AutoPro, MSIG 24-hour unlimited towing, Generali MDP+, and other insurer-specific road assistance terms before recommending purely by price.",
+      "approvedForAi": true,
+      "confidence": "high",
+      "sourceRefs": ["tokio-autopro-brochure-pdf", "msig-car", "generali-addons", "allianz-road-assist-pdf", "etiqa-auto-assist-pdf"]
+    },
+    {
+      "id": "market-rule-low-mileage-drivers",
+      "insurerSlug": "market",
+      "insurerName": "Malaysia Motor Insurance Market",
+      "category": "suitability",
+      "tags": ["low_mileage", "budget", "usage_based"],
+      "statement": "For low-mileage drivers, usage-based or mileage-related products may offer better value than only comparing headline premium.",
+      "advisorUse": "Compare Etiqa Cashback by Driving Less, MSIG EZ-Mile, and Generali Pay As You Drive when the user drives less than usual or works from home.",
+      "approvedForAi": true,
+      "confidence": "high",
+      "sourceRefs": ["etiqa-driving-less", "msig-faq", "generali-addons"]
+    },
+    {
+      "id": "market-rule-ehailing",
+      "insurerSlug": "market",
+      "insurerName": "Malaysia Motor Insurance Market",
+      "category": "usage",
+      "tags": ["e_hailing", "grab", "private_hire", "compliance_safe"],
+      "statement": "If a private car is used for e-hailing/private hire, LAJOO should not treat it as normal private use; the correct e-hailing/private-hire endorsement or add-on must be confirmed before renewal/payment.",
+      "advisorUse": "Ask directly if the user uses Grab/e-hailing/delivery. If yes, pause normal recommendation and route to e-hailing suitability.",
+      "approvedForAi": true,
+      "confidence": "high",
+      "sourceRefs": ["allianz-ehailing", "generali-ehailing-pdf", "takaful-ikhlas-certificate-pdf", "tokio-autopro-wording-pdf"]
+    }
+  ],
+  "recommendationProfiles": [
+    {
+      "id": "price_sensitive",
+      "name": "Price sensitive",
+      "logic": "Start with cheapest live premium, but warn if critical add-ons are missing. Do not recommend skipping flood/windscreen blindly if user is high risk.",
+      "strongSignals": ["lowest_total_price", "low_mileage_discount", "cashback", "no_unneeded_addons"]
+    },
+    {
+      "id": "older_car_low_surprise_cost",
+      "name": "Older car, avoid surprise repair cost",
+      "logic": "Prioritize zero betterment, waiver of betterment, betterment buyback, or brand-new-parts benefit for cars aged 5+.",
+      "strongSignals": ["zero_betterment", "waiver_betterment", "betterment_buyback", "brand_new_parts"]
+    },
+    {
+      "id": "flood_risk",
+      "name": "Flood-risk driver",
+      "logic": "Prioritize Special Perils/flood cover and clear natural-disaster wording over small premium savings.",
+      "strongSignals": ["special_perils_full", "flood_allowance", "natural_disaster_cover"]
+    },
+    {
+      "id": "long_distance",
+      "name": "Long-distance / highway driver",
+      "logic": "Prioritize towing limit, 24/7 road assistance, and workshop support.",
+      "strongSignals": ["unlimited_towing", "200km_towing", "roadside_24_7", "workshop_support"]
+    },
+    {
+      "id": "ev_tesla",
+      "name": "EV / Tesla owner",
+      "logic": "Prioritize EV-specific charger/cable/out-of-charge towing/public charging benefits and brand eligibility.",
+      "strongSignals": ["tesla_ensure", "ev_shield", "ev_plus", "charger_cover", "portable_cable_cover", "out_of_charge_towing"]
+    },
+    {
+      "id": "shariah_preference",
+      "name": "Shariah-compliant preference",
+      "logic": "Prioritize takaful options when user explicitly prefers Islamic/Shariah-compliant protection.",
+      "strongSignals": ["takaful", "shariah", "tabarru", "wakalah"]
+    },
+    {
+      "id": "brand_program_fit",
+      "name": "Brand-program fit",
+      "logic": "Prioritize insurer/product programmes that are specifically built for the user's vehicle brand only when the live quote confirms eligibility and the programme benefits are relevant.",
+      "strongSignals": ["brand_program", "dealer_program", "waiver_compulsory_excess", "waiver_betterment", "unlimited_towing", "flood_allowance", "key_care"]
+    }
+  ]
+}

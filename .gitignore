@@ -34,6 +34,12 @@ yarn-error.log*
 tests/evals/captured/*.jsonl
 tests/evals/captured/*.json
 
+# local insurer knowledge source files and generated review artifacts
+/knowledge/raw-pdfs/
+/knowledge/manifest.json
+/knowledge/candidate-facts*.json
+/knowledge/candidate-facts*.md
+
 # env files (can opt-in for committing if needed)
 .env*
 

@@ -7,6 +7,16 @@ import {
   CONVERSATION_MODES,
 } from '../src/server/ai/orchestrator.js';
 import { shouldSuppressStepLine } from '../src/server/ai/responsePolicy.js';
+import { buildAdvisorStrategyInstruction } from '../src/server/ai/advisorStrategies.js';
+import {
+  buildInsuranceConceptInstruction,
+  shouldUseGeneralConceptAnswer,
+} from '../src/server/ai/insuranceConcepts.js';
+import {
+  buildQuoteRecommendation,
+  buildQuoteRecommendationInstruction,
+} from '../src/server/insurance/recommendationEngine.js';
+import { getQuotes } from '../src/lib/insuranceData.js';
 
 function decide(message, state) {
   const intent = detectUserIntent(message, state);
@@ -87,4 +97,170 @@ test('classifies yes/confirm as ready to proceed', () => {
 
   assert.equal(decision.mode, CONVERSATION_MODES.READY_TO_PROCEED);
   assert.equal(decision.action, CONVERSATION_ACTIONS.ADVANCE_FLOW);
+});
+
+test('advisor strategy gives quote comparison consulting guidance', () => {
+  const state = {
+    step: FLOW_STEPS.QUOTES,
+    userPreferences: { budgetFocused: true },
+  };
+  const decision = decide('which insurer do you recommend?', state);
+  const recommendation = buildQuoteRecommendation({
+    quotes: getQuotes(),
+    state,
+    message: 'which insurer do you recommend?',
+  });
+  const instruction = buildAdvisorStrategyInstruction(decision, state, { quoteRecommendation: recommendation });
+
+  assert.match(instruction, /compare insurer choices/i);
+  assert.match(instruction, /Recommended quote/i);
+  assert.match(instruction, /current quote data/i);
+});
+
+test('orchestrator includes engine context for quote choices', () => {
+  const state = {
+    step: FLOW_STEPS.QUOTES,
+    selectedQuote: null,
+    vehicleInfo: { sampleId: 'JRT9289' },
+  };
+  const decision = decide('which is cheapest?', state);
+
+  assert.equal(decision.mode, CONVERSATION_MODES.QUOTE_COMPARISON);
+  assert.ok(decision.engineContext.quoteOptions.length >= 7);
+  assert.equal(decision.engineContext.cheapestQuote.insurer, 'Takaful Ikhlas Insurance');
+  assert.equal(decision.engineContext.cheapestQuote.priceLabel, 'RM 796');
+  assert.match(decision.engineContext.nextActionHints.join(' '), /Compare current insurers/i);
+});
+
+test('advisor strategy includes engine-aware quote, add-on, road-tax, and total context', () => {
+  const state = {
+    step: FLOW_STEPS.ADDONS,
+    selectedQuote: {
+      insurer: 'Takaful Ikhlas Insurance',
+      priceAfter: 796,
+      priceBefore: 995,
+      sumInsured: 34000,
+      coverType: 'Comprehensive',
+    },
+    selectedAddOns: [],
+    addOnsConfirmed: false,
+    selectedRoadTax: null,
+    ownerIdType: 'nric',
+  };
+  const decision = decide('what add-ons do I need?', state);
+  const instruction = buildAdvisorStrategyInstruction(decision, state);
+
+  assert.match(instruction, /ENGINE-AWARE CONTEXT/i);
+  assert.match(instruction, /Selected quote: Takaful Ikhlas Insurance \(RM 796, sum insured RM 34,000\)/i);
+  assert.match(instruction, /Current total: RM 869\.68/i);
+  assert.match(instruction, /Add-ons: not selected yet/i);
+  assert.match(instruction, /Road tax physical\/delivery eligibility: not eligible/i);
+  assert.match(instruction, /Windscreen premium = selected coverage amount x 15%/i);
+});
+
+test('add-on recommendation question during add-ons stays as insurance question', () => {
+  const state = {
+    step: FLOW_STEPS.ADDONS,
+    selectedQuote: { insurer: 'Takaful Ikhlas Insurance', priceAfter: 796 },
+    addOnsConfirmed: false,
+  };
+  const decision = decide('which add-ons do I need?', state);
+
+  assert.equal(decision.mode, CONVERSATION_MODES.INSURANCE_QUESTION);
+  assert.equal(decision.action, CONVERSATION_ACTIONS.ANSWER_THEN_RESUME);
+});
+
+test('insurer comparison during add-ons remains quote comparison', () => {
+  const state = {
+    step: FLOW_STEPS.ADDONS,
+    selectedQuote: { insurer: 'Takaful Ikhlas Insurance', priceAfter: 796 },
+    addOnsConfirmed: false,
+  };
+  const decision = decide('compare Allianz and Takaful for me', state);
+
+  assert.equal(decision.mode, CONVERSATION_MODES.QUOTE_COMPARISON);
+});
+
+test('insurance concepts allow general NCD explanation without insurer database facts', () => {
+  const message = 'what is NCD?';
+  const instruction = buildInsuranceConceptInstruction(message, { step: FLOW_STEPS.QUOTES });
+
+  assert.equal(shouldUseGeneralConceptAnswer(message), true);
+  assert.match(instruction, /No Claim Discount/i);
+  assert.match(instruction, /approved general explanations/i);
+});
+
+test('insurance concepts still treat zero betterment insurer questions as insurer-specific', () => {
+  const message = 'which insurer has zero betterment?';
+
+  assert.equal(shouldUseGeneralConceptAnswer(message), false);
+});
+
+test('recommendation engine picks cheapest quote for budget-focused user', () => {
+  const recommendation = buildQuoteRecommendation({
+    quotes: getQuotes(),
+    userPreferences: { budgetFocused: true },
+    message: 'I want the cheapest option',
+  });
+
+  assert.equal(recommendation.recommendedQuote.insurerKey, 'takaful');
+  assert.match(recommendation.reasons.join(' '), /lowest premium/i);
+});
+
+test('recommendation engine uses approved betterment facts for older-car users', () => {
+  const recommendation = buildQuoteRecommendation({
+    quotes: getQuotes(),
+    message: 'My car is old. I want to avoid betterment and surprise repair cost.',
+  });
+
+  assert.equal(recommendation.recommendedQuote.insurerKey, 'tokio');
+  assert.ok(recommendation.scores.facts > 0.5);
+  assert.match(recommendation.reasons.join(' '), /betterment-related support/i);
+  assert.ok(recommendation.recommendationTags.includes('older_car'));
+});
+
+test('recommendation engine uses Tesla-specific approved facts ahead of generic EV facts', () => {
+  const recommendation = buildQuoteRecommendation({
+    quotes: getQuotes(),
+    message: 'Which is best for my Tesla EV charger and battery towing?',
+  });
+
+  assert.equal(recommendation.recommendedQuote.insurerKey, 'etiqa');
+  assert.match(recommendation.factReasons.join(' '), /Tesla-specific support/i);
+  assert.ok(recommendation.recommendationTags.includes('tesla'));
+});
+
+test('recommendation engine uses brand-program facts only when brand context matches', () => {
+  const recommendation = buildQuoteRecommendation({
+    quotes: getQuotes(),
+    state: { vehicleInfo: { model: '2019 Perodua Myvi 1.5' } },
+    message: 'Which one is good for my Perodua Myvi?',
+  });
+
+  assert.equal(recommendation.recommendedQuote.insurerKey, 'takaful');
+  assert.match(recommendation.factReasons.join(' '), /brand-program suitability/i);
+  assert.ok(recommendation.recommendationTags.includes('perodua'));
+});
+
+test('quote recommendation instruction gives a parsable direct recommendation', () => {
+  const state = {
+    step: FLOW_STEPS.QUOTES,
+    userPreferences: { budgetFocused: true },
+  };
+  const decision = decide('recommend one for me', state);
+  const quoteRecommendation = buildQuoteRecommendation({
+    quotes: getQuotes(),
+    state,
+    message: 'recommend one for me',
+  });
+  const instruction = buildQuoteRecommendationInstruction(decision, {
+    quoteRecommendation,
+    state,
+    message: 'recommend one for me',
+  });
+
+  assert.match(instruction, /I recommend Takaful Ikhlas Insurance/i);
+  assert.match(instruction, /Approved fact-backed reasons/i);
+  assert.match(instruction, /Do not expand them into extra benefits/i);
+  assert.match(instruction, /Do not show the full quote list again/i);
 });

@@ -9,7 +9,7 @@
 
 import { NextResponse } from "next/server";
 import { ConversationState, detectUserIntent, USER_INTENTS, FLOW_STEPS } from "@/lib/conversationState";
-import { getQuotes, ADDONS } from "@/lib/insuranceData";
+import { getQuotes } from "@/lib/insuranceData";
 import {
   AVAILABLE_INSURERS,
   AVAILABLE_INSURER_CHOICE_TEXT,
@@ -19,8 +19,6 @@ import {
   getInsurerByKey,
   getInsurerKeysFromText,
   findInsurerKeyByText,
-  textMatchesInsurerKey,
-  getInsurerQuoteIdPrefix,
 } from "@/lib/insurerCatalog";
 import { AI_FUNCTIONS } from "@/lib/aiFunctions";
 import {
@@ -44,13 +42,50 @@ import {
   buildAdvisorResponsePolicyInstruction,
   shouldSuppressStepLine,
 } from "@/server/ai/responsePolicy";
+import { buildAdvisorStrategyInstruction } from "@/server/ai/advisorStrategies";
+import {
+  buildInsuranceConceptInstruction,
+  shouldUseGeneralConceptAnswer,
+} from "@/server/ai/insuranceConcepts";
+import {
+  buildQuoteRecommendation,
+  buildQuoteRecommendationInstruction,
+} from "@/server/insurance/recommendationEngine";
+import { buildApprovedFactsInstruction } from "@/server/insurance/approvedFactStore";
 import {
   parseRecommendedInsurerFromAssistantMessage,
   isVehicleDetailsRejectionMessage,
   wasLastAssistantVehicleConfirmation,
-  canUseDeliveredRoadTaxByOwnerType,
 } from "@/lib/flowGuards";
 import { appendIntentCaptureSample, getIntentCaptureReason } from "@/lib/intentEvalCapture";
+import {
+  ADDONS_CLOSE_QUESTION,
+  ADD_ON_BY_ID,
+  ADD_ON_CATALOG,
+  DEFAULT_WINDSCREEN_COVERAGE,
+  buildAddOnsFromSelection,
+  calculateWindscreenPremium,
+  extractWindscreenCoverageAmount,
+  getAddOnCatalogItem,
+  addOnIdsFromState,
+} from "@/server/insurance/addonEngine";
+import {
+  PRINTED_ROAD_TAX_EFFECTIVE_DATE,
+  PRINTED_ROAD_TAX_POLICY_NOTE,
+  canUseDeliveredRoadTax,
+  getRoadTaxDisplayName,
+  roadTaxOptionFromState,
+} from "@/server/insurance/roadTaxEngine";
+import {
+  STAMP_DUTY_AMOUNT,
+  calculateCurrentGrandTotal,
+  calculateSummaryAmounts,
+  getQuoteInsurerKey,
+  getQuotesFromState,
+  mapGatewayQuotesToInternal,
+  quoteIdForCurrentSelection,
+  quoteSelectionFromIntent,
+} from "@/server/insurance/quoteEngine";
 
 // ============================================================================
 // DETERMINISTIC BLOCK BUILDERS — code-generated markdown the AI must include
@@ -77,13 +112,6 @@ function getPolicyEffectiveRangeDisplay(options = {}) {
   return `${fmt(start)} - ${fmt(end)}`;
 }
 
-const PRINTED_ROAD_TAX_EFFECTIVE_DATE = '1 Feb 2026';
-const PRINTED_ROAD_TAX_POLICY_NOTE = `Please note that from ${PRINTED_ROAD_TAX_EFFECTIVE_DATE}, printed road tax is only for Foreign ID or Company vehicles.`;
-const ADDONS_CLOSE_QUESTION = 'Based on your situation, which would you like? You can type 1, 2, 3, 8, or a combo like 1 and 8. Or reply skip.';
-const SST_RATE = 0.08;
-const STAMP_DUTY_AMOUNT = 10;
-const WINDSCREEN_PREMIUM_RATE = 0.15;
-const DEFAULT_WINDSCREEN_COVERAGE = 2000;
 const PERSONAL_DETAIL_EXAMPLES = {
   Email: 'name@email.com',
   'Phone number': '0123456789',
@@ -93,123 +121,15 @@ const OTP_PROMPT_COPY = `Perfect ✅
 I’ve sent a **4-digit OTP** to your phone or email.
 Please enter it below to verify and continue.`;
 
-function getRoadTaxDisplayName(roadTax, noRoadTaxLabel = 'Not included') {
-  const rawName = typeof roadTax === 'string' ? roadTax : roadTax?.name;
-  const name = String(rawName || '').trim();
-  const normalized = name.toLowerCase();
-
-  if (!name) return '';
-  if (normalized.includes('no road tax') || normalized === 'none' || normalized === 'not included') {
-    return noRoadTaxLabel;
-  }
-  if (normalized.includes('physical') || normalized.includes('deliver')) {
-    return '12 months physical + delivery';
-  }
-  if (normalized.includes('digital') || normalized.includes('12month-digital')) {
-    return '12 months digital road tax';
-  }
-
-  return name;
-}
-
-const ADD_ON_CATALOG = [
-  {
-    id: 'windscreen',
-    number: 1,
-    name: 'Windscreen',
-    price: null,
-    hasCoverageInput: true,
-    defaultCoverage: DEFAULT_WINDSCREEN_COVERAGE,
-    recommended: true,
-    info: 'Covers windscreen, window, and glass damage up to your selected coverage amount.',
-  },
-  {
-    id: 'flood',
-    number: 2,
-    name: 'Special Perils (Flood & others)',
-    summaryName: 'Inclusion of Special Perils',
-    price: 150,
-    recommended: true,
-    info: 'Covers flood and selected natural disaster damage, subject to insurer terms.',
-  },
-  {
-    id: 'ehailing',
-    number: 3,
-    name: 'E-hailing (Grab & others)',
-    price: 2000,
-    info: 'Required if the vehicle is used for e-hailing or ride-sharing work.',
-  },
-  {
-    id: 'all_drivers',
-    number: 4,
-    name: 'All Drivers',
-    price: 30,
-    info: 'Lets additional drivers be covered, subject to policy wording.',
-  },
-  {
-    id: 'legal_liability_passengers',
-    number: 5,
-    name: 'Legal Liability To Passengers',
-    price: 20,
-    info: 'Covers selected legal liability to passengers, subject to policy wording.',
-  },
-  {
-    id: 'lltp_negligence',
-    number: 6,
-    name: 'LLTP for Negligence Acts',
-    price: 7,
-    info: 'Additional passenger liability protection for negligence-related situations.',
-  },
-  {
-    id: 'strike_riot',
-    number: 7,
-    name: 'Strike riot and civil commotion',
-    price: 450,
-    info: 'Covers selected damage caused by strike, riot, or civil commotion events.',
-  },
-  {
-    id: 'betterment_waiver',
-    number: 8,
-    name: 'Betterment waiver',
-    price: 350,
-    info: 'Helps reduce unexpected betterment charges when new parts replace old parts.',
-  },
-  {
-    id: 'ncd_relief',
-    number: 9,
-    name: 'Current year NCD relief',
-    price: 250,
-    info: 'Helps protect the current year NCD benefit, subject to insurer terms.',
-  },
-  {
-    id: 'body_painting',
-    number: 10,
-    name: 'Full vehicle body painting',
-    price: 180,
-    info: 'Adds selected body painting protection, subject to insurer acceptance.',
-  },
-  {
-    id: 'personal_accident',
-    number: 11,
-    name: 'Personal accident for all',
-    price: 50,
-    info: 'Adds selected personal accident protection for covered persons.',
-  },
-];
-
-const ADD_ON_BY_ID = Object.fromEntries(ADD_ON_CATALOG.map((addOn) => [addOn.id, addOn]));
-
-const INSURER_UI_META = Object.fromEntries(
-  AVAILABLE_INSURERS.map((insurer) => [
-    insurer.code,
-    {
-      id: insurer.id,
-      displayName: insurer.displayName,
-      logoUrl: insurer.logoUrl,
-      features: insurer.features,
-    },
-  ])
-);
+const APPROVED_FACT_INSURER_SLUG_BY_KEY = {
+  allianz: 'allianz',
+  etiqa: 'etiqa',
+  generali: 'generali',
+  lonpac: 'lonpac',
+  msig: 'msig',
+  takaful: 'takaful-ikhlas',
+  tokio: 'tokio-marine',
+};
 
 const AVAILABLE_INSURER_MENTION_REGEX = new RegExp(
   AVAILABLE_INSURERS
@@ -239,44 +159,15 @@ const GATEWAY_PAYMENT_METHOD_MAP = {
   bnpl: 'bnpl',
 };
 
-function getQuotesFromState(state) {
-  const gatewayQuotes = state?.vehicleInfo?.quoteOptions;
-  if (Array.isArray(gatewayQuotes) && gatewayQuotes.length > 0) {
-    return supplementQuotesWithCatalog(gatewayQuotes, state);
+function getApprovedFactInsurerSlugForMessage(message, state = {}) {
+  const mentionedKeys = getInsurerKeysFromText(message);
+  if (mentionedKeys.length === 1) {
+    return APPROVED_FACT_INSURER_SLUG_BY_KEY[mentionedKeys[0]] || null;
   }
-  return supplementQuotesWithCatalog(getQuotes(), state);
-}
+  if (mentionedKeys.length > 1) return null;
 
-function getQuoteInsurerKey(quote) {
-  return findInsurerKeyByText(`${quote?.insurer?.id || ''} ${quote?.insurer?.displayName || ''}`);
-}
-
-function quoteIdForInsurerKey(state, insurerKey, fallbackId = null) {
-  const sampleId = state?.vehicleInfo?.sampleId;
-  const quotePrefix = getInsurerQuoteIdPrefix(insurerKey);
-  if (sampleId && quotePrefix) return `QT-${sampleId}-${quotePrefix}-001`;
-  return fallbackId;
-}
-
-function withGatewayStyleQuoteId(quote, state) {
-  const insurerKey = getQuoteInsurerKey(quote);
-  const quoteId = quoteIdForInsurerKey(state, insurerKey, quote?.id || null);
-  if (!quoteId || quoteId === quote?.id) return quote;
-  return { ...quote, id: quoteId };
-}
-
-function supplementQuotesWithCatalog(quotes = [], state = {}) {
-  const combined = Array.isArray(quotes) ? quotes.filter(Boolean).map((quote) => withGatewayStyleQuoteId(quote, state)) : [];
-  const seenKeys = new Set(combined.map(getQuoteInsurerKey).filter(Boolean));
-
-  for (const catalogQuote of getQuotes()) {
-    const insurerKey = getQuoteInsurerKey(catalogQuote);
-    if (!insurerKey || seenKeys.has(insurerKey)) continue;
-    combined.push(withGatewayStyleQuoteId(catalogQuote, state));
-    seenKeys.add(insurerKey);
-  }
-
-  return combined.sort((a, b) => Number(a?.pricing?.finalPremium || 0) - Number(b?.pricing?.finalPremium || 0));
+  const selectedQuoteKey = getQuoteInsurerKey(state?.selectedQuote);
+  return APPROVED_FACT_INSURER_SLUG_BY_KEY[selectedQuoteKey] || null;
 }
 
 function getSharedNcdPercent(quotes = []) {
@@ -340,85 +231,11 @@ function effectiveDateIso(daysFromNow = 30) {
   return d.toISOString().slice(0, 10);
 }
 
-function roundCurrency(value) {
-  const numeric = Number(value);
-  if (!Number.isFinite(numeric)) return 0;
-  return Math.round((numeric + Number.EPSILON) * 100) / 100;
-}
-
 function formatMoneyTwoDecimals(value) {
   return Number(value || 0).toLocaleString('en-MY', {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   });
-}
-
-function calculateWindscreenPremium(coverageAmount) {
-  return roundCurrency(Number(coverageAmount || 0) * WINDSCREEN_PREMIUM_RATE);
-}
-
-function extractWindscreenCoverageAmount(text, { allowBareAmount = false } = {}) {
-  const raw = String(text || '');
-  const candidates = [];
-
-  const addCandidate = (value) => {
-    const numeric = Number(String(value || '').replace(/,/g, ''));
-    if (Number.isFinite(numeric) && numeric >= 100 && numeric <= 100000) {
-      candidates.push(numeric);
-    }
-  };
-
-  const contextualPatterns = [
-    /windscreen[\s\S]{0,40}?(?:rm\s*)?(\d[\d,]*(?:\.\d{1,2})?)/gi,
-    /(?:coverage|cover)[\s\S]{0,20}?(?:rm\s*)?(\d[\d,]*(?:\.\d{1,2})?)/gi,
-    /(?:rm\s*)(\d[\d,]*(?:\.\d{1,2})?)[\s\S]{0,30}?(?:coverage|cover|windscreen)/gi,
-  ];
-
-  for (const pattern of contextualPatterns) {
-    for (const match of raw.matchAll(pattern)) {
-      addCandidate(match[1]);
-    }
-  }
-
-  if (allowBareAmount) {
-    for (const match of raw.matchAll(/(?:rm\s*)?(\d{3,6}(?:,\d{3})*(?:\.\d{1,2})?|\d{3,6}(?:\.\d{1,2})?)/gi)) {
-      addCandidate(match[1]);
-    }
-  }
-
-  return candidates.length > 0 ? candidates[0] : null;
-}
-
-function getAddOnCatalogItem(id) {
-  return ADD_ON_BY_ID[id] || null;
-}
-
-function buildAddOnObject(addOnId, options = {}) {
-  const item = getAddOnCatalogItem(addOnId);
-  if (!item) return null;
-
-  if (item.hasCoverageInput) {
-    const coverageAmount = Number(options.coverageAmount || item.defaultCoverage || DEFAULT_WINDSCREEN_COVERAGE);
-    return {
-      id: item.id,
-      name: item.name,
-      coverageAmount,
-      price: calculateWindscreenPremium(coverageAmount),
-    };
-  }
-
-  return {
-    id: item.id,
-    name: item.summaryName || item.name,
-    price: Number(item.price || 0),
-  };
-}
-
-function buildAddOnsFromSelection(addOnIds = [], options = {}) {
-  const uniqueIds = [...new Set(addOnIds)].filter(Boolean);
-  return uniqueIds
-    .map((id) => buildAddOnObject(id, options))
-    .filter(Boolean);
 }
 
 function buildWindscreenCoveragePrompt(summaryBox, pendingAddOnIds = []) {
@@ -442,77 +259,6 @@ Examples:
 - RM 2,000 coverage = RM 300.00
 
 ${pendingLine ? `${pendingLine}\n\n` : ''}Reply with the windscreen coverage amount, for example **RM 2,000**.`;
-}
-
-function calculateSummaryAmounts(state) {
-  const insurance = Number(state?.selectedQuote?.priceAfter || 0);
-  const addOns = (state?.selectedAddOns || []).reduce((sum, item) => sum + Number(item?.price || 0), 0);
-  const roadTax = Number(state?.selectedRoadTax?.price || 0);
-  const tax = insurance > 0 ? roundCurrency((insurance + addOns) * SST_RATE + STAMP_DUTY_AMOUNT) : 0;
-  const total = roundCurrency(insurance + addOns + tax + roadTax);
-  return { insurance, addOns, roadTax, tax, total };
-}
-
-function calculateCurrentGrandTotal(state) {
-  return calculateSummaryAmounts(state).total;
-}
-
-function insurerMetaFromGatewayQuote(quote) {
-  const code = String(quote?.insurer?.code || '').toUpperCase();
-  if (INSURER_UI_META[code]) return INSURER_UI_META[code];
-
-  const insurer = getInsurerByKey(findInsurerKeyByText(quote?.insurer?.name || ''));
-  if (insurer) {
-    return {
-      id: insurer.id,
-      displayName: insurer.displayName,
-      logoUrl: insurer.logoUrl,
-      features: insurer.features,
-    };
-  }
-
-  return {
-    id: code ? code.toLowerCase() : 'unknown-insurer',
-    displayName: quote?.insurer?.name || 'Unknown Insurer',
-    logoUrl: '',
-    features: [],
-  };
-}
-
-function mapGatewayQuoteToInternal(quote) {
-  if (!quote || typeof quote !== 'object') return null;
-  const meta = insurerMetaFromGatewayQuote(quote);
-
-  const basePremium = Number(quote?.premium?.base || 0);
-  const finalPremium = Number(quote?.premium?.final || 0);
-  const ncdPercent = Number(quote?.premium?.ncd_percent || 0);
-  const ncdDiscount = Number(quote?.premium?.ncd_amount || Math.max(0, basePremium - finalPremium));
-
-  return {
-    id: quote.quote_id || `${meta.id}-${Date.now()}`,
-    insurer: {
-      id: meta.id,
-      displayName: meta.displayName,
-      logoUrl: meta.logoUrl,
-      features: meta.features,
-    },
-    sumInsured: Number(quote?.coverage?.sum_insured || 0),
-    coverType: String(quote?.coverage?.type || 'COMPREHENSIVE').replace(/_/g, ' '),
-    pricing: {
-      basePremium,
-      ncdPercent,
-      ncdDiscount,
-      finalPremium,
-    },
-    benefits: [...meta.features],
-    addonsCatalog: Array.isArray(quote?.addons_catalog) ? quote.addons_catalog : [],
-  };
-}
-
-function mapGatewayQuotesToInternal(gatewayQuotes = []) {
-  const mapped = gatewayQuotes.map(mapGatewayQuoteToInternal).filter(Boolean);
-  mapped.sort((a, b) => a.pricing.finalPremium - b.pricing.finalPremium);
-  return mapped;
 }
 
 function mapGatewayVehicleToProfile(state, lookupData, quoteOptions = []) {
@@ -547,65 +293,6 @@ function mapGatewayVehicleToProfile(state, lookupData, quoteOptions = []) {
     },
     quoteOptions: Array.isArray(quoteOptions) ? quoteOptions : [],
   };
-}
-
-function quoteSelectionFromIntent(state, insurerKey) {
-  const key = String(insurerKey || '').toLowerCase();
-  const quotes = getQuotesFromState(state);
-  const selected = quotes.find((q) => {
-    const id = String(q?.insurer?.id || '').toLowerCase();
-    const name = String(q?.insurer?.displayName || '').toLowerCase();
-    return textMatchesInsurerKey(`${id} ${name}`, key);
-  });
-
-  if (!selected) return null;
-  return {
-    insurer: selected.insurer.displayName,
-    priceAfter: Number(selected.pricing?.finalPremium || 0),
-    priceBefore: Number(selected.pricing?.basePremium || 0),
-    ncdPercent: Number(selected.pricing?.ncdPercent || 0),
-    sumInsured: Number(selected.sumInsured || 0),
-    coverType: selected.coverType || 'Comprehensive',
-    quoteId: selected.id || null,
-  };
-}
-
-function quoteIdForCurrentSelection(state) {
-  if (state?.selectedQuote?.quoteId) return state.selectedQuote.quoteId;
-
-  const selectedInsurer = String(state?.selectedQuote?.insurer || '').toLowerCase();
-  const fromLoadedQuotes = getQuotesFromState(state).find((q) =>
-    String(q?.insurer?.displayName || '').toLowerCase() === selectedInsurer
-  );
-  if (fromLoadedQuotes?.id) return fromLoadedQuotes.id;
-
-  const sampleId = state?.vehicleInfo?.sampleId;
-  if (!sampleId) return null;
-
-  const insurerKey = findInsurerKeyByText(selectedInsurer);
-  const quotePrefix = getInsurerQuoteIdPrefix(insurerKey);
-  if (quotePrefix) return `QT-${sampleId}-${quotePrefix}-001`;
-  return null;
-}
-
-function addOnIdsFromState(state) {
-  return (state?.selectedAddOns || [])
-    .map((item) => String(item?.id || item?.name || '').toLowerCase())
-    .map((name) => {
-      if (name.includes('windscreen')) return 'windscreen';
-      if (name.includes('flood') || name.includes('special perils')) return 'flood';
-      if (name.includes('e-hailing') || name.includes('ehailing')) return 'ehailing';
-      return null;
-    })
-    .filter(Boolean);
-}
-
-function roadTaxOptionFromState(state) {
-  const name = String(state?.selectedRoadTax?.name || '').toLowerCase();
-  if (!name) return 'digital_12m';
-  if (name.includes('no road tax') || name === 'none') return 'none';
-  if (name.includes('printed') || name.includes('deliver')) return 'printed_12m';
-  return 'digital_12m';
 }
 
 async function syncRepriceFromGateway(state) {
@@ -1237,10 +924,6 @@ function buildAddOnsMenu() {
 3. **E-hailing** — RM ${formatMoneyTwoDecimals(ADD_ON_BY_ID.ehailing.price)}
 
 E-hailing add-on is compulsory for vehicles used for e-hailing services like Grab and others.`;
-}
-
-function canUseDeliveredRoadTax(state) {
-  return canUseDeliveredRoadTaxByOwnerType(state?.ownerIdType || null);
 }
 
 /** Build the road tax menu */
@@ -2336,7 +2019,7 @@ Style:
 - Keep pricing/selection flow unchanged.`;
 }
 
-async function buildKnowledgeGroundingInstruction(latestMessage, intent, state, preloadedMatches = null) {
+async function buildKnowledgeGroundingInstruction(latestMessage, intent, state, preloadedMatches = null, options = {}) {
   if (intent?.intent !== USER_INTENTS.ASK_QUESTION) return null;
   const query = String(latestMessage || '').trim();
   if (!query) return null;
@@ -2345,6 +2028,16 @@ async function buildKnowledgeGroundingInstruction(latestMessage, intent, state, 
     ? preloadedMatches
     : await loadKnowledgeMatchesForQuestion(query, intent, { limit: 6, maxChunkCandidates: 320 });
   if (!Array.isArray(matches) || matches.length === 0) {
+    if (options.allowGeneralConceptAnswer) {
+      return `GENERAL CONCEPT GROUNDING
+No PostgreSQL insurer-specific references were found, but the user is asking about an approved general insurance concept.
+- Use the APPROVED GENERAL INSURANCE CONCEPTS instruction if present.
+- Do not say "not found in current insurer database" for the general concept itself.
+- If the user asks whether a specific insurer includes/offers this, then say that insurer-specific proof is not found in the current insurer database.
+- After answering, guide back to the current flow step with one clear next-action question.
+Current step: ${state.step}.`;
+    }
+
     return `QUESTION HANDLING CONTRACT
 No relevant PostgreSQL insurer knowledge was found for this question.
 - Do NOT guess or use generic memory for insurer-specific facts.
@@ -3384,6 +3077,39 @@ Please re-enter your **vehicle plate** and **owner identification number** to co
     if (advisorPolicyInstruction) {
       openAiMessages.push({ role: "system", content: advisorPolicyInstruction });
     }
+    const quoteRecommendation = buildQuoteRecommendation({
+      quotes: getQuotesFromState(state),
+      state,
+      userPreferences: state.userPreferences,
+      message: latestMessage,
+    });
+    const advisorStrategyInstruction = buildAdvisorStrategyInstruction(conversationDecision, state, {
+      quoteRecommendation,
+      engineContext: conversationDecision.engineContext,
+      latestMessage,
+    });
+    if (advisorStrategyInstruction) {
+      openAiMessages.push({ role: "system", content: advisorStrategyInstruction });
+    }
+    const insuranceConceptInstruction = buildInsuranceConceptInstruction(latestMessage, state);
+    if (insuranceConceptInstruction) {
+      openAiMessages.push({ role: "system", content: insuranceConceptInstruction });
+    }
+    const approvedFactsInstruction = buildApprovedFactsInstruction(latestMessage, {
+      insurerSlug: getApprovedFactInsurerSlugForMessage(latestMessage, state),
+      limit: 8,
+    });
+    if (approvedFactsInstruction) {
+      openAiMessages.push({ role: "system", content: approvedFactsInstruction });
+    }
+    const quoteRecommendationInstruction = buildQuoteRecommendationInstruction(conversationDecision, {
+      quoteRecommendation,
+      state,
+      message: latestMessage,
+    });
+    if (quoteRecommendationInstruction) {
+      openAiMessages.push({ role: "system", content: quoteRecommendationInstruction });
+    }
     const stepStyleInstruction = buildStepStyleInstruction(state);
     if (stepStyleInstruction) {
       openAiMessages.push({ role: "system", content: stepStyleInstruction });
@@ -3400,7 +3126,8 @@ Please re-enter your **vehicle plate** and **owner identification number** to co
       latestMessage,
       intent,
       state,
-      questionKnowledgeMatches
+      questionKnowledgeMatches,
+      { allowGeneralConceptAnswer: shouldUseGeneralConceptAnswer(latestMessage) }
     );
     if (knowledgeGroundingInstruction) {
       openAiMessages.push({ role: "system", content: knowledgeGroundingInstruction });
