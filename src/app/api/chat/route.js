@@ -90,6 +90,10 @@ import {
   quoteSelectionFromIntent,
 } from "@/server/insurance/quoteEngine";
 import {
+  canFallbackForGatewayError,
+  lookupSandboxVehicle,
+} from "@/server/insurance/sandboxVehicleGateway";
+import {
   appendAssistantMessageForStorage,
   getStateFromSession,
   loadChatSession,
@@ -546,6 +550,21 @@ async function loadVehicleAndQuotesFromGateway(state) {
   } catch (error) {
     if (error instanceof InsurerGatewayError && error.status === 404 && error.code === 'VEHICLE_NOT_FOUND') {
       return { vehicleProfile: null, notFound: true };
+    }
+
+    if (canFallbackForGatewayError(error)) {
+      const sandboxLookupData = lookupSandboxVehicle(lookupPayload);
+      if (sandboxLookupData?.vehicle_ref_id) {
+        console.warn(
+          '[insurer-gateway] Gateway unavailable; using local/preview sandbox vehicle fallback.',
+          sandboxLookupData.sample_id
+        );
+        return {
+          vehicleProfile: mapGatewayVehicleToProfile(state, sandboxLookupData, []),
+          notFound: false,
+          usedSandboxFallback: true,
+        };
+      }
     }
 
     console.warn('[insurer-gateway] Vehicle lookup failed.', error?.message || error);
