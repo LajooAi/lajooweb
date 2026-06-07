@@ -177,7 +177,11 @@ model ChatMessage {
   paymentCard        Json?
   paymentSuccessCard Json?
   knowledgeTrace     Json?
+  auditStatus        String?
+  auditNote          String?
+  auditedAt          DateTime?
   createdAt          DateTime    @default(now())
 
   @@index([sessionId, messageOrder])
+  @@index([auditStatus])
 }
