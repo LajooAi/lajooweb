@@ -128,6 +128,14 @@ export function buildFactReviewQueueClause(reviewQueue, now = new Date()) {
   };
 
   if (value === 'high_impact') return highImpact;
+  if (value === 'brand_program') {
+    return {
+      OR: [
+        { category: 'brand_program' },
+        { tags: { has: 'brand_program' } },
+      ],
+    };
+  }
   if (value === 'needs_dates') return { AND: [highImpact, missingDates] };
   if (value === 'critical') return { AND: [highImpact, criticalValidity] };
   if (value === 'priority') {
@@ -372,14 +380,15 @@ async function buildReviewQueueSummary(where = {}) {
     AND: [...baseAnd, ...clauses].filter(Boolean),
   });
 
-  const [highImpact, priority, needsDates, critical] = await Promise.all([
+  const [highImpact, priority, needsDates, critical, brandProgram] = await Promise.all([
     prisma.insurerFact.count({ where: withAnd(buildFactReviewQueueClause('high_impact')) }),
     prisma.insurerFact.count({ where: withAnd(buildFactReviewQueueClause('priority')) }),
     prisma.insurerFact.count({ where: withAnd(buildFactReviewQueueClause('needs_dates')) }),
     prisma.insurerFact.count({ where: withAnd(buildFactReviewQueueClause('critical')) }),
+    prisma.insurerFact.count({ where: withAnd(buildFactReviewQueueClause('brand_program')) }),
   ]);
 
-  return { highImpact, priority, needsDates, critical };
+  return { highImpact, priority, needsDates, critical, brandProgram };
 }
 
 export async function listKnowledgeFacts(searchParams = {}) {

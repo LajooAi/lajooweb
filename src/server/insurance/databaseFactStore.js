@@ -4,6 +4,7 @@ import {
   buildFactAuditFields,
   buildUsableFactDateWhere,
   isFactUsableForAi,
+  isGenericGeneratedBrandProgramFact,
   shouldRequireDatedFactsForAi,
 } from '../knowledge/sourceAudit.js';
 import { inferFactTagsFromMessage } from './approvedFactStore.js';
@@ -64,13 +65,9 @@ export function mapInsurerFactRowToApprovedFact(row, options = {}) {
   const insurerSlug = getInsurerSlugFromCode(insurerCode);
   const audit = buildFactAuditFields(row);
   const requireDatedFacts = shouldRequireDatedFactsForAi(options);
-  const isGenericGeneratedBrandProgram =
-    row.category === 'brand_program' &&
-    /\bimported private-car\b/i.test(row.value || '') &&
-    /\bprogramme or product wording\b/i.test(row.value || '');
   const usableForAi =
-    !isGenericGeneratedBrandProgram &&
     isFactUsableForAi(row, undefined, { requireDatedFacts });
+  const isGenericGeneratedBrandProgram = isGenericGeneratedBrandProgramFact(row);
   return {
     id: `db:${row.id}`,
     insurerSlug,

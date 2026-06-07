@@ -17,6 +17,7 @@ const REVIEW_QUEUE_OPTIONS = [
   { value: 'needs_dates', label: 'Needs dates' },
   { value: 'critical', label: 'Expired / future' },
   { value: 'high_impact', label: 'High-impact topics' },
+  { value: 'brand_program', label: 'Brand-program review' },
 ];
 const VALIDITY_LABELS = {
   active: 'Active',
@@ -629,7 +630,8 @@ export default function KnowledgeReviewClient() {
             Priority queue: {(reviewQueueSummary.priority || 0).toLocaleString()} •
             {' '}Needs dates: {(reviewQueueSummary.needsDates || 0).toLocaleString()} •
             {' '}Critical: {(reviewQueueSummary.critical || 0).toLocaleString()} •
-            {' '}High-impact: {(reviewQueueSummary.highImpact || 0).toLocaleString()}
+            {' '}High-impact: {(reviewQueueSummary.highImpact || 0).toLocaleString()} •
+            {' '}Brand-program: {(reviewQueueSummary.brandProgram || 0).toLocaleString()}
           </span>
         </div>
         <div className="knowledge-pagination">

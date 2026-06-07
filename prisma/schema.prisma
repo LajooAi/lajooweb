@@ -176,6 +176,7 @@ model ChatMessage {
   roadTaxCard        Json?
   paymentCard        Json?
   paymentSuccessCard Json?
+  knowledgeTrace     Json?
   createdAt          DateTime    @default(now())
 
   @@index([sessionId, messageOrder])

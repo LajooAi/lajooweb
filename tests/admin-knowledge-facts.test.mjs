@@ -105,6 +105,14 @@ test('review queue filter builds high-impact dating queue clauses', () => {
   assert.match(JSON.stringify(needsDates), /validFrom/);
   assert.match(JSON.stringify(needsDates), /validTo/);
 
+  const brandProgram = buildFactReviewQueueClause('brand_program', now);
+  assert.deepEqual(brandProgram, {
+    OR: [
+      { category: 'brand_program' },
+      { tags: { has: 'brand_program' } },
+    ],
+  });
+
   assert.equal(buildFactReviewQueueClause('all', now), null);
   assert.throws(() => buildFactReviewQueueClause('random', now), /Invalid review queue filter/);
 });

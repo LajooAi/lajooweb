@@ -5,8 +5,10 @@ import {
 import {
   buildProductionTurnInstructionMessages,
 } from './productionTurnInstructionBuilder.js';
+import { buildKnowledgeSourceTrace } from './sourceTrace.js';
 
 export async function buildProductionOpenAiMessages({
+  sessionId = null,
   latestMessage = '',
   messages = [],
   state,
@@ -52,12 +54,24 @@ export async function buildProductionOpenAiMessages({
   });
 
   openAiMessages.push(...productionTurnInstructions.messages);
+  const knowledgeSourceTrace = buildKnowledgeSourceTrace({
+    sessionId,
+    latestMessage,
+    state,
+    intent,
+    decision,
+    turnPlan,
+    questionKnowledgeMatches,
+    verifiedDatabaseFacts: productionTurnInstructions.verifiedDatabaseFacts,
+    quoteRecommendation: productionTurnInstructions.quoteRecommendation,
+  });
 
   return {
     openAiMessages,
     questionKnowledgeMatches,
     liveKnowledgeSnapshot,
     productionTurnInstructions,
+    knowledgeSourceTrace,
   };
 }
 

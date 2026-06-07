@@ -45,8 +45,9 @@ export function normalizeChatSessionId(value) {
   return createChatSessionId();
 }
 
-export function sanitizeChatMessages(messages = []) {
+export function sanitizeChatMessages(messages = [], options = {}) {
   if (!Array.isArray(messages)) return [];
+  const allowKnowledgeTrace = Boolean(options.allowKnowledgeTrace);
 
   return messages
     .filter((message) => message && (message.role === 'user' || message.role === 'assistant'))
@@ -61,6 +62,7 @@ export function sanitizeChatMessages(messages = []) {
       if (message.roadTaxCard) sanitized.roadTaxCard = cloneJson(message.roadTaxCard);
       if (message.paymentCard) sanitized.paymentCard = cloneJson(message.paymentCard);
       if (message.paymentSuccessCard) sanitized.paymentSuccessCard = cloneJson(message.paymentSuccessCard);
+      if (allowKnowledgeTrace && message.knowledgeTrace) sanitized.knowledgeTrace = cloneJson(message.knowledgeTrace);
 
       return sanitized;
     })
@@ -97,6 +99,7 @@ function mapDatabaseMessage(message) {
     roadTaxCard: message.roadTaxCard || null,
     paymentCard: message.paymentCard || null,
     paymentSuccessCard: message.paymentSuccessCard || null,
+    knowledgeTrace: message.knowledgeTrace || null,
   };
 }
 
@@ -110,7 +113,7 @@ function mapDatabaseSession(session) {
     expiresAt: toEpochMs(session.expiresAt),
     state: session.state || null,
     publicState: session.publicState || null,
-    messages: sanitizeChatMessages((session.messages || []).map(mapDatabaseMessage)),
+    messages: sanitizeChatMessages((session.messages || []).map(mapDatabaseMessage), { allowKnowledgeTrace: true }),
     lastIntent: session.lastIntent || null,
     metadata: session.metadata || {},
   });
@@ -140,7 +143,7 @@ async function loadDatabaseSession(id) {
 
 async function saveDatabaseSession(session) {
   const prisma = await getPrismaClient();
-  const messages = sanitizeChatMessages(session.messages);
+  const messages = sanitizeChatMessages(session.messages, { allowKnowledgeTrace: true });
 
   await prisma.$transaction(async (tx) => {
     await tx.chatSession.upsert({
@@ -178,6 +181,7 @@ async function saveDatabaseSession(session) {
           roadTaxCard: toNullableJson(message.roadTaxCard),
           paymentCard: toNullableJson(message.paymentCard),
           paymentSuccessCard: toNullableJson(message.paymentSuccessCard),
+          knowledgeTrace: toNullableJson(message.knowledgeTrace),
         })),
       });
     }
@@ -195,7 +199,7 @@ async function clearDatabaseSession(id) {
 }
 
 export function resolveMessagesForTurn({ serverMessages = [], requestMessages = [] } = {}) {
-  const safeServerMessages = sanitizeChatMessages(serverMessages);
+  const safeServerMessages = sanitizeChatMessages(serverMessages, { allowKnowledgeTrace: true });
   const safeRequestMessages = sanitizeChatMessages(requestMessages);
 
   if (safeServerMessages.length === 0) return safeRequestMessages;
@@ -212,7 +216,7 @@ export function resolveMessagesForTurn({ serverMessages = [], requestMessages = 
   const latestRequestUser = getLastUserMessage(safeRequestMessages);
   const latestServerMessage = safeServerMessages[safeServerMessages.length - 1];
   if (latestRequestUser && !sameMessage(latestRequestUser, latestServerMessage)) {
-    return sanitizeChatMessages([...safeServerMessages, latestRequestUser]);
+    return sanitizeChatMessages([...safeServerMessages, latestRequestUser], { allowKnowledgeTrace: true });
   }
 
   return safeServerMessages;
@@ -272,7 +276,7 @@ export async function saveChatSession({
     expiresAt: now + getTtlMs(),
     state: serializeStateForStorage(state),
     publicState: serializeStateForClient(state),
-    messages: sanitizeChatMessages(messages),
+    messages: sanitizeChatMessages(messages, { allowKnowledgeTrace: true }),
     lastIntent: lastIntent ? cloneJson(lastIntent) : null,
     metadata: cloneJson(metadata || {}),
   };
@@ -311,8 +315,9 @@ export function appendAssistantMessageForStorage(messages = [], assistantMessage
       roadTaxCard: assistantMessage.roadTaxCard || null,
       paymentCard: assistantMessage.paymentCard || null,
       paymentSuccessCard: assistantMessage.paymentSuccessCard || null,
+      knowledgeTrace: assistantMessage.knowledgeTrace || null,
     },
-  ]);
+  ], { allowKnowledgeTrace: true });
 }
 
 export function cleanupExpiredChatSessions() {

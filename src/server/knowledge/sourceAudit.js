@@ -102,6 +102,12 @@ export function isFactDated(fact = {}) {
   return hasDate(fact.validFrom) || hasDate(fact.validTo);
 }
 
+export function isGenericGeneratedBrandProgramFact(fact = {}) {
+  return fact.category === 'brand_program' &&
+    /\bimported private-car\b/i.test(fact.value || fact.statement || '') &&
+    /\bprogramme or product wording\b/i.test(fact.value || fact.statement || '');
+}
+
 export function getHighImpactReviewTopic(fact = {}) {
   const haystack = normalizeText([
     fact.factType,
@@ -136,6 +142,9 @@ export function getFactReviewPriority(fact = {}, now = new Date()) {
 
   reasons.push(`${topic.label} is a high-impact customer advice topic.`);
 
+  if (isGenericGeneratedBrandProgramFact(fact)) {
+    reasons.push('Generic auto-generated brand-program wording must be manually verified before AI use.');
+  }
   if (validityStatus === FACT_VALIDITY_STATUS.UNDATED) {
     reasons.push('Missing effective/expiry dates for a high-impact fact.');
   }
@@ -166,6 +175,7 @@ export function getFactReviewPriority(fact = {}, now = new Date()) {
 
 export function isFactUsableForAi(fact = {}, now = new Date(), options = {}) {
   if (fact.status !== 'VERIFIED') return false;
+  if (isGenericGeneratedBrandProgramFact(fact)) return false;
   const validityStatus = getFactValidityStatus(fact, now);
   if (validityStatus === FACT_VALIDITY_STATUS.ACTIVE) return true;
   if (validityStatus === FACT_VALIDITY_STATUS.UNDATED) {
@@ -222,6 +232,9 @@ export function buildFactReviewReasons(fact = {}, now = new Date()) {
   }
   if (validityStatus === FACT_VALIDITY_STATUS.NOT_YET_EFFECTIVE) {
     reasons.push('Future-dated fact; not usable until effective date.');
+  }
+  if (isGenericGeneratedBrandProgramFact(fact)) {
+    reasons.push('Generic auto-generated brand-program fact needs admin verification.');
   }
   if (!fact.sourceRelativePath && !fact.policyDocument?.sourceRelativePath) {
     reasons.push('Missing source PDF path.');

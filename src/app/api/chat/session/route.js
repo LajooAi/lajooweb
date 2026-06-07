@@ -10,6 +10,19 @@ function getSessionIdFromRequest(request) {
   return normalizeChatSessionId(url.searchParams.get("sessionId"));
 }
 
+function serializeMessagesForClient(messages = []) {
+  if (!Array.isArray(messages)) return [];
+  return messages.map((message) => ({
+    role: message.role,
+    content: message.content || '',
+    summaryCard: message.summaryCard || null,
+    addOnsCard: message.addOnsCard || null,
+    roadTaxCard: message.roadTaxCard || null,
+    paymentCard: message.paymentCard || null,
+    paymentSuccessCard: message.paymentSuccessCard || null,
+  }));
+}
+
 export async function GET(request) {
   const sessionId = getSessionIdFromRequest(request);
   const session = await loadChatSession(sessionId);
@@ -26,7 +39,7 @@ export async function GET(request) {
   return NextResponse.json({
     sessionId,
     found: true,
-    messages: session.messages || [],
+    messages: serializeMessagesForClient(session.messages),
     state: session.publicState || null,
     updatedAt: session.updatedAt || null,
   });

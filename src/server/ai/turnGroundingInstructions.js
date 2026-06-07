@@ -34,6 +34,7 @@ export async function loadKnowledgeMatchesForQuestion(latestMessage, intent, opt
   const verifiedMatches = verifiedFacts.map((fact) => ({
     id: fact.id,
     category: 'Verified Insurer Facts',
+    categoryName: fact.category || null,
     question: `${fact.insurerName}: ${fact.category || 'verified private-car fact'}`,
     answer: [
       fact.statement,
@@ -46,7 +47,18 @@ export async function loadKnowledgeMatchesForQuestion(latestMessage, intent, opt
     score: 100,
     sourceType: 'db_verified_fact',
     sourceLabel: fact.sourceLabel || fact.sourceRelativePath || null,
+    sourceRelativePath: fact.sourceRelativePath || null,
+    sourcePage: fact.sourcePage || null,
+    sourceExcerpt: fact.sourceExcerpt || null,
     validityStatus: fact.validityStatus || null,
+    validFrom: fact.validFrom || null,
+    validTo: fact.validTo || null,
+    confidence: fact.confidence || null,
+    factType: fact.factType || null,
+    insurerName: fact.insurerName || null,
+    insurerSlug: fact.insurerSlug || null,
+    tags: fact.tags || [],
+    statement: fact.statement || null,
     insurerCode: null,
   }));
 

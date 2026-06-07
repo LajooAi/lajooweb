@@ -49,6 +49,10 @@ import {
   buildProductionOpenAiMessages,
 } from "@/server/ai/productionOpenAiMessageBuilder";
 import {
+  appendKnowledgeSourceTraceToMetadata,
+  logKnowledgeSourceTrace,
+} from "@/server/ai/sourceTrace";
+import {
   shouldSuppressStepLine,
 } from "@/server/ai/responsePolicy";
 import {
@@ -2915,7 +2919,8 @@ Please re-enter your **vehicle plate** and **owner identification number** to co
     // ========================================================================
     // 3. BUILD AI MESSAGES
     // ========================================================================
-    const { openAiMessages } = await buildProductionOpenAiMessages({
+    const { openAiMessages, knowledgeSourceTrace } = await buildProductionOpenAiMessages({
+      sessionId,
       latestMessage,
       messages,
       state,
@@ -3194,18 +3199,25 @@ This summary box must appear in EVERY response from now on until payment is comp
       addOnsCard,
       roadTaxCard,
       paymentCard,
+      knowledgeTrace: knowledgeSourceTrace,
     });
+    logKnowledgeSourceTrace(knowledgeSourceTrace);
+    const sessionMetadata = appendKnowledgeSourceTraceToMetadata(
+      serverSession?.metadata || {},
+      knowledgeSourceTrace,
+      {
+        step: state.step,
+        conversationMode: conversationDecision.mode,
+        turnPlan: turnPlan.responsePattern,
+        promptVariant: state?.experiment?.promptVariant || 'A',
+      }
+    );
     const savedSession = await saveChatSession({
       sessionId,
       state,
       messages: persistedMessages,
       lastIntent: intent,
-      metadata: {
-        step: state.step,
-        conversationMode: conversationDecision.mode,
-        turnPlan: turnPlan.responsePattern,
-        promptVariant: state?.experiment?.promptVariant || 'A',
-      },
+      metadata: sessionMetadata,
     });
 
     // ========================================================================
