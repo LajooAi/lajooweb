@@ -185,7 +185,7 @@ export async function searchInsurerKnowledgeFromDb(query, options = {}) {
       },
       include: {
         insurer: { select: { code: true, name: true } },
-        policyDocument: { select: { title: true, sourceFileName: true } },
+        policyDocument: { select: { title: true, sourceFileName: true, sourceRelativePath: true } },
       },
       take: maxChunkCandidates,
     });
@@ -216,6 +216,10 @@ export async function searchInsurerKnowledgeFromDb(query, options = {}) {
           keywords: [],
           score,
           sourceType: "db_chunk",
+          sourceLabel: row.policyDocument?.sourceRelativePath
+            ? `${row.policyDocument.sourceRelativePath}${row.pageNumber ? ` (p. ${row.pageNumber})` : " (page not captured)"}`
+            : null,
+          sourcePage: row.pageNumber || null,
           insurerCode: insurerCode || null,
         };
       })

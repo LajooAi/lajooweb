@@ -1,5 +1,11 @@
 import prisma from '../../lib/prisma.js';
 import { getInsurerByCode, getInsurerKeysFromText } from '../../lib/insurerCatalog.js';
+import {
+  buildFactAuditFields,
+  buildUsableFactDateWhere,
+  isFactUsableForAi,
+  shouldRequireDatedFactsForAi,
+} from '../knowledge/sourceAudit.js';
 import { inferFactTagsFromMessage } from './approvedFactStore.js';
 import { getApprovedFactInsurerSlugForKey } from './insurerFactSlugs.js';
 
@@ -52,10 +58,19 @@ function getInsurerCodesFromMessage(message = '') {
     .filter(Boolean);
 }
 
-export function mapInsurerFactRowToApprovedFact(row) {
+export function mapInsurerFactRowToApprovedFact(row, options = {}) {
   if (!row) return null;
   const insurerCode = row.insurer?.code || null;
   const insurerSlug = getInsurerSlugFromCode(insurerCode);
+  const audit = buildFactAuditFields(row);
+  const requireDatedFacts = shouldRequireDatedFactsForAi(options);
+  const isGenericGeneratedBrandProgram =
+    row.category === 'brand_program' &&
+    /\bimported private-car\b/i.test(row.value || '') &&
+    /\bprogramme or product wording\b/i.test(row.value || '');
+  const usableForAi =
+    !isGenericGeneratedBrandProgram &&
+    isFactUsableForAi(row, undefined, { requireDatedFacts });
   return {
     id: `db:${row.id}`,
     insurerSlug,
@@ -66,11 +81,22 @@ export function mapInsurerFactRowToApprovedFact(row) {
     statement: row.value,
     advisorUse: row.advisorUse,
     confidence: row.confidence || 'medium',
-    approvedForAi: row.status === 'VERIFIED',
+    approvedForAi: usableForAi,
     sourceType: 'db_verified_fact',
     sourceRelativePath: row.sourceRelativePath || row.policyDocument?.sourceRelativePath || null,
+    sourcePage: row.sourcePage || null,
+    sourceLabel: audit.sourceLabel,
     sourceExcerpt: row.sourceExcerpt || null,
     factType: row.factType || null,
+    validFrom: row.validFrom || null,
+    validTo: row.validTo || null,
+    validityStatus: audit.validityStatus,
+    needsReview: audit.needsReview || isGenericGeneratedBrandProgram,
+    reviewReasons: isGenericGeneratedBrandProgram
+      ? [...(audit.reviewReasons || []), 'generic auto-generated brand-program fact needs admin verification']
+      : audit.reviewReasons,
+    usableForAi,
+    strictDatedFactsRequired: requireDatedFacts,
   };
 }
 
@@ -146,7 +172,7 @@ function shouldDiversifyFactResults({ insurerSlug = null, message = '' } = {}) {
   return /\b(compare|which insurer|which one|best|better|recommend|recommendation|versus|vs\.?)\b/i.test(message);
 }
 
-function buildDbFactWhere({ insurerSlug = null, tags = [], category = null, message = '' } = {}) {
+export function buildDbFactWhere({ insurerSlug = null, tags = [], category = null, message = '', requireDatedFacts = undefined } = {}) {
   const insurerCodes = insurerSlug
     ? getInsurerCodesFromSlug(insurerSlug)
     : getInsurerCodesFromMessage(message);
@@ -156,19 +182,18 @@ function buildDbFactWhere({ insurerSlug = null, tags = [], category = null, mess
     { advisorUse: { contains: token, mode: 'insensitive' } },
     { sourceExcerpt: { contains: token, mode: 'insensitive' } },
   ]));
+  const dateClauses = buildUsableFactDateWhere(undefined, { requireDatedFacts });
+  const topicClauses = tags.length > 0
+    ? [{ OR: tags.map((tag) => ({ tags: { has: tag } })) }]
+    : tokenClauses.length > 0
+      ? [{ OR: tokenClauses }]
+      : [];
 
   return {
     status: 'VERIFIED',
+    AND: [...dateClauses, ...topicClauses],
     ...(category ? { category } : {}),
     ...(insurerCodes.length > 0 ? { insurer: { code: { in: insurerCodes } } } : {}),
-    ...(tags.length > 0 || tokenClauses.length > 0
-      ? {
-          OR: [
-            ...tags.map((tag) => ({ tags: { has: tag } })),
-            ...tokenClauses,
-          ],
-        }
-      : {}),
   };
 }
 
@@ -178,13 +203,14 @@ export async function getVerifiedDatabaseFacts({
   category = null,
   message = '',
   limit = 12,
+  requireDatedFacts = undefined,
 } = {}) {
   if (!process.env.DATABASE_URL) return [];
 
   const queryLimit = Math.max(Number(limit || 12) * 20, FACT_QUERY_LIMIT);
   try {
     const rows = await prisma.insurerFact.findMany({
-      where: buildDbFactWhere({ insurerSlug, tags, category, message }),
+      where: buildDbFactWhere({ insurerSlug, tags, category, message, requireDatedFacts }),
       include: {
         insurer: { select: { code: true, name: true } },
         policyDocument: { select: { sourceRelativePath: true, title: true } },
@@ -194,7 +220,7 @@ export async function getVerifiedDatabaseFacts({
     });
 
     const scored = rows
-      .map(mapInsurerFactRowToApprovedFact)
+      .map((row) => mapInsurerFactRowToApprovedFact(row, { requireDatedFacts }))
       .filter(Boolean)
       .map((fact) => ({
         fact,
@@ -214,7 +240,7 @@ export async function getVerifiedDatabaseFacts({
   }
 }
 
-export async function findVerifiedDatabaseFactsForMessage(message = '', { insurerSlug = null, limit = 8 } = {}) {
+export async function findVerifiedDatabaseFactsForMessage(message = '', { insurerSlug = null, limit = 8, requireDatedFacts = undefined } = {}) {
   const tags = inferFactTagsFromMessage(message);
   if (tags.length === 0 && !insurerSlug && getInsurerKeysFromText(message).length === 0) return [];
   return getVerifiedDatabaseFacts({
@@ -222,6 +248,7 @@ export async function findVerifiedDatabaseFactsForMessage(message = '', { insure
     tags,
     message,
     limit,
+    requireDatedFacts,
   });
 }
 
@@ -232,12 +259,18 @@ export function buildVerifiedDatabaseFactsInstructionFromFacts(facts = []) {
   const lines = [
     'VERIFIED DATABASE INSURER FACTS',
     'These facts came from imported insurer PDFs in Neon and are approved for AI use. Use them before raw PDF chunks.',
+    shouldRequireDatedFactsForAi()
+      ? 'Date rule: strict dated-facts mode is ON; only current dated facts should be treated as usable for AI advice.'
+      : 'Date rule: active facts are current; undated facts may be used cautiously but should not be treated as a time-guaranteed promise.',
   ];
 
   filtered.slice(0, 6).forEach((fact, index) => {
     lines.push(`${index + 1}. ${fact.insurerName}: ${fact.statement}`);
     if (fact.advisorUse) lines.push(`   Advisor use: ${fact.advisorUse}`);
-    if (fact.sourceRelativePath) lines.push(`   Source file: ${fact.sourceRelativePath}`);
+    if (fact.sourceLabel || fact.sourceRelativePath) {
+      lines.push(`   Source: ${fact.sourceLabel || fact.sourceRelativePath}`);
+    }
+    if (fact.validityStatus) lines.push(`   Validity: ${fact.validityStatus}`);
     if (fact.sourceExcerpt) lines.push(`   Source excerpt: ${truncateText(fact.sourceExcerpt, 220)}`);
   });
 

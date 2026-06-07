@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import {
   listKnowledgeFacts,
+  updateKnowledgeDocumentValidity,
   updateKnowledgeFact,
 } from '../../../../../server/admin/knowledgeFactsAdmin.js';
 
@@ -43,8 +44,10 @@ export async function GET(request) {
     const result = await listKnowledgeFacts(payload);
     return NextResponse.json(result);
   } catch (error) {
-    console.error('[admin-knowledge-facts] list failed', error);
-    return NextResponse.json({ error: 'Unable to load knowledge facts.' }, { status: 500 });
+    const message = error?.message || 'Unable to load knowledge facts.';
+    const status = /invalid|missing|short|valid|cannot/i.test(message) ? 400 : 500;
+    if (status >= 500) console.error('[admin-knowledge-facts] list failed', error);
+    return NextResponse.json({ error: status >= 500 ? 'Unable to load knowledge facts.' : message }, { status });
   }
 }
 
@@ -54,11 +57,19 @@ export async function PATCH(request) {
 
   try {
     const body = await request.json();
+    if (body?.action === 'updateDocumentValidity') {
+      const result = await updateKnowledgeDocumentValidity(
+        body?.documentId,
+        body?.updates || {},
+        { applyToFacts: Boolean(body?.applyToFacts) }
+      );
+      return NextResponse.json(result);
+    }
     const fact = await updateKnowledgeFact(body?.id, body?.updates || {});
     return NextResponse.json({ fact });
   } catch (error) {
     const message = error?.message || 'Unable to update knowledge fact.';
-    const status = /not found/i.test(message) ? 404 : /invalid|missing|short|valid/i.test(message) ? 400 : 500;
+    const status = /not found/i.test(message) ? 404 : /invalid|missing|short|valid|cannot/i.test(message) ? 400 : 500;
     if (status >= 500) console.error('[admin-knowledge-facts] update failed', error);
     return NextResponse.json({ error: message }, { status });
   }

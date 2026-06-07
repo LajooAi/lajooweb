@@ -72,3 +72,25 @@ test('approved facts instruction includes compliance guardrail', () => {
   assert.match(instruction, /do not invent/i);
   assert.match(instruction, /Tesla|EV|charger/i);
 });
+
+test('strict dated-facts mode blocks undated static seed facts', () => {
+  const previous = process.env.LAJOO_AI_REQUIRE_DATED_FACTS;
+  process.env.LAJOO_AI_REQUIRE_DATED_FACTS = 'true';
+
+  try {
+    assert.deepEqual(
+      findApprovedFactsForMessage('does Etiqa cover Tesla charger and towing?', { limit: 6 }),
+      []
+    );
+    assert.equal(
+      buildApprovedFactsInstruction('does Etiqa cover Tesla charger and towing?', { limit: 6 }),
+      null
+    );
+  } finally {
+    if (previous === undefined) {
+      delete process.env.LAJOO_AI_REQUIRE_DATED_FACTS;
+    } else {
+      process.env.LAJOO_AI_REQUIRE_DATED_FACTS = previous;
+    }
+  }
+});

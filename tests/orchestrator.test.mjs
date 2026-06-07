@@ -238,7 +238,8 @@ test('recommendation engine uses brand-program facts only when brand context mat
   });
 
   assert.equal(recommendation.recommendedQuote.insurerKey, 'takaful');
-  assert.match(recommendation.factReasons.join(' '), /brand-program suitability/i);
+  assert.match(recommendation.factReasons.join(' '), /brand-program eligibility context to verify/i);
+  assert.match(recommendation.riskNotes.join(' '), /eligibility must be verified/i);
   assert.ok(recommendation.recommendationTags.includes('perodua'));
 });
 

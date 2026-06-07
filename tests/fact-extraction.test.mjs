@@ -42,6 +42,29 @@ test('extracts conservative private-car add-on facts from imported PDF text', ()
   assert.ok(facts.every((fact) => fact.value.includes('imported private-car')));
 });
 
+test('extracted facts inherit page evidence and document validity when chunks are available', () => {
+  const document = makeDocument({
+    effectiveFrom: new Date('2026-01-01T00:00:00Z'),
+    effectiveTo: new Date('2026-12-31T00:00:00Z'),
+    extractedText: 'General policy text.',
+    chunks: [
+      {
+        pageNumber: 7,
+        chunkOrder: 1,
+        chunkText: 'Optional cover includes windscreen glass cover and tinted film.',
+      },
+    ],
+  });
+
+  const facts = buildVerifiedFactCandidatesForDocument(document);
+  const windscreenFact = facts.find((fact) => fact.category === 'windscreen');
+
+  assert.ok(windscreenFact);
+  assert.equal(windscreenFact.sourcePage, 7);
+  assert.equal(windscreenFact.validFrom, document.effectiveFrom);
+  assert.equal(windscreenFact.validTo, document.effectiveTo);
+});
+
 test('extracts roadside facts from roadside assistance documents', () => {
   const facts = buildVerifiedFactCandidatesForDocument(makeDocument({
     title: 'Private Car Roadside Assistance',
@@ -78,4 +101,7 @@ test('extracts brand-program suitability facts without overclaiming recommendati
   assert.ok(brandFact);
   assert.ok(brandFact.tags.includes('perodua'));
   assert.match(brandFact.value, /Do not say it is automatically best/i);
+  assert.equal(brandFact.status, 'DRAFT');
+  assert.equal(brandFact.confidence, 'low');
+  assert.match(brandFact.advisorUse, /Admin must verify/i);
 });

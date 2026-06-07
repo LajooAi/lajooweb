@@ -214,6 +214,10 @@ function isExactBrandProgramMatch(fact, desiredTags) {
     (fact.tags || []).some((tag) => tagSet.has(tag) && BRAND_TAGS.has(tag));
 }
 
+function isBrandProgramFact(fact) {
+  return fact?.tags?.includes('brand_program') || fact?.category === 'brand_program';
+}
+
 function formatFactReason(fact, desiredTags) {
   const tagSet = new Set(desiredTags);
 
@@ -243,7 +247,7 @@ function formatFactReason(fact, desiredTags) {
     }
   }
   if ([...tagSet].some((tag) => BRAND_TAGS.has(tag)) && fact.tags?.includes('brand_program')) {
-    return `${fact.insurerName} has an approved brand-program suitability fact`;
+    return `${fact.insurerName} has brand-program eligibility context to verify`;
   }
   if (tagSet.has('takaful') || tagSet.has('shariah') || tagSet.has('islamic')) {
     if (fact.tags?.includes('takaful')) return `${fact.insurerName} matches the user's takaful preference`;
@@ -284,9 +288,10 @@ function scoreApprovedFact(fact, desiredTags) {
   if ((tagSet.has('e_hailing') || tagSet.has('private_hire') || tagSet.has('grab')) && hasAnyTag(fact, ['e_hailing', 'private_hire', 'endorsement'])) {
     score += 0.55;
   }
-  if ([...tagSet].some((tag) => BRAND_TAGS.has(tag)) && fact.tags?.includes('brand_program')) {
-    score += 0.68;
-    if ((fact.tags || []).some((tag) => tagSet.has(tag) && BRAND_TAGS.has(tag))) score += 0.28;
+  if ([...tagSet].some((tag) => BRAND_TAGS.has(tag)) && isBrandProgramFact(fact)) {
+    score += 0.16;
+    if ((fact.tags || []).some((tag) => tagSet.has(tag) && BRAND_TAGS.has(tag))) score += 0.08;
+    riskNote = `${fact.insurerName} has brand-program evidence, but eligibility must be verified in the live quote/product before using it as the main recommendation reason.`;
   }
   if ((tagSet.has('takaful') || tagSet.has('shariah') || tagSet.has('islamic')) && fact.tags?.includes('takaful')) {
     score += 0.45;
@@ -294,8 +299,11 @@ function scoreApprovedFact(fact, desiredTags) {
   if (fact.confidence === 'high') score += 0.06;
   if (fact.confidence === 'medium') score += 0.02;
 
-  if (fact.tags?.includes('brand_program') && !isExactBrandProgramMatch(fact, desiredTags)) {
+  if (isBrandProgramFact(fact) && !isExactBrandProgramMatch(fact, desiredTags)) {
     score *= 0.25;
+  }
+  if (isBrandProgramFact(fact) && isExactBrandProgramMatch(fact, desiredTags)) {
+    score = Math.min(score, 0.42);
   }
   if (isConditionalBenefitFact(fact) && !isExactBrandProgramMatch(fact, desiredTags)) {
     score *= 0.58;
@@ -515,6 +523,7 @@ Response rules:
 - Say "I recommend ${quote.insurerName}" so the system can remember the recommendation.
 - Give one clear reason and one tradeoff.
 - Use approved fact-backed reasons only as written above. Do not expand them into extra benefits, limits, or eligibility promises.
+- Brand-program reasons are eligibility context only. Do not make them the main reason unless the live quote/product confirms that exact programme; phrase them as "may be relevant if eligible".
 - Do not show the full quote list again unless the user asks.
 - Do not invent insurer policy facts. Current quote features are helpful context, not final policy promises.
 - End with: "Want to go with this?" or one equally clear close question.`;

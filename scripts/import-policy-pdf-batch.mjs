@@ -8,6 +8,7 @@ import {
   classifyKnowledgePdf,
   summarizeKnowledgePdfMetadata,
 } from "../src/server/knowledge/pdfMetadata.js";
+import { extractDocumentDating } from "../src/server/knowledge/documentDating.js";
 
 const prisma = new PrismaClient();
 const DEFAULT_ROOT = "knowledge/raw-pdfs";
@@ -67,9 +68,19 @@ async function parsePdfText(filePath) {
   const parser = new PDFParse({ data: dataBuffer });
   try {
     const parsed = await parser.getText();
+    const pageTexts = Array.isArray(parsed.pages)
+      ? parsed.pages
+        .map((page) => ({
+          pageNumber: Number(page.num || page.pageNumber || 0),
+          text: normalizeText(page.text || ""),
+        }))
+        .filter((page) => page.pageNumber > 0 && page.text)
+      : [];
+
     return {
-      text: parsed.text || "",
-      pages: Number(parsed.total || 0),
+      text: parsed.text || pageTexts.map((page) => page.text).join("\n\n"),
+      pages: Number(parsed.total || pageTexts.length || 0),
+      pageTexts,
     };
   } finally {
     await parser.destroy();
@@ -117,6 +128,23 @@ function splitIntoChunks(text, maxChars = 1400, overlap = 180) {
   }
 
   if (current) chunks.push(current);
+  return chunks;
+}
+
+function splitPageTextsIntoChunks(pageTexts = []) {
+  const chunks = [];
+
+  for (const page of pageTexts) {
+    const pageNumber = Number(page.pageNumber || 0);
+    const pageChunks = splitIntoChunks(page.text);
+    for (const chunkText of pageChunks) {
+      chunks.push({
+        pageNumber: pageNumber > 0 ? pageNumber : null,
+        chunkText,
+      });
+    }
+  }
+
   return chunks;
 }
 
@@ -176,7 +204,7 @@ async function findExistingDocument(insurerId, metadata, sourcePath) {
   });
 }
 
-function buildDocumentData({ insurerId, metadata, sourcePath, checksum, text }) {
+function buildDocumentData({ insurerId, metadata, sourcePath, checksum, text, dating }) {
   return {
     insurerId,
     title: metadata.title,
@@ -189,7 +217,9 @@ function buildDocumentData({ insurerId, metadata, sourcePath, checksum, text }) 
     language: metadata.language,
     coverageFamily: metadata.coverageFamily,
     useForPrivateCarMvp: metadata.useForPrivateCarMvp,
-    versionLabel: null,
+    versionLabel: dating?.versionLabel || null,
+    effectiveFrom: dating?.effectiveFrom || null,
+    effectiveTo: dating?.effectiveTo || null,
     extractedText: text,
   };
 }
@@ -222,34 +252,53 @@ async function importOne(entry, args) {
     };
   }
   if (existing && args.replaceExisting) {
-    await prisma.policyDocument.delete({ where: { id: existing.id } });
+    // Parse before deleting so a bad/corrupt PDF cannot erase the previous import.
+  } else if (existing) {
+    throw new Error(`Document already exists for ${metadata.relativePath}. Use --replace-existing to refresh it safely.`);
   }
 
   const parsed = await parsePdfText(sourcePath);
   const text = normalizeText(parsed.text);
-  const chunks = splitIntoChunks(text);
-  const doc = await prisma.policyDocument.create({
-    data: buildDocumentData({
-      insurerId: insurer.id,
-      metadata,
-      sourcePath,
-      checksum,
-      text,
-    }),
+  const dating = extractDocumentDating({
+    text,
+    fileName: path.basename(sourcePath),
+    relativePath: metadata.relativePath,
   });
+  const chunks = parsed.pageTexts?.length > 0
+    ? splitPageTextsIntoChunks(parsed.pageTexts)
+    : splitIntoChunks(text).map((chunkText) => ({ pageNumber: null, chunkText }));
 
-  if (chunks.length > 0) {
-    await prisma.knowledgeChunk.createMany({
-      data: chunks.map((chunkText, index) => ({
+  const doc = await prisma.$transaction(async (tx) => {
+    if (existing && args.replaceExisting) {
+      await tx.policyDocument.delete({ where: { id: existing.id } });
+    }
+
+    const created = await tx.policyDocument.create({
+      data: buildDocumentData({
         insurerId: insurer.id,
-        policyDocumentId: doc.id,
-        pageNumber: null,
-        chunkOrder: index + 1,
-        chunkText,
-        tokenCount: Math.ceil(chunkText.length / 4),
-      })),
+        metadata,
+        sourcePath,
+        checksum,
+        text,
+        dating,
+      }),
     });
-  }
+
+    if (chunks.length > 0) {
+      await tx.knowledgeChunk.createMany({
+        data: chunks.map((chunkText, index) => ({
+          insurerId: insurer.id,
+          policyDocumentId: created.id,
+          pageNumber: chunkText.pageNumber,
+          chunkOrder: index + 1,
+          chunkText: chunkText.chunkText,
+          tokenCount: Math.ceil(chunkText.chunkText.length / 4),
+        })),
+      });
+    }
+
+    return created;
+  });
 
   return {
     status: "imported",
@@ -259,6 +308,9 @@ async function importOne(entry, args) {
     pages: parsed.pages,
     chunks: chunks.length,
     chars: text.length,
+    effectiveFrom: dating.effectiveFrom,
+    effectiveTo: dating.effectiveTo,
+    versionLabel: dating.versionLabel,
   };
 }
 

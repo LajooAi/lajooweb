@@ -1,6 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import process from 'node:process';
+import { isFactUsableForAi } from '../knowledge/sourceAudit.js';
 
 const APPROVED_FACTS_PATH = path.join(process.cwd(), 'knowledge/approved-facts.private-car.json');
 
@@ -93,6 +94,15 @@ function scoreFact(fact, { insurerSlug = null, tags = [], message = '' } = {}) {
   return score;
 }
 
+function isApprovedSeedFactUsable(fact, options = {}) {
+  if (!fact?.approvedForAi) return false;
+  return isFactUsableForAi({
+    status: 'VERIFIED',
+    validFrom: fact.validFrom || null,
+    validTo: fact.validTo || null,
+  }, undefined, options);
+}
+
 export function getApprovedFactsData() {
   return loadFactsData();
 }
@@ -109,7 +119,7 @@ export function inferFactTagsFromMessage(message = '') {
 
 export function getApprovedPrivateCarFacts({ insurerSlug = null, tags = [], category = null, limit = 12 } = {}) {
   const data = loadFactsData();
-  let facts = data.facts.filter((fact) => fact.approvedForAi);
+  let facts = data.facts.filter(isApprovedSeedFactUsable);
 
   if (insurerSlug) {
     facts = facts.filter((fact) => fact.insurerSlug === insurerSlug || fact.insurerSlug === 'market');
@@ -132,7 +142,7 @@ export function findApprovedFactsForMessage(message = '', { insurerSlug = null, 
 
   const data = loadFactsData();
   return data.facts
-    .filter((fact) => fact.approvedForAi)
+    .filter(isApprovedSeedFactUsable)
     .map((fact) => ({
       fact,
       score: scoreFact(fact, { insurerSlug, tags, message }),

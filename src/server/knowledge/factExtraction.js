@@ -285,7 +285,7 @@ function truncateText(value, maxLength = 620) {
   return `${clean.slice(0, maxLength - 1)}...`;
 }
 
-function findEvidence(text, patterns = []) {
+function findEvidenceInText(text, patterns = [], pageNumber = null) {
   const source = String(text || '');
   for (const pattern of patterns) {
     const match = pattern.exec(source);
@@ -293,9 +293,41 @@ function findEvidence(text, patterns = []) {
     const index = match.index || 0;
     const start = Math.max(0, index - EXCERPT_BEFORE);
     const end = Math.min(source.length, index + EXCERPT_AFTER);
-    return truncateText(source.slice(start, end));
+    return {
+      sourceExcerpt: truncateText(source.slice(start, end)),
+      sourcePage: Number.isInteger(pageNumber) && pageNumber > 0 ? pageNumber : null,
+    };
   }
   return null;
+}
+
+function getDocumentChunks(document) {
+  const chunks = Array.isArray(document?.knowledgeChunks)
+    ? document.knowledgeChunks
+    : Array.isArray(document?.chunks)
+      ? document.chunks
+      : [];
+
+  return chunks
+    .filter((chunk) => String(chunk?.chunkText || '').trim())
+    .sort((a, b) => {
+      const pageDiff = Number(a.pageNumber || 999999) - Number(b.pageNumber || 999999);
+      if (pageDiff !== 0) return pageDiff;
+      return Number(a.chunkOrder || 0) - Number(b.chunkOrder || 0);
+    });
+}
+
+function findEvidence(documentOrText, patterns = []) {
+  if (typeof documentOrText === 'string') {
+    return findEvidenceInText(documentOrText, patterns);
+  }
+
+  for (const chunk of getDocumentChunks(documentOrText)) {
+    const evidence = findEvidenceInText(chunk.chunkText, patterns, chunk.pageNumber);
+    if (evidence) return evidence;
+  }
+
+  return findEvidenceInText(documentOrText?.extractedText || '', patterns);
 }
 
 function createContext(document) {
@@ -311,7 +343,7 @@ function isDetectorAllowedForDocument(detector, document) {
   return detector.documentTypes.includes(document?.documentType);
 }
 
-function buildDetectorCandidate(detector, document, sourceExcerpt) {
+function buildDetectorCandidate(detector, document, evidence) {
   const context = createContext(document);
   return {
     detectorId: detector.id,
@@ -326,7 +358,10 @@ function buildDetectorCandidate(detector, document, sourceExcerpt) {
     tags: [...new Set(detector.tags || [])],
     advisorUse: detector.advisorUse(context),
     confidence: detector.confidence || 'medium',
-    sourceExcerpt,
+    sourceExcerpt: evidence?.sourceExcerpt || null,
+    sourcePage: evidence?.sourcePage || null,
+    validFrom: document?.effectiveFrom || null,
+    validTo: document?.effectiveTo || null,
     status: 'VERIFIED',
   };
 }
@@ -340,8 +375,10 @@ function buildBrandProgramCandidates(document) {
   for (const brand of BRAND_PROGRAMS) {
     if (!haystack.includes(brand.tag)) continue;
 
-    const sourceExcerpt = findEvidence(sourceText, [new RegExp(`\\b${brand.tag}\\b`, 'i')]) ||
-      truncateText(document?.extractedText || `${brand.label} appears in ${document?.sourceRelativePath || document?.title || 'source'}`);
+    const evidence = findEvidence(document, [new RegExp(`\\b${brand.tag}\\b`, 'i')]) || {
+      sourceExcerpt: truncateText(document?.extractedText || `${brand.label} appears in ${document?.sourceRelativePath || document?.title || 'source'}`),
+      sourcePage: null,
+    };
     const context = createContext(document);
     candidates.push({
       detectorId: `brand_${brand.tag}`,
@@ -354,10 +391,13 @@ function buildBrandProgramCandidates(document) {
       value: `${context.insurerName} has imported private-car ${brand.label}-related programme or product wording in "${context.documentTitle}". Do not say it is automatically best for every ${brand.label} owner; use it only as brand-specific eligibility/support context.`,
       category: 'brand_program',
       tags: ['brand_program', brand.tag],
-      advisorUse: `Use this when a user owns a ${brand.label} vehicle and asks whether ${context.insurerName} is suitable. Combine with live quote price, sum insured, and user needs.`,
-      confidence: 'medium',
-      sourceExcerpt,
-      status: 'VERIFIED',
+      advisorUse: `Admin must verify this is a real ${brand.label} programme or product eligibility rule before AI uses it. Example vehicle mentions in a PDS are not enough evidence.`,
+      confidence: 'low',
+      sourceExcerpt: evidence.sourceExcerpt,
+      sourcePage: evidence.sourcePage,
+      validFrom: document?.effectiveFrom || null,
+      validTo: document?.effectiveTo || null,
+      status: 'DRAFT',
     });
   }
   return candidates;
@@ -380,9 +420,9 @@ export function buildVerifiedFactCandidatesForDocument(document) {
   const candidates = [];
   for (const detector of PDF_FACT_DETECTORS) {
     if (!isDetectorAllowedForDocument(detector, document)) continue;
-    const sourceExcerpt = findEvidence(text, detector.patterns);
-    if (!sourceExcerpt) continue;
-    candidates.push(buildDetectorCandidate(detector, document, sourceExcerpt));
+    const evidence = findEvidence(document, detector.patterns);
+    if (!evidence?.sourceExcerpt) continue;
+    candidates.push(buildDetectorCandidate(detector, document, evidence));
   }
   candidates.push(...buildBrandProgramCandidates(document));
 

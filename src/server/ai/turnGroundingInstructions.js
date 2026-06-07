@@ -1,6 +1,7 @@
 import { USER_INTENTS } from '../../lib/conversationState.js';
 import { searchInsurerKnowledgeFromDb } from '../../lib/insurerKnowledgeDb.js';
 import { findVerifiedDatabaseFactsForMessage } from '../insurance/databaseFactStore.js';
+import { shouldRequireDatedFactsForAi } from '../knowledge/sourceAudit.js';
 
 function truncateKnowledgeFact(text, maxLen = 280) {
   const clean = String(text || '').replace(/\s+/g, ' ').trim();
@@ -37,13 +38,21 @@ export async function loadKnowledgeMatchesForQuestion(latestMessage, intent, opt
     answer: [
       fact.statement,
       fact.advisorUse ? `Advisor use: ${fact.advisorUse}` : null,
+      fact.sourceLabel ? `Source: ${fact.sourceLabel}` : null,
+      fact.validityStatus ? `Validity: ${fact.validityStatus}` : null,
       fact.sourceRelativePath ? `Source file: ${fact.sourceRelativePath}` : null,
     ].filter(Boolean).join(' '),
     keywords: fact.tags || [],
     score: 100,
     sourceType: 'db_verified_fact',
+    sourceLabel: fact.sourceLabel || fact.sourceRelativePath || null,
+    validityStatus: fact.validityStatus || null,
     insurerCode: null,
   }));
+
+  if (shouldRequireDatedFactsForAi()) {
+    return verifiedMatches.slice(0, limit);
+  }
 
   const remainingLimit = Math.max(0, limit - verifiedMatches.length);
   const chunkMatches = remainingLimit > 0
@@ -114,7 +123,9 @@ Current step: ${state.step}.`;
     const question = String(entry.question || '').trim();
     const answer = truncateKnowledgeFact(entry.answer, 260);
     const sourceType = String(entry.sourceType || 'db_unknown').replace(/^db_/, '');
-    return `${index + 1}. ${question}\n   Source: PostgreSQL (${sourceType})\n   Key fact: ${answer}`;
+    const sourceLabel = entry.sourceLabel ? `\n   Evidence: ${entry.sourceLabel}` : '';
+    const validity = entry.validityStatus ? `\n   Validity: ${entry.validityStatus}` : '';
+    return `${index + 1}. ${question}\n   Source: PostgreSQL (${sourceType})${sourceLabel}${validity}\n   Key fact: ${answer}`;
   }).join('\n');
 
   return `QUESTION GROUNDING (MANDATORY)
@@ -124,6 +135,7 @@ ${factLines}
 
 Rules:
 - Answer the question first with concrete facts from these references only.
+- Treat undated facts as approved but not time-guaranteed; avoid saying "currently" unless the source has active dates.
 - Do not use quote-card marketing bullets as policy truth.
 - Do not invent policy/regulatory details not supported by these references.
 - Then bridge back to the current step with one concise next-action question.`;

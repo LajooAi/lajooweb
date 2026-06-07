@@ -162,6 +162,7 @@ Use this as background when the user asks for advice, comparison, tradeoff, or w
 How to use it:
 - If the user asks "which one", recommend one option confidently.
 - If the user asks a factual question, answer that first, then optionally bridge to this recommendation in one short sentence.
+- Treat brand-program reasons as eligibility context only unless the live quote/product confirms that exact programme.
 - Do not invent new insurer benefits from this context.`;
 }
 

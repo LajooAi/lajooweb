@@ -52,6 +52,17 @@ async function loadPrivateCarDocuments(args) {
     },
     include: {
       insurer: { select: { id: true, code: true, name: true, type: true } },
+      chunks: {
+        select: {
+          pageNumber: true,
+          chunkOrder: true,
+          chunkText: true,
+        },
+        orderBy: [
+          { pageNumber: "asc" },
+          { chunkOrder: "asc" },
+        ],
+      },
     },
     orderBy: [
       { insurer: { code: "asc" } },
@@ -102,7 +113,10 @@ async function upsertCandidate(candidate, status) {
     confidence: candidate.confidence,
     status,
     sourceExcerpt: candidate.sourceExcerpt,
+    sourcePage: candidate.sourcePage,
     sourceRelativePath: candidate.sourceRelativePath,
+    validFrom: candidate.validFrom,
+    validTo: candidate.validTo,
   };
 
   if (existing) {
