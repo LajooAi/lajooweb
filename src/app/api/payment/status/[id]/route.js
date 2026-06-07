@@ -8,7 +8,7 @@
  */
 
 import { NextResponse } from "next/server";
-import { getPayment, PAYMENT_STATUS } from "@/lib/paymentStore";
+import { getPayment, PAYMENT_STATUS, sanitizePaymentForClient } from "@/lib/paymentStore";
 
 export async function GET(request, { params }) {
   try {
@@ -22,7 +22,7 @@ export async function GET(request, { params }) {
     }
 
     // Get payment from server-side store
-    const payment = getPayment(paymentId);
+    const payment = await getPayment(paymentId);
 
     if (!payment) {
       return NextResponse.json({
@@ -41,21 +41,8 @@ export async function GET(request, { params }) {
       providerMode: payment.providerMode || null,
       paymentAvailable: Boolean(payment.paymentAvailable),
       canIssuePolicy: false,
+      payment: sanitizePaymentForClient(payment),
     };
-
-    // Include payment details only if confirmed (for success message)
-    if (payment.status === PAYMENT_STATUS.CONFIRMED) {
-      response.payment = {
-        total: payment.total,
-        insurer: payment.insurer,
-        plate: payment.plate,
-        insurance: payment.insurance,
-        addons: payment.addons,
-        roadtax: payment.roadtax,
-        confirmedAt: payment.confirmedAt,
-        transactionRef: payment.transactionRef,
-      };
-    }
 
     // Include expiry info for pending payments
     if (payment.status === PAYMENT_STATUS.PENDING || payment.status === PAYMENT_STATUS.REQUIRES_PROVIDER) {

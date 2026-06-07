@@ -102,6 +102,7 @@ import {
   saveChatSession,
   serializeStateForClient,
 } from "@/server/chat/sessionStore";
+import { createPayment, PAYMENT_STATUS } from "@/lib/paymentStore";
 
 // ============================================================================
 // DETERMINISTIC BLOCK BUILDERS — code-generated markdown the AI must include
@@ -151,6 +152,7 @@ const DEFAULT_TRANSACTION_STATE = {
   proposalId: null,
   proposalStatus: null,
   paymentIntentId: null,
+  paymentSnapshotId: null,
   paymentStatus: null,
   policyNumber: null,
   policyStatus: null,
@@ -192,6 +194,14 @@ function ensureTransactionState(state) {
     };
   }
   return state.transaction;
+}
+
+function ensurePaymentSnapshotId(state) {
+  const tx = ensureTransactionState(state);
+  if (!tx.paymentSnapshotId) {
+    tx.paymentSnapshotId = tx.paymentIntentId || `PAY-${Date.now()}`;
+  }
+  return tx.paymentSnapshotId;
 }
 
 function normalizeOwnerIdType(ownerIdType, ownerId) {
@@ -884,9 +894,9 @@ function buildRoadTaxCardData(state) {
   };
 }
 
-function buildPaymentCardData(state) {
+function buildPaymentCardData(state, options = {}) {
   if (!state?.selectedQuote) return null;
-  const checkout = buildPaymentCheckoutData(state);
+  const checkout = buildPaymentCheckoutData(state, options);
 
   return {
     total: checkout.total,
@@ -897,6 +907,67 @@ function buildPaymentCardData(state) {
       guard: '/icons/payment-shield.svg',
     },
   };
+}
+
+async function persistPaymentSnapshotForState(state, sessionId) {
+  if (!state?.selectedQuote) return null;
+
+  const checkout = buildPaymentCheckoutData(state, { sessionId });
+  const tx = ensureTransactionState(state);
+  const expiresAt = state.quoteValidUntil && Number.isFinite(Number(state.quoteValidUntil))
+    ? Number(state.quoteValidUntil)
+    : Date.now() + 30 * 60 * 1000;
+
+  const snapshot = await createPayment({
+    paymentId: checkout.paymentId,
+    sessionId,
+    provider: 'mock',
+    providerMode: 'snapshot',
+    status: PAYMENT_STATUS.REQUIRES_PROVIDER,
+    total: checkout.total,
+    currency: 'MYR',
+    insurer: checkout.insurer,
+    plate: checkout.plate,
+    insurance: checkout.insurance,
+    addons: checkout.addons,
+    tax: checkout.tax,
+    roadtax: checkout.roadtax,
+    paymentAvailable: false,
+    canIssuePolicy: false,
+    checkoutData: {
+      paymentId: checkout.paymentId,
+      href: checkout.href,
+      total: checkout.total,
+      insurer: checkout.insurer,
+      plate: checkout.plate,
+      insurance: checkout.insurance,
+      addons: checkout.addons,
+      tax: checkout.tax,
+      roadtax: checkout.roadtax,
+      insurerDisplay: checkout.insurerDisplay,
+      logo: checkout.logo,
+      vehicleLine: checkout.vehicleLine,
+      coverType: checkout.coverType,
+      sumInsured: checkout.sumInsured,
+      priceBefore: checkout.priceBefore,
+      ncd: checkout.ncd,
+      policyPeriod: checkout.policyPeriod,
+      insuranceTitle: checkout.insuranceTitle,
+      roadtaxName: checkout.roadtaxName,
+      addonsDetail: checkout.addonsDetail,
+    },
+    breakdown: {
+      total: checkout.total,
+      insurance: checkout.insurance,
+      addons: checkout.addons,
+      tax: checkout.tax,
+      roadtax: checkout.roadtax,
+    },
+    expiresAt,
+  });
+
+  tx.paymentSnapshotId = checkout.paymentId;
+  return snapshot;
 }
 
 /** Build the quote summary box from current state */
@@ -1065,8 +1136,7 @@ Please let me know which field is incorrect, or share the corrected **vehicle pl
 }
 
 /** Build the payment link */
-function buildPaymentCheckoutData(state) {
-  const tx = ensureTransactionState(state);
+function buildPaymentCheckoutData(state, options = {}) {
   const {
     insurance: insurerPrice,
     addOns: addOnsTotal,
@@ -1089,7 +1159,7 @@ function buildPaymentCheckoutData(state) {
       })).filter((addOn) => addOn.name && addOn.price > 0)
     : [];
   const selectedRoadTax = state.selectedRoadTax || null;
-  const payId = tx.paymentIntentId || `PAY-${Date.now()}`;
+  const payId = ensurePaymentSnapshotId(state);
   const query = new URLSearchParams({
     total: String(total),
     insurer: insurerName,
@@ -1114,15 +1184,36 @@ function buildPaymentCheckoutData(state) {
       : '',
     addonsDetail: JSON.stringify(addOns),
   });
+  if (options.sessionId) {
+    query.set('session', options.sessionId);
+  }
 
   return {
+    paymentId: payId,
     total,
     href: `/my/payment/${payId}?${query.toString()}`,
+    insurer: insurerName,
+    plate: state.plateNumber || '',
+    insurance: insurerPrice,
+    addons: addOnsTotal,
+    tax: taxTotal,
+    roadtax: roadTaxTotal,
+    insurerDisplay: query.get('insurerDisplay'),
+    logo: query.get('logo'),
+    vehicleLine: query.get('vehicleLine'),
+    coverType,
+    sumInsured,
+    priceBefore,
+    ncd: ncdPercent,
+    policyPeriod: query.get('policyPeriod'),
+    insuranceTitle: query.get('insuranceTitle'),
+    roadtaxName: query.get('roadtaxName'),
+    addonsDetail: addOns,
   };
 }
 
-function buildPaymentLink(state) {
-  const { total, href } = buildPaymentCheckoutData(state);
+function buildPaymentLink(state, options = {}) {
+  const { total, href } = buildPaymentCheckoutData(state, options);
   return `[**Pay securely - RM ${formatMoneyTwoDecimals(total)}**](${href})`;
 }
 
@@ -3154,7 +3245,7 @@ Please re-enter your **vehicle plate** and **owner identification number** to co
         asNonEmptyString,
         sanitizePersonalDetailExtractionInput,
         detectLikelyPersonalDetailTypos,
-        buildPaymentLink,
+        buildPaymentLink: (stateForPaymentLink) => buildPaymentLink(stateForPaymentLink, { sessionId }),
         buildPaymentStepBlock,
         buildQuestionFirstThenStepCloseInstruction,
         buildClarifyingQuestionInstruction,
@@ -3361,8 +3452,11 @@ This summary box must appear in EVERY response from now on until payment is comp
     const roadTaxCard = state.selectedQuote && ROADTAX_SECTION_REGEX.test(aiResponse)
       ? buildRoadTaxCardData(state)
       : null;
+    if (state.selectedQuote && PAYMENT_SECTION_REGEX.test(aiResponse)) {
+      await persistPaymentSnapshotForState(state, sessionId);
+    }
     const paymentCard = state.selectedQuote && PAYMENT_SECTION_REGEX.test(aiResponse)
-      ? buildPaymentCardData(state)
+      ? buildPaymentCardData(state, { sessionId })
       : null;
 
     const captureReason = getIntentCaptureReason({

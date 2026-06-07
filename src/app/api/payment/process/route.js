@@ -9,7 +9,7 @@
 
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { createPayment, PAYMENT_STATUS } from "@/lib/paymentStore";
+import { getPayment, updatePaymentStatus, PAYMENT_STATUS } from "@/lib/paymentStore";
 import {
   PaymentProviderError,
   createProviderPaymentIntent,
@@ -18,15 +18,16 @@ import {
 // Payment request validation
 const PaymentRequestSchema = z.object({
   paymentId: z.string().min(1),
-  total: z.number().positive(),
-  insurer: z.string().min(1),
-  plate: z.string().min(1),
-  insurance: z.number().nonnegative(),
-  addons: z.number().nonnegative(),
-  roadtax: z.number().nonnegative(),
   paymentMethod: z.enum(["card", "fpx", "ewallet", "cc-instalment", "bnpl"]),
-  // Session ID to link payment to chat session
   sessionId: z.string().optional(),
+  // Legacy clients may still send these fields, but server snapshots are the source of truth.
+  total: z.number().optional(),
+  insurer: z.string().optional(),
+  plate: z.string().optional(),
+  insurance: z.number().optional(),
+  addons: z.number().optional(),
+  tax: z.number().optional(),
+  roadtax: z.number().optional(),
 });
 
 export async function POST(request) {
@@ -41,11 +42,46 @@ export async function POST(request) {
       );
     }
 
-    const paymentData = validation.data;
+    const requestData = validation.data;
+    const existingSnapshot = await getPayment(requestData.paymentId);
+
+    if (!existingSnapshot) {
+      return NextResponse.json(
+        {
+          error: "PAYMENT_SNAPSHOT_NOT_FOUND",
+          message: "This payment link is no longer valid. Please return to chat and generate a fresh checkout link.",
+        },
+        { status: 404 }
+      );
+    }
+
+    if (existingSnapshot.status === PAYMENT_STATUS.EXPIRED) {
+      return NextResponse.json(
+        {
+          error: "PAYMENT_SNAPSHOT_EXPIRED",
+          message: "This payment link has expired. Please return to chat and generate a fresh checkout link.",
+        },
+        { status: 410 }
+      );
+    }
+
+    const paymentData = {
+      paymentId: existingSnapshot.paymentId,
+      total: existingSnapshot.total,
+      insurer: existingSnapshot.insurer,
+      plate: existingSnapshot.plate,
+      insurance: existingSnapshot.insurance,
+      addons: existingSnapshot.addons,
+      tax: existingSnapshot.tax,
+      roadtax: existingSnapshot.roadtax,
+      paymentMethod: requestData.paymentMethod,
+      sessionId: requestData.sessionId || existingSnapshot.sessionId || null,
+    };
     const providerIntent = createProviderPaymentIntent(paymentData);
 
-    const payment = createPayment({
-      ...paymentData,
+    const payment = await updatePaymentStatus(requestData.paymentId, providerIntent.paymentAvailable
+      ? PAYMENT_STATUS.PENDING
+      : PAYMENT_STATUS.REQUIRES_PROVIDER, {
       status: providerIntent.paymentAvailable
         ? PAYMENT_STATUS.PENDING
         : PAYMENT_STATUS.REQUIRES_PROVIDER,
@@ -60,9 +96,19 @@ export async function POST(request) {
       breakdown: providerIntent.breakdown,
     });
 
+    if (!payment) {
+      return NextResponse.json(
+        {
+          error: "PAYMENT_SNAPSHOT_UPDATE_FAILED",
+          message: "Payment could not be prepared. Please try again from chat.",
+        },
+        { status: 500 }
+      );
+    }
+
     return NextResponse.json({
       success: true,
-      paymentId: paymentData.paymentId,
+      paymentId: requestData.paymentId,
       transactionRef: payment.transactionRef,
       provider: payment.provider,
       providerMode: payment.providerMode,

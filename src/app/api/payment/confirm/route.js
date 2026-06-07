@@ -39,7 +39,7 @@ export async function POST(request) {
     const { paymentId } = validation.data;
 
     // Get existing payment
-    const existingPayment = getPayment(paymentId);
+    const existingPayment = await getPayment(paymentId);
     if (!existingPayment) {
       return NextResponse.json(
         { error: "Payment not found" },
@@ -66,7 +66,7 @@ export async function POST(request) {
 
     const providerConfirmation = confirmProviderPaymentIntent(existingPayment, validation.data);
 
-    const confirmedPayment = confirmPayment(paymentId, providerConfirmation.transactionRef);
+    const confirmedPayment = await confirmPayment(paymentId, providerConfirmation.transactionRef);
 
     if (!confirmedPayment) {
       return NextResponse.json(

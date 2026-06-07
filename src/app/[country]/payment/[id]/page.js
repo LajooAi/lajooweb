@@ -1,7 +1,7 @@
 "use client";
 
 import { useParams, useSearchParams } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Image from "next/image";
 import { getInsurerByText } from "@/lib/insurerCatalog";
 
@@ -115,6 +115,9 @@ export default function PaymentPage() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [paymentNotice, setPaymentNotice] = useState(null);
   const [paymentError, setPaymentError] = useState(null);
+  const [serverPayment, setServerPayment] = useState(null);
+  const [snapshotLoading, setSnapshotLoading] = useState(true);
+  const [snapshotError, setSnapshotError] = useState(null);
 
   const parseAmount = (value, fallback = 0) => {
     const cleaned = String(value ?? "").replace(/[^\d.]/g, "");
@@ -128,42 +131,92 @@ export default function PaymentPage() {
     maximumFractionDigits: 2,
   });
 
-  // Parse payment details from URL params
   const paymentId = params.id;
   const session = searchParams.get("session") || "default";
-  const insurer = searchParams.get("insurer") || "Allianz";
-  const plate = searchParams.get("plate") || "JRT 9289";
-  const insurance = parseAmount(searchParams.get("insurance"), 920);
-  const addons = parseAmount(searchParams.get("addons"), 152);
-  const tax = parseAmount(searchParams.get("tax"), 0);
-  const roadtax = parseAmount(searchParams.get("roadtax"), 110);
+  const checkoutData = serverPayment?.checkoutData || {};
+  const insurer = serverPayment?.insurer || checkoutData.insurer || searchParams.get("insurer") || "";
+  const plate = serverPayment?.plate || checkoutData.plate || searchParams.get("plate") || "";
+  const insurance = Number(serverPayment?.insurance ?? checkoutData.insurance ?? parseAmount(searchParams.get("insurance"), 0));
+  const addons = Number(serverPayment?.addons ?? checkoutData.addons ?? parseAmount(searchParams.get("addons"), 0));
+  const tax = Number(serverPayment?.tax ?? checkoutData.tax ?? parseAmount(searchParams.get("tax"), 0));
+  const roadtax = Number(serverPayment?.roadtax ?? checkoutData.roadtax ?? parseAmount(searchParams.get("roadtax"), 0));
   const insurerProfile = getInsurerByText(insurer);
   const isTakaful = insurerProfile?.type === "takaful" || /takaful/i.test(insurer);
   const insurerDisplayName =
+    checkoutData.insurerDisplay ||
     searchParams.get("insurerDisplay") ||
     (insurerProfile?.key === "takaful"
       ? "Takaful Insurance Berhad"
       : insurerProfile?.summaryName || insurer);
-  const logoUrl = searchParams.get("logo") || insurerProfile?.logoUrl || "/partners/allianz.svg";
+  const logoUrl = checkoutData.logo || searchParams.get("logo") || insurerProfile?.logoUrl || "/partners/allianz.svg";
   const plateDisplay = formatPlateNumberForDisplay(plate);
-  const vehicleLine = searchParams.get("vehicleLine") || `${plateDisplay} · ${searchParams.get("vehicle") || "2019 Perodua Myvi 1.5L"}`;
-  const coverType = searchParams.get("coverType") || "Comprehensive";
-  const sumInsured = parseAmount(searchParams.get("sumInsured"), insurerProfile?.sumInsured || 0);
-  const priceBefore = parseAmount(searchParams.get("priceBefore"), insurerProfile?.priceBefore || insurance);
-  const ncdPercent = parseAmount(searchParams.get("ncd"), insurerProfile?.ncdPercent ?? 20);
-  const policyPeriod = searchParams.get("policyPeriod") || getPolicyEffectiveRangeDisplay();
-  const insuranceSectionTitle = searchParams.get("insuranceTitle") || (isTakaful ? "Insurance/Takaful" : "Insurance");
+  const vehicleLine = checkoutData.vehicleLine || searchParams.get("vehicleLine") || `${plateDisplay} · ${searchParams.get("vehicle") || ""}`.trim();
+  const coverType = checkoutData.coverType || searchParams.get("coverType") || "Comprehensive";
+  const sumInsured = Number(checkoutData.sumInsured ?? parseAmount(searchParams.get("sumInsured"), insurerProfile?.sumInsured || 0));
+  const priceBefore = Number(checkoutData.priceBefore ?? parseAmount(searchParams.get("priceBefore"), insurerProfile?.priceBefore || insurance));
+  const ncdPercent = Number(checkoutData.ncd ?? parseAmount(searchParams.get("ncd"), insurerProfile?.ncdPercent ?? 20));
+  const policyPeriod = checkoutData.policyPeriod || searchParams.get("policyPeriod") || getPolicyEffectiveRangeDisplay();
+  const insuranceSectionTitle = checkoutData.insuranceTitle || searchParams.get("insuranceTitle") || (isTakaful ? "Insurance/Takaful" : "Insurance");
   const totalFromParams = parseAmount(searchParams.get("total"), insurance + addons + tax + roadtax);
   const computedTotal = insurance + addons + tax + roadtax;
-  const total = searchParams.has("total") ? totalFromParams : computedTotal;
+  const total = Number(serverPayment?.total ?? checkoutData.total ?? (searchParams.has("total") ? totalFromParams : computedTotal));
   const inferredAddOnGap = Math.max(0, total - insurance - addons - tax - roadtax);
-  const roadTaxDescription = normalizeRoadTaxDescription(searchParams.get("roadtaxName"));
+  const roadTaxDescription = normalizeRoadTaxDescription(checkoutData.roadtaxName || searchParams.get("roadtaxName"));
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadPaymentSnapshot() {
+      setSnapshotLoading(true);
+      setSnapshotError(null);
+
+      try {
+        const response = await fetch(`/api/payment/status/${encodeURIComponent(paymentId)}`, {
+          cache: "no-store",
+        });
+        const data = await response.json().catch(() => ({}));
+
+        if (cancelled) return;
+
+        if (!response.ok || !data.found || !data.payment) {
+          setServerPayment(null);
+          setSnapshotError(data.message || "This payment link is no longer valid. Please return to chat and generate a fresh checkout link.");
+          return;
+        }
+
+        if (data.payment.status === "expired") {
+          setServerPayment(data.payment);
+          setSnapshotError("This payment link has expired. Please return to chat and generate a fresh checkout link.");
+          return;
+        }
+
+        setServerPayment(data.payment);
+      } catch {
+        if (!cancelled) {
+          setServerPayment(null);
+          setSnapshotError("Payment summary could not be loaded. Please try again from chat.");
+        }
+      } finally {
+        if (!cancelled) {
+          setSnapshotLoading(false);
+        }
+      }
+    }
+
+    if (paymentId) {
+      loadPaymentSnapshot();
+    }
+
+    return () => {
+      cancelled = true;
+    };
+  }, [paymentId]);
 
   const parseAddOnRows = () => {
-    const raw = searchParams.get("addonsDetail");
+    const raw = checkoutData.addonsDetail || searchParams.get("addonsDetail");
     if (raw) {
       try {
-        const parsed = JSON.parse(raw);
+        const parsed = Array.isArray(raw) ? raw : JSON.parse(raw);
         if (Array.isArray(parsed)) {
           return parsed
             .map((item) => ({
@@ -191,6 +244,10 @@ export default function PaymentPage() {
 
   const handlePayment = async () => {
     if (!selectedMethod) return;
+    if (!serverPayment) {
+      setPaymentError("Payment summary is not verified yet. Please wait or return to chat for a fresh link.");
+      return;
+    }
 
     setIsProcessing(true);
     setPaymentNotice(null);
@@ -202,13 +259,6 @@ export default function PaymentPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           paymentId,
-          total,
-          insurer,
-          plate,
-          insurance,
-          addons,
-          tax,
-          roadtax,
           paymentMethod: selectedMethod,
           sessionId: session,
         }),
@@ -277,6 +327,47 @@ export default function PaymentPage() {
       setIsProcessing(false);
     }
   };
+
+  if (snapshotLoading) {
+    return (
+      <div className="payment-page">
+        <div className="payment-container">
+          <div className="payment-state-card">
+            <strong>Loading secure checkout...</strong>
+            <p>We are verifying your payment amount from LAJOO&apos;s server.</p>
+          </div>
+        </div>
+        <style jsx>{`
+          .payment-page { min-height: 100vh; background: #ffffff; padding: 24px; }
+          .payment-container { max-width: 573px; margin: 0 auto; }
+          .payment-state-card { border: 1px solid #d8d8d8; border-radius: 16px; padding: 20px; color: #0f172a; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+          .payment-state-card strong { display: block; font-size: 18px; margin-bottom: 8px; }
+          .payment-state-card p { margin: 0; color: #505050; line-height: 1.45; }
+        `}</style>
+      </div>
+    );
+  }
+
+  if (snapshotError) {
+    return (
+      <div className="payment-page">
+        <div className="payment-container">
+          <div className="payment-state-card error">
+            <strong>Checkout unavailable</strong>
+            <p>{snapshotError}</p>
+          </div>
+        </div>
+        <style jsx>{`
+          .payment-page { min-height: 100vh; background: #ffffff; padding: 24px; }
+          .payment-container { max-width: 573px; margin: 0 auto; }
+          .payment-state-card { border: 1px solid #d8d8d8; border-radius: 16px; padding: 20px; color: #0f172a; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+          .payment-state-card.error { border-color: #fecaca; background: #fff7f7; }
+          .payment-state-card strong { display: block; font-size: 18px; margin-bottom: 8px; }
+          .payment-state-card p { margin: 0; color: #505050; line-height: 1.45; }
+        `}</style>
+      </div>
+    );
+  }
 
   return (
     <div className="payment-page">

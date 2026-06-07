@@ -75,13 +75,13 @@ model PolicyDocument {
   facts               InsurerFact[]
   promotions          InsurerPromotion[]
 
+  @@unique([insurerId, sourceRelativePath])
   @@index([insurerId])
   @@index([insurerId, category])
   @@index([insurerId, documentType])
   @@index([language])
   @@index([useForPrivateCarMvp])
   @@index([effectiveFrom, effectiveTo])
-  @@unique([insurerId, sourceRelativePath])
 }
 
 model KnowledgeChunk {
@@ -101,26 +101,26 @@ model KnowledgeChunk {
 }
 
 model InsurerFact {
-  id               String          @id @default(cuid())
-  insurerId        String
-  insurer          Insurer         @relation(fields: [insurerId], references: [id], onDelete: Cascade)
-  policyDocumentId String?
-  policyDocument   PolicyDocument? @relation(fields: [policyDocumentId], references: [id], onDelete: SetNull)
-  factType         FactType
-  title            String
-  value            String
-  category         String?
-  tags             String[]        @default([])
-  advisorUse       String?
-  confidence       String?
-  validFrom        DateTime?
-  validTo          DateTime?
-  status           FactStatus      @default(DRAFT)
-  sourcePage       Int?
-  sourceExcerpt    String?
+  id                 String          @id @default(cuid())
+  insurerId          String
+  insurer            Insurer         @relation(fields: [insurerId], references: [id], onDelete: Cascade)
+  policyDocumentId   String?
+  policyDocument     PolicyDocument? @relation(fields: [policyDocumentId], references: [id], onDelete: SetNull)
+  factType           FactType
+  title              String
+  value              String
+  category           String?
+  tags               String[]        @default([])
+  advisorUse         String?
+  confidence         String?
+  validFrom          DateTime?
+  validTo            DateTime?
+  status             FactStatus      @default(DRAFT)
+  sourcePage         Int?
+  sourceExcerpt      String?
   sourceRelativePath String?
-  createdAt        DateTime        @default(now())
-  updatedAt        DateTime        @updatedAt
+  createdAt          DateTime        @default(now())
+  updatedAt          DateTime        @updatedAt
 
   @@index([insurerId, factType])
   @@index([status])
@@ -184,4 +184,37 @@ model ChatMessage {
 
   @@index([sessionId, messageOrder])
   @@index([auditStatus])
+}
+
+model PaymentIntentSnapshot {
+  id                      String    @id
+  sessionId               String?
+  provider                String    @default("mock")
+  providerMode            String?
+  providerPaymentIntentId String?
+  status                  String    @default("requires_provider")
+  paymentMethod           String?
+  amount                  Decimal   @db.Decimal(12, 2)
+  currency                String    @default("MYR")
+  insurer                 String
+  plate                   String
+  insurance               Decimal   @db.Decimal(12, 2)
+  addons                  Decimal   @db.Decimal(12, 2)
+  tax                     Decimal   @db.Decimal(12, 2)
+  roadtax                 Decimal   @db.Decimal(12, 2)
+  breakdown               Json?
+  checkoutData            Json?
+  clientConfirmationToken String?
+  transactionRef          String?
+  paymentAvailable        Boolean   @default(false)
+  canIssuePolicy          Boolean   @default(false)
+  failureReason           String?
+  confirmedAt             DateTime?
+  expiresAt               DateTime
+  createdAt               DateTime  @default(now())
+  updatedAt               DateTime  @updatedAt
+
+  @@index([sessionId])
+  @@index([status])
+  @@index([expiresAt])
 }
