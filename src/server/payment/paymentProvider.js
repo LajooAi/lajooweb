@@ -38,6 +38,49 @@ const KNOWN_EXTERNAL_PROVIDERS = new Set([
   PAYMENT_PROVIDER_KEYS.TOYYIBPAY,
 ]);
 
+export const PAYMENT_PROVIDER_SHELLS = {
+  [PAYMENT_PROVIDER_KEYS.BILLPLZ]: {
+    provider: PAYMENT_PROVIDER_KEYS.BILLPLZ,
+    label: "Billplz",
+    country: "MY",
+    requiredEnv: ["BILLPLZ_API_KEY", "BILLPLZ_COLLECTION_ID", "BILLPLZ_X_SIGNATURE_KEY"],
+    enableEnv: ["LAJOO_LIVE_PAYMENTS_ENABLED", "LAJOO_PAYMENT_PROVIDER_BILLPLZ_ENABLED"],
+    supportedPaymentMethods: ["fpx", "card"],
+    webhookHeaders: ["x-billplz-signature", "x-signature"],
+    note: "Malaysia-friendly provider shell. Real bill creation/webhook verification must be implemented after Billplz account approval.",
+  },
+  [PAYMENT_PROVIDER_KEYS.STRIPE]: {
+    provider: PAYMENT_PROVIDER_KEYS.STRIPE,
+    label: "Stripe",
+    country: "GLOBAL",
+    requiredEnv: ["STRIPE_SECRET_KEY", "STRIPE_WEBHOOK_SECRET"],
+    enableEnv: ["LAJOO_LIVE_PAYMENTS_ENABLED", "LAJOO_PAYMENT_PROVIDER_STRIPE_ENABLED"],
+    supportedPaymentMethods: ["card", "fpx", "ewallet"],
+    webhookHeaders: ["stripe-signature"],
+    note: "Stripe shell. Real Checkout Session creation and Stripe SDK webhook verification must be implemented before enabling.",
+  },
+  [PAYMENT_PROVIDER_KEYS.IPAY88]: {
+    provider: PAYMENT_PROVIDER_KEYS.IPAY88,
+    label: "iPay88",
+    country: "MY",
+    requiredEnv: ["IPAY88_MERCHANT_CODE", "IPAY88_MERCHANT_KEY"],
+    enableEnv: ["LAJOO_LIVE_PAYMENTS_ENABLED", "LAJOO_PAYMENT_PROVIDER_IPAY88_ENABLED"],
+    supportedPaymentMethods: ["card", "fpx", "ewallet", "bnpl"],
+    webhookHeaders: ["x-ipay88-signature", "x-signature"],
+    note: "Malaysia payment gateway shell. Real request signing and backend response verification must be implemented after account approval.",
+  },
+  [PAYMENT_PROVIDER_KEYS.TOYYIBPAY]: {
+    provider: PAYMENT_PROVIDER_KEYS.TOYYIBPAY,
+    label: "ToyyibPay",
+    country: "MY",
+    requiredEnv: ["TOYYIBPAY_SECRET_KEY", "TOYYIBPAY_CATEGORY_CODE"],
+    enableEnv: ["LAJOO_LIVE_PAYMENTS_ENABLED", "LAJOO_PAYMENT_PROVIDER_TOYYIBPAY_ENABLED"],
+    supportedPaymentMethods: ["fpx"],
+    webhookHeaders: ["x-toyyibpay-signature", "x-signature"],
+    note: "ToyyibPay shell. Real bill creation and callback verification must be implemented after account approval.",
+  },
+};
+
 export class PaymentProviderError extends Error {
   constructor(message, options = {}) {
     super(message);
@@ -57,6 +100,39 @@ function normalizeProvider(value) {
   if (!provider) return PAYMENT_PROVIDER_KEYS.MOCK;
   if (provider === "none") return PAYMENT_PROVIDER_KEYS.DISABLED;
   return provider;
+}
+
+function toEnvProviderKey(provider) {
+  return String(provider || "").replace(/[^a-z0-9]+/gi, "_").toUpperCase();
+}
+
+function getProviderShell(provider) {
+  return PAYMENT_PROVIDER_SHELLS[provider] || null;
+}
+
+function getProviderEnableEnv(provider) {
+  const envProviderKey = toEnvProviderKey(provider);
+  return getProviderShell(provider)?.enableEnv || [
+    "LAJOO_LIVE_PAYMENTS_ENABLED",
+    `LAJOO_PAYMENT_PROVIDER_${envProviderKey}_ENABLED`,
+  ];
+}
+
+function getMissingEnv(requiredEnv = [], env = process.env) {
+  return requiredEnv.filter((key) => !String(env?.[key] || "").trim());
+}
+
+function getExternalProviderEnablement(provider, env = process.env) {
+  const [globalKey, providerKey] = getProviderEnableEnv(provider);
+  const globalEnabled = envFlag(env, globalKey);
+  const providerEnabled = envFlag(env, providerKey);
+  return {
+    globalKey,
+    providerKey,
+    globalEnabled,
+    providerEnabled,
+    enabled: globalEnabled && providerEnabled,
+  };
 }
 
 function getHeader(headers, name) {
@@ -165,6 +241,7 @@ function buildConfigForProvider(provider, env = process.env) {
   const mockConfirmationEnabled =
     provider === PAYMENT_PROVIDER_KEYS.MOCK &&
     envFlag(env, "LAJOO_ALLOW_MOCK_PAYMENT_CONFIRM");
+  const shell = getProviderShell(provider);
 
   if (provider === PAYMENT_PROVIDER_KEYS.DISABLED) {
     return {
@@ -192,6 +269,35 @@ function buildConfigForProvider(provider, env = process.env) {
     };
   }
 
+  if (shell) {
+    const enablement = getExternalProviderEnablement(provider, env);
+    const missingEnv = getMissingEnv(shell.requiredEnv, env);
+    const hasRequiredConfig = missingEnv.length === 0;
+
+    return {
+      provider,
+      label: shell.label,
+      mode: "integration_shell",
+      implemented: false,
+      paymentAvailable: false,
+      livePaymentsEnabled: enablement.enabled,
+      livePaymentGlobalEnabled: enablement.globalEnabled,
+      livePaymentProviderEnabled: enablement.providerEnabled,
+      enableEnv: shell.enableEnv,
+      requiredEnv: shell.requiredEnv,
+      missingEnv,
+      hasRequiredConfig,
+      supportedPaymentMethods: shell.supportedPaymentMethods,
+      webhookHeaders: shell.webhookHeaders,
+      mockConfirmationEnabled: false,
+      canIssuePolicy: false,
+      message: enablement.enabled && hasRequiredConfig
+        ? `${shell.label} payment shell is configured, but the live integration is still disabled until provider approval and final implementation.`
+        : `${shell.label} payment shell is ready, but live payments are disabled until provider approval.`,
+      note: shell.note,
+    };
+  }
+
   return {
     provider,
     mode: KNOWN_EXTERNAL_PROVIDERS.has(provider) ? "external" : "unknown",
@@ -205,6 +311,13 @@ function buildConfigForProvider(provider, env = process.env) {
 
 function createProviderIntentFromConfig(payload = {}, config) {
   const method = normalizePaymentMethod(payload.paymentMethod);
+  if (Array.isArray(config.supportedPaymentMethods) && !config.supportedPaymentMethods.includes(method)) {
+    throw new PaymentProviderError(`${config.label || config.provider} does not support this payment method yet.`, {
+      code: "PAYMENT_METHOD_NOT_SUPPORTED_BY_PROVIDER",
+      status: 400,
+    });
+  }
+
   const breakdown = validatePaymentBreakdown(payload);
 
   if (!breakdown.ok) {
@@ -217,7 +330,7 @@ function createProviderIntentFromConfig(payload = {}, config) {
   const providerPaymentIntentId =
     config.provider === PAYMENT_PROVIDER_KEYS.MOCK
       ? makeProviderReference("mock_pi")
-      : makeProviderReference("pending_pi");
+      : makeProviderReference(`${config.provider || "pending"}_pi`);
 
   const clientConfirmationToken =
     config.mockConfirmationEnabled && config.provider === PAYMENT_PROVIDER_KEYS.MOCK
@@ -317,6 +430,62 @@ const mockPaymentAdapter = {
   },
 };
 
+function createExternalProviderShellAdapter(provider) {
+  return {
+    key: provider,
+    getConfig(env) {
+      return buildConfigForProvider(provider, env);
+    },
+    createPaymentIntent(payload, options = {}) {
+      return createProviderIntentFromConfig(payload, this.getConfig(options.env || process.env));
+    },
+    confirmPaymentIntent(payment = {}, payload = {}, options = {}) {
+      const env = options.env || process.env;
+      const config = this.getConfig(env);
+      if (!config.livePaymentsEnabled) {
+        throw new PaymentProviderError(`${config.label || provider} payments are disabled until provider approval.`, {
+          code: "PAYMENT_PROVIDER_DISABLED",
+          status: 403,
+        });
+      }
+
+      if (!config.hasRequiredConfig) {
+        throw new PaymentProviderError(`${config.label || provider} payment configuration is incomplete.`, {
+          code: "PAYMENT_PROVIDER_CONFIG_INCOMPLETE",
+          status: 503,
+        });
+      }
+
+      throw new PaymentProviderError(`${config.label || provider} integration shell is not live yet.`, {
+        code: "PAYMENT_PROVIDER_SHELL_ONLY",
+        status: 501,
+      });
+    },
+    verifyWebhook(rawBody, headers, options = {}) {
+      const env = options.env || process.env;
+      const config = this.getConfig(env);
+      if (!config.livePaymentsEnabled) {
+        throw new PaymentProviderError(`${config.label || provider} webhook is disabled until provider approval.`, {
+          code: "PAYMENT_PROVIDER_DISABLED",
+          status: 403,
+        });
+      }
+
+      if (!config.hasRequiredConfig) {
+        throw new PaymentProviderError(`${config.label || provider} webhook configuration is incomplete.`, {
+          code: "PAYMENT_PROVIDER_CONFIG_INCOMPLETE",
+          status: 503,
+        });
+      }
+
+      throw new PaymentProviderError(`${config.label || provider} webhook verification is not implemented yet.`, {
+        code: "PAYMENT_WEBHOOK_SHELL_ONLY",
+        status: 501,
+      });
+    },
+  };
+}
+
 function createUnavailableAdapter(provider) {
   return {
     key: provider,
@@ -344,11 +513,33 @@ function createUnavailableAdapter(provider) {
 export function getPaymentProvider(providerKey, options = {}) {
   const provider = normalizeProvider(providerKey || options.env?.LAJOO_PAYMENT_PROVIDER || options.env?.PAYMENT_PROVIDER);
   if (provider === PAYMENT_PROVIDER_KEYS.MOCK) return mockPaymentAdapter;
+  if (getProviderShell(provider)) return createExternalProviderShellAdapter(provider);
   return createUnavailableAdapter(provider);
 }
 
 export function getPaymentProviderConfig(env = process.env) {
   return getPaymentProvider(null, { env }).getConfig(env);
+}
+
+export function listPaymentProviderShells(env = process.env) {
+  return Object.values(PAYMENT_PROVIDER_SHELLS).map((shell) => {
+    const config = buildConfigForProvider(shell.provider, env);
+    return {
+      provider: shell.provider,
+      label: shell.label,
+      country: shell.country,
+      mode: config.mode,
+      implemented: config.implemented,
+      paymentAvailable: config.paymentAvailable,
+      livePaymentsEnabled: config.livePaymentsEnabled,
+      hasRequiredConfig: config.hasRequiredConfig,
+      requiredEnv: config.requiredEnv,
+      missingEnv: config.missingEnv,
+      supportedPaymentMethods: config.supportedPaymentMethods,
+      webhookHeaders: config.webhookHeaders,
+      note: config.note,
+    };
+  });
 }
 
 export function normalizePaymentMethod(method) {

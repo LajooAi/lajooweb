@@ -8,6 +8,7 @@ import {
   createProviderPaymentIntent,
   createWebhookSignature,
   getPaymentProviderConfig,
+  listPaymentProviderShells,
   validatePaymentBreakdown,
   verifyProviderWebhook,
 } from '../src/server/payment/paymentProvider.js';
@@ -87,17 +88,96 @@ test('mock confirmation stays disabled without explicit flag', () => {
   );
 });
 
-test('unknown external provider remains unavailable but adapter contract is stable', () => {
+test('provider-specific external shell remains disabled but adapter contract is stable', () => {
   const env = { LAJOO_PAYMENT_PROVIDER: 'billplz' };
   const config = getPaymentProviderConfig(env);
   const intent = createProviderPaymentIntent(basePayload, { env });
 
   assert.equal(config.provider, 'billplz');
+  assert.equal(config.label, 'Billplz');
+  assert.equal(config.mode, 'integration_shell');
   assert.equal(config.implemented, false);
   assert.equal(config.paymentAvailable, false);
+  assert.equal(config.livePaymentsEnabled, false);
+  assert.deepEqual(config.requiredEnv, ['BILLPLZ_API_KEY', 'BILLPLZ_COLLECTION_ID', 'BILLPLZ_X_SIGNATURE_KEY']);
+  assert.deepEqual(config.missingEnv, ['BILLPLZ_API_KEY', 'BILLPLZ_COLLECTION_ID', 'BILLPLZ_X_SIGNATURE_KEY']);
   assert.equal(intent.provider, 'billplz');
   assert.equal(intent.status, PAYMENT_PROVIDER_STATUSES.REQUIRES_PROVIDER);
-  assert.match(intent.message, /not implemented yet/i);
+  assert.match(intent.message, /shell is ready/i);
+});
+
+test('provider shells require both global and provider-specific live flags', () => {
+  const env = {
+    LAJOO_PAYMENT_PROVIDER: 'billplz',
+    LAJOO_LIVE_PAYMENTS_ENABLED: 'true',
+    BILLPLZ_API_KEY: 'api-key',
+    BILLPLZ_COLLECTION_ID: 'collection-id',
+    BILLPLZ_X_SIGNATURE_KEY: 'signature-key',
+  };
+  const config = getPaymentProviderConfig(env);
+  const intent = createProviderPaymentIntent(basePayload, { env });
+
+  assert.equal(config.livePaymentGlobalEnabled, true);
+  assert.equal(config.livePaymentProviderEnabled, false);
+  assert.equal(config.livePaymentsEnabled, false);
+  assert.equal(config.hasRequiredConfig, true);
+  assert.equal(intent.paymentAvailable, false);
+  assert.equal(intent.canIssuePolicy, false);
+});
+
+test('configured provider shell is still shell-only until real integration is implemented', () => {
+  const env = {
+    LAJOO_PAYMENT_PROVIDER: 'billplz',
+    LAJOO_LIVE_PAYMENTS_ENABLED: 'true',
+    LAJOO_PAYMENT_PROVIDER_BILLPLZ_ENABLED: 'true',
+    BILLPLZ_API_KEY: 'api-key',
+    BILLPLZ_COLLECTION_ID: 'collection-id',
+    BILLPLZ_X_SIGNATURE_KEY: 'signature-key',
+  };
+  const config = getPaymentProviderConfig(env);
+  const intent = createProviderPaymentIntent(basePayload, { env });
+
+  assert.equal(config.livePaymentsEnabled, true);
+  assert.equal(config.hasRequiredConfig, true);
+  assert.equal(config.paymentAvailable, false);
+  assert.equal(intent.status, PAYMENT_PROVIDER_STATUSES.REQUIRES_PROVIDER);
+  assert.match(intent.providerPaymentIntentId, /^billplz_pi_/);
+  assert.match(intent.message, /configured/i);
+
+  assert.throws(
+    () => confirmProviderPaymentIntent(intent, { paymentMethod: 'fpx' }, { env }),
+    (error) => error instanceof PaymentProviderError && error.code === 'PAYMENT_PROVIDER_SHELL_ONLY'
+  );
+
+  assert.throws(
+    () => verifyProviderWebhook('billplz', JSON.stringify({ paymentId: 'PAY-test' }), {}, { env }),
+    (error) => error instanceof PaymentProviderError && error.code === 'PAYMENT_WEBHOOK_SHELL_ONLY'
+  );
+});
+
+test('provider shells expose safe readiness metadata without secrets', () => {
+  const shells = listPaymentProviderShells({
+    LAJOO_LIVE_PAYMENTS_ENABLED: 'true',
+    LAJOO_PAYMENT_PROVIDER_STRIPE_ENABLED: 'true',
+    STRIPE_SECRET_KEY: 'secret',
+  });
+  const stripe = shells.find((shell) => shell.provider === 'stripe');
+  const billplz = shells.find((shell) => shell.provider === 'billplz');
+
+  assert.equal(shells.length >= 4, true);
+  assert.equal(stripe.label, 'Stripe');
+  assert.deepEqual(stripe.missingEnv, ['STRIPE_WEBHOOK_SECRET']);
+  assert.equal(stripe.hasRequiredConfig, false);
+  assert.equal(stripe.paymentAvailable, false);
+  assert.equal(billplz.country, 'MY');
+  assert.equal(Object.values(stripe).some((value) => String(value).includes('secret')), false);
+});
+
+test('provider-specific shell rejects unsupported payment methods early', () => {
+  assert.throws(
+    () => createProviderPaymentIntent({ ...basePayload, provider: 'toyyibpay', paymentMethod: 'card' }, { env: {} }),
+    (error) => error instanceof PaymentProviderError && error.code === 'PAYMENT_METHOD_NOT_SUPPORTED_BY_PROVIDER'
+  );
 });
 
 test('mock webhook requires explicit flag and valid HMAC signature', () => {
