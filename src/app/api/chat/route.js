@@ -3302,6 +3302,21 @@ Please re-enter your **vehicle plate** and **owner identification number** to co
       intent.intent === USER_INTENTS.SELECT_ROADTAX &&
       !!summaryBoxCanonical;
 
+    // Deterministic transaction turns should not depend on OpenAI availability.
+    // The user has already made a concrete selection, so we can safely render the
+    // next renewal block directly and avoid rate-limit/cost risk on core flow steps.
+    if (!forcedAssistantResponse) {
+      if (shouldForcePaymentStepStructure) {
+        forcedAssistantResponse = buildPaymentStepBlock(summaryBoxCanonical, paymentLinkFallback);
+      } else if (shouldForceRoadTaxStepStructure) {
+        forcedAssistantResponse = buildRoadTaxStepBlock(summaryBoxCanonical, state);
+      } else if (shouldForceAddOnsStepStructure) {
+        forcedAssistantResponse = `Great choice! ✅\n\n${buildAddOnsStepBlock(summaryBoxCanonical)}`;
+      } else if (shouldForceDetailsStepStructure) {
+        forcedAssistantResponse = buildDetailsStepBlock(summaryBoxCanonical, state.selectedRoadTax?.name || null);
+      }
+    }
+
     if (shouldInjectSummary) {
       openAiMessages.push({
         role: "system",
