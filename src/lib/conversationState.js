@@ -444,6 +444,33 @@ export class ConversationState {
     return this;
   }
 
+  /**
+   * Reset back to add-ons when a user changes protection choices mid-flow.
+   * Keep the selected insurer and current add-on context, but clear downstream
+   * choices whose totals/payment details depend on the revised add-ons.
+   */
+  resetToAddOns() {
+    this.addOnsConfirmed = false;
+    this.selectedRoadTax = null;
+    this.personalDetails = null;
+    this.otpVerified = false;
+    this.paymentMethod = null;
+    this.transaction = {
+      quoteId: this.transaction?.quoteId || null,
+      reprice: null,
+      proposalId: null,
+      proposalStatus: null,
+      paymentIntentId: null,
+      paymentStatus: null,
+      policyNumber: null,
+      policyStatus: null,
+      lastError: null,
+    };
+    this.pendingAction = null;
+    this.step = FLOW_STEPS.ADDONS;
+    return this;
+  }
+
   setPersonalDetails(details) {
     this.personalDetails = details;
     this.step = FLOW_STEPS.OTP;
@@ -510,6 +537,22 @@ export class ConversationState {
       pendingAction: this.pendingAction,
       userPreferences: this.userPreferences,
       experiment: this.experiment,
+    };
+  }
+
+  /**
+   * Export full server-side state for trusted storage.
+   * Unlike toJSON(), this keeps required transaction/customer details on the
+   * server so the browser does not need to round-trip sensitive fields.
+   */
+  toStorageJSON() {
+    return {
+      ...this.toJSON(),
+      personalDetails: this.personalDetails ? {
+        email: this.personalDetails.email || null,
+        phone: this.personalDetails.phone || null,
+        address: this.personalDetails.address || null,
+      } : null,
     };
   }
 
@@ -871,6 +914,7 @@ export const USER_INTENTS = {
   SELECT_QUOTE: 'select_quote',
   CHANGE_QUOTE: 'change_quote',           // User wants to change to a different insurer
   CONFIRM_CHANGE_QUOTE: 'confirm_change', // User confirms they want to restart with new insurer
+  CHANGE_ADDONS: 'change_addons',         // User wants to revisit add-ons from a later step
   SELECT_ADDON: 'select_addon',
   SELECT_ROADTAX: 'select_roadtax',
   ASK_QUESTION: 'ask_question',
@@ -953,6 +997,25 @@ export function detectUserIntent(message, currentState) {
           data: { newInsurer, currentInsurer: currentInsurerKey }
         };
       }
+    }
+  }
+
+  const isPastAddOnsStep = [FLOW_STEPS.ROADTAX, FLOW_STEPS.PERSONAL_DETAILS, FLOW_STEPS.OTP, FLOW_STEPS.PAYMENT].includes(currentState.step);
+  if (hasSelectedQuote && isPastAddOnsStep) {
+    const mentionsAddOnTopic =
+      /\b(add-?ons?|addons?|windscreen|special perils|flood|e-?hailing|ehailing|betterment|all drivers?|legal liability|lltp|strike|riot|ncd relief|body painting|personal accident)\b/i.test(msg);
+    const hasEditVerb =
+      /\b(change|edit|update|adjust|modify|redo|go back|back to|remove|delete|take out|add|include|switch)\b/i.test(msg);
+    const isPureExplanationQuestion =
+      /\b(what is|what's|explain|tell me|how does|do i need|should i|is it worth|which add-?ons?|recommend add-?ons?)\b/i.test(msg) &&
+      !/\b(can i|can we|i want|i need|please|pls)\b.*\b(add|include|remove|change|edit|update|adjust)\b/i.test(msg);
+
+    if (mentionsAddOnTopic && hasEditVerb && !isPureExplanationQuestion) {
+      return {
+        intent: USER_INTENTS.CHANGE_ADDONS,
+        confidence: 0.9,
+        data: { reason: 'user_wants_to_revisit_addons' },
+      };
     }
   }
 

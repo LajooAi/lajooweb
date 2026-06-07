@@ -52,24 +52,36 @@ model Insurer {
 }
 
 model PolicyDocument {
-  id             String             @id @default(cuid())
-  insurerId      String
-  insurer        Insurer            @relation(fields: [insurerId], references: [id], onDelete: Cascade)
-  title          String
-  sourceFileName String
-  sourcePath     String?
-  versionLabel   String?
-  effectiveFrom  DateTime?
-  effectiveTo    DateTime?
-  extractedText  String?
-  createdAt      DateTime           @default(now())
-  updatedAt      DateTime           @updatedAt
-  chunks         KnowledgeChunk[]
-  facts          InsurerFact[]
-  promotions     InsurerPromotion[]
+  id                  String             @id @default(cuid())
+  insurerId           String
+  insurer             Insurer            @relation(fields: [insurerId], references: [id], onDelete: Cascade)
+  title               String
+  sourceFileName      String
+  sourcePath          String?
+  sourceRelativePath  String?
+  checksum            String?
+  category            String?
+  documentType        String?
+  language            String?
+  coverageFamily      String?
+  useForPrivateCarMvp Boolean            @default(false)
+  versionLabel        String?
+  effectiveFrom       DateTime?
+  effectiveTo         DateTime?
+  extractedText       String?
+  createdAt           DateTime           @default(now())
+  updatedAt           DateTime           @updatedAt
+  chunks              KnowledgeChunk[]
+  facts               InsurerFact[]
+  promotions          InsurerPromotion[]
 
   @@index([insurerId])
+  @@index([insurerId, category])
+  @@index([insurerId, documentType])
+  @@index([language])
+  @@index([useForPrivateCarMvp])
   @@index([effectiveFrom, effectiveTo])
+  @@unique([insurerId, sourceRelativePath])
 }
 
 model KnowledgeChunk {
@@ -97,15 +109,23 @@ model InsurerFact {
   factType         FactType
   title            String
   value            String
+  category         String?
+  tags             String[]        @default([])
+  advisorUse       String?
+  confidence       String?
   validFrom        DateTime?
   validTo          DateTime?
   status           FactStatus      @default(DRAFT)
   sourcePage       Int?
   sourceExcerpt    String?
+  sourceRelativePath String?
   createdAt        DateTime        @default(now())
   updatedAt        DateTime        @updatedAt
 
   @@index([insurerId, factType])
+  @@index([status])
+  @@index([category])
+  @@index([sourceRelativePath])
   @@index([validFrom, validTo])
 }
 
@@ -127,4 +147,36 @@ model InsurerPromotion {
 
   @@index([insurerId, validFrom, validTo])
   @@index([status])
+}
+
+model ChatSession {
+  id          String        @id
+  state       Json?
+  publicState Json?
+  lastIntent  Json?
+  metadata    Json?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  expiresAt   DateTime
+  messages    ChatMessage[]
+
+  @@index([expiresAt])
+  @@index([updatedAt])
+}
+
+model ChatMessage {
+  id                 String      @id @default(cuid())
+  sessionId          String
+  session            ChatSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  role               String
+  content            String
+  messageOrder       Int
+  summaryCard        Json?
+  addOnsCard         Json?
+  roadTaxCard        Json?
+  paymentCard        Json?
+  paymentSuccessCard Json?
+  createdAt          DateTime    @default(now())
+
+  @@index([sessionId, messageOrder])
 }

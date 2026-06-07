@@ -1,23 +1,25 @@
+import crypto from "node:crypto";
 import fs from "node:fs/promises";
 import path from "node:path";
 import process from "node:process";
 import "./_load-env.mjs";
 import { PrismaClient } from "@prisma/client";
+import {
+  classifyKnowledgePdf,
+  summarizeKnowledgePdfMetadata,
+} from "../src/server/knowledge/pdfMetadata.js";
 
 const prisma = new PrismaClient();
-
-const INSURER_MAP = {
-  allianz: { code: "ALLIANZ", name: "Allianz Insurance", type: "CONVENTIONAL" },
-  etiqa: { code: "ETIQA", name: "Etiqa Insurance", type: "CONVENTIONAL" },
-  takaful: { code: "TAKAFUL", name: "Takaful Ikhlas", type: "TAKAFUL" },
-};
+const DEFAULT_ROOT = "knowledge/raw-pdfs";
 
 function parseArgs(argv) {
   const args = {
-    root: "data/policies",
+    root: DEFAULT_ROOT,
     limit: null,
     dryRun: false,
     skipExisting: true,
+    replaceExisting: false,
+    mvpOnly: false,
   };
 
   for (let i = 2; i < argv.length; i += 1) {
@@ -31,12 +33,22 @@ function parseArgs(argv) {
       i += 1;
     } else if (token === "--dry-run") {
       args.dryRun = true;
+    } else if (token === "--mvp-only") {
+      args.mvpOnly = true;
     } else if (token === "--no-skip-existing") {
+      args.skipExisting = false;
+    } else if (token === "--replace-existing") {
+      args.replaceExisting = true;
       args.skipExisting = false;
     }
   }
 
   return args;
+}
+
+async function sha256File(filePath) {
+  const buffer = await fs.readFile(filePath);
+  return crypto.createHash("sha256").update(buffer).digest("hex");
 }
 
 async function parsePdfText(filePath) {
@@ -53,12 +65,15 @@ async function parsePdfText(filePath) {
 
   const dataBuffer = await fs.readFile(filePath);
   const parser = new PDFParse({ data: dataBuffer });
-  const parsed = await parser.getText();
-  await parser.destroy();
-  return {
-    text: parsed.text || "",
-    pages: Number(parsed.total || 0),
-  };
+  try {
+    const parsed = await parser.getText();
+    return {
+      text: parsed.text || "",
+      pages: Number(parsed.total || 0),
+    };
+  } finally {
+    await parser.destroy();
+  }
 }
 
 function normalizeText(text) {
@@ -95,21 +110,14 @@ function splitIntoChunks(text, maxChars = 1400, overlap = 180) {
     while (start < part.length) {
       const end = Math.min(start + maxChars, part.length);
       chunks.push(part.slice(start, end));
-      start = Math.max(end - overlap, end);
+      if (end >= part.length) break;
+      start = Math.max(end - overlap, start + 1);
     }
     current = "";
   }
 
   if (current) chunks.push(current);
   return chunks;
-}
-
-function titleFromFilename(filePath) {
-  const base = path.basename(filePath, path.extname(filePath));
-  return base
-    .replace(/[_-]+/g, " ")
-    .replace(/\s+/g, " ")
-    .trim();
 }
 
 async function walkPdfFiles(dir) {
@@ -130,51 +138,104 @@ async function walkPdfFiles(dir) {
   return files;
 }
 
-async function ensureInsurer(folderName) {
-  const mapped = INSURER_MAP[folderName.toLowerCase()];
-  if (!mapped) {
-    throw new Error(`Unknown insurer folder "${folderName}". Expected one of: ${Object.keys(INSURER_MAP).join(", ")}`);
+async function ensureInsurer(metadata) {
+  if (!metadata.knownInsurer) {
+    throw new Error(`Unknown insurer folder "${metadata.insurerSlug}" for ${metadata.relativePath}`);
   }
 
   return prisma.insurer.upsert({
-    where: { code: mapped.code },
-    update: { name: mapped.name, type: mapped.type, isActive: true },
-    create: { code: mapped.code, name: mapped.name, type: mapped.type },
+    where: { code: metadata.insurerCode },
+    update: {
+      name: metadata.insurerName,
+      type: metadata.insurerType,
+      isActive: true,
+    },
+    create: {
+      code: metadata.insurerCode,
+      name: metadata.insurerName,
+      type: metadata.insurerType,
+    },
   });
 }
 
-async function importOne(filePath, args) {
-  const insurerFolder = path.basename(path.dirname(filePath));
-  const insurer = await ensureInsurer(insurerFolder);
-  const sourcePath = path.resolve(filePath);
+async function findExistingDocument(insurerId, metadata, sourcePath) {
+  return prisma.policyDocument.findFirst({
+    where: {
+      insurerId,
+      OR: [
+        { sourceRelativePath: metadata.relativePath },
+        { sourcePath },
+      ],
+    },
+    select: {
+      id: true,
+      checksum: true,
+      sourceRelativePath: true,
+      sourcePath: true,
+    },
+  });
+}
 
-  if (args.skipExisting) {
-    const existing = await prisma.policyDocument.findFirst({
-      where: { insurerId: insurer.id, sourcePath },
-      select: { id: true },
-    });
-    if (existing) {
-      return { status: "skipped", reason: "already-imported", filePath };
-    }
-  }
+function buildDocumentData({ insurerId, metadata, sourcePath, checksum, text }) {
+  return {
+    insurerId,
+    title: metadata.title,
+    sourceFileName: path.basename(sourcePath),
+    sourcePath,
+    sourceRelativePath: metadata.relativePath,
+    checksum,
+    category: metadata.category,
+    documentType: metadata.documentType,
+    language: metadata.language,
+    coverageFamily: metadata.coverageFamily,
+    useForPrivateCarMvp: metadata.useForPrivateCarMvp,
+    versionLabel: null,
+    extractedText: text,
+  };
+}
+
+async function importOne(entry, args) {
+  const { filePath, metadata } = entry;
+  const sourcePath = path.resolve(filePath);
+  const checksum = await sha256File(sourcePath);
 
   if (args.dryRun) {
-    return { status: "dry-run", filePath, insurer: insurer.code };
+    const stats = await fs.stat(sourcePath);
+    return {
+      status: "dry-run",
+      filePath,
+      checksum,
+      sizeBytes: stats.size,
+      metadata,
+    };
+  }
+
+  const insurer = await ensureInsurer(metadata);
+  const existing = await findExistingDocument(insurer.id, metadata, sourcePath);
+  if (existing && args.skipExisting) {
+    return {
+      status: "skipped",
+      reason: existing.checksum === checksum ? "already-imported" : "already-imported-different-checksum",
+      filePath,
+      checksum,
+      metadata,
+    };
+  }
+  if (existing && args.replaceExisting) {
+    await prisma.policyDocument.delete({ where: { id: existing.id } });
   }
 
   const parsed = await parsePdfText(sourcePath);
   const text = normalizeText(parsed.text);
   const chunks = splitIntoChunks(text);
-
   const doc = await prisma.policyDocument.create({
-    data: {
+    data: buildDocumentData({
       insurerId: insurer.id,
-      title: titleFromFilename(filePath),
-      sourceFileName: path.basename(filePath),
+      metadata,
       sourcePath,
-      versionLabel: null,
-      extractedText: text,
-    },
+      checksum,
+      text,
+    }),
   });
 
   if (chunks.length > 0) {
@@ -193,54 +254,106 @@ async function importOne(filePath, args) {
   return {
     status: "imported",
     filePath,
-    insurer: insurer.code,
+    checksum,
+    metadata,
     pages: parsed.pages,
     chunks: chunks.length,
+    chars: text.length,
   };
+}
+
+function printMetadataSummary(entries) {
+  const summary = summarizeKnowledgePdfMetadata(entries.map((entry) => entry.metadata));
+  console.log(`PDFs selected: ${summary.totalPdfs}`);
+  console.log(`Private-car MVP PDFs: ${summary.privateCarMvpPdfs}`);
+  console.log("By insurer:");
+  for (const [insurer, count] of Object.entries(summary.byInsurer).sort()) {
+    console.log(`- ${insurer}: ${count}`);
+  }
+  console.log("By category:");
+  for (const [category, count] of Object.entries(summary.byCategory).sort()) {
+    console.log(`- ${category}: ${count}`);
+  }
+  console.log("By document type:");
+  for (const [documentType, count] of Object.entries(summary.byDocumentType).sort()) {
+    console.log(`- ${documentType}: ${count}`);
+  }
 }
 
 async function main() {
   const args = parseArgs(process.argv);
   const root = path.resolve(process.cwd(), args.root);
-
   const files = (await walkPdfFiles(root)).sort();
-  const selected = Number.isFinite(args.limit) && args.limit > 0 ? files.slice(0, args.limit) : files;
+  let entries = files.map((filePath) => ({
+    filePath,
+    metadata: classifyKnowledgePdf(root, filePath),
+  }));
 
-  if (selected.length === 0) {
-    console.log(`No PDF files found under: ${root}`);
+  if (args.mvpOnly) {
+    entries = entries.filter((entry) => entry.metadata.useForPrivateCarMvp);
+  }
+  if (Number.isFinite(args.limit) && args.limit > 0) {
+    entries = entries.slice(0, args.limit);
+  }
+
+  if (entries.length === 0) {
+    console.log(`No PDF files selected under: ${root}`);
     return;
   }
 
-  console.log(`Found ${files.length} PDF(s), processing ${selected.length}.`);
-  console.log(`Mode: ${args.dryRun ? "dry-run" : "import"} | skipExisting=${args.skipExisting}`);
+  const unknownEntries = entries.filter((entry) => !entry.metadata.knownInsurer);
+  if (unknownEntries.length > 0) {
+    console.error(`Unknown insurer folder(s) found: ${unknownEntries.length}`);
+    for (const entry of unknownEntries.slice(0, 20)) {
+      console.error(`- ${entry.metadata.relativePath}`);
+    }
+    throw new Error("Fix unknown insurer folders before importing knowledge PDFs.");
+  }
+
+  console.log(`Found ${files.length} PDF(s), processing ${entries.length}.`);
+  console.log(`Root: ${root}`);
+  console.log(`Mode: ${args.dryRun ? "dry-run" : "import"} | skipExisting=${args.skipExisting} | replaceExisting=${args.replaceExisting} | mvpOnly=${args.mvpOnly}`);
+  printMetadataSummary(entries);
+  console.log("---");
 
   let imported = 0;
   let skipped = 0;
   let failed = 0;
+  let dryRun = 0;
+  let emptyText = 0;
 
-  for (const filePath of selected) {
+  for (const entry of entries) {
     try {
-      const result = await importOne(filePath, args);
+      const result = await importOne(entry, args);
       if (result.status === "imported") {
         imported += 1;
-        console.log(`Imported: ${result.filePath} | insurer=${result.insurer} | pages=${result.pages} | chunks=${result.chunks}`);
+        if (result.chars === 0) emptyText += 1;
+        console.log(
+          `Imported: ${result.metadata.relativePath} | insurer=${result.metadata.insurerCode} | category=${result.metadata.category} | type=${result.metadata.documentType} | lang=${result.metadata.language} | pages=${result.pages} | chunks=${result.chunks}`
+        );
       } else if (result.status === "skipped") {
         skipped += 1;
-        console.log(`Skipped: ${result.filePath} (${result.reason})`);
+        console.log(`Skipped: ${result.metadata.relativePath} (${result.reason})`);
       } else {
-        console.log(`Dry-run: ${result.filePath} | insurer=${result.insurer}`);
+        dryRun += 1;
+        console.log(
+          `Dry-run: ${result.metadata.relativePath} | insurer=${result.metadata.insurerCode} | category=${result.metadata.category} | type=${result.metadata.documentType} | lang=${result.metadata.language} | mvp=${result.metadata.useForPrivateCarMvp}`
+        );
       }
     } catch (error) {
       failed += 1;
-      console.error(`Failed: ${filePath}`);
+      console.error(`Failed: ${entry.metadata.relativePath}`);
       console.error(`  ${error.message}`);
     }
   }
 
   console.log("---");
+  console.log(`Dry-run: ${dryRun}`);
   console.log(`Imported: ${imported}`);
   console.log(`Skipped: ${skipped}`);
   console.log(`Failed: ${failed}`);
+  console.log(`Imported PDFs with empty extracted text: ${emptyText}`);
+  if (failed > 0) process.exitCode = 1;
 }
 
 main()

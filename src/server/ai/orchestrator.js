@@ -118,7 +118,11 @@ function resolveMode({ message, intent, state }) {
     return CONVERSATION_MODES.SMALL_TALK;
   }
 
-  if (intent?.intent === USER_INTENTS.CHANGE_QUOTE || intent?.intent === USER_INTENTS.CONFIRM_CHANGE_QUOTE) {
+  if (
+    intent?.intent === USER_INTENTS.CHANGE_QUOTE ||
+    intent?.intent === USER_INTENTS.CONFIRM_CHANGE_QUOTE ||
+    intent?.intent === USER_INTENTS.CHANGE_ADDONS
+  ) {
     return CONVERSATION_MODES.CHANGE_REQUEST;
   }
 

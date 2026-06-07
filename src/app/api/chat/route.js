@@ -39,19 +39,18 @@ import {
 import { extractPersonalInfo, extractVehicleInfo } from "@/utils/nlpExtractor";
 import { buildConversationDecision } from "@/server/ai/orchestrator";
 import {
-  buildAdvisorResponsePolicyInstruction,
+  buildTurnPlan,
+  TURN_FORCED_RESPONSES,
+} from "@/server/ai/turnPlanner";
+import {
+  applyDeterministicFlowHandlers,
+} from "@/server/ai/flowHandlers";
+import {
+  buildProductionOpenAiMessages,
+} from "@/server/ai/productionOpenAiMessageBuilder";
+import {
   shouldSuppressStepLine,
 } from "@/server/ai/responsePolicy";
-import { buildAdvisorStrategyInstruction } from "@/server/ai/advisorStrategies";
-import {
-  buildInsuranceConceptInstruction,
-  shouldUseGeneralConceptAnswer,
-} from "@/server/ai/insuranceConcepts";
-import {
-  buildQuoteRecommendation,
-  buildQuoteRecommendationInstruction,
-} from "@/server/insurance/recommendationEngine";
-import { buildApprovedFactsInstruction } from "@/server/insurance/approvedFactStore";
 import {
   parseRecommendedInsurerFromAssistantMessage,
   isVehicleDetailsRejectionMessage,
@@ -86,6 +85,15 @@ import {
   quoteIdForCurrentSelection,
   quoteSelectionFromIntent,
 } from "@/server/insurance/quoteEngine";
+import {
+  appendAssistantMessageForStorage,
+  getStateFromSession,
+  loadChatSession,
+  normalizeChatSessionId,
+  resolveMessagesForTurn,
+  saveChatSession,
+  serializeStateForClient,
+} from "@/server/chat/sessionStore";
 
 // ============================================================================
 // DETERMINISTIC BLOCK BUILDERS — code-generated markdown the AI must include
@@ -121,16 +129,6 @@ const OTP_PROMPT_COPY = `Perfect ✅
 I’ve sent a **4-digit OTP** to your phone or email.
 Please enter it below to verify and continue.`;
 
-const APPROVED_FACT_INSURER_SLUG_BY_KEY = {
-  allianz: 'allianz',
-  etiqa: 'etiqa',
-  generali: 'generali',
-  lonpac: 'lonpac',
-  msig: 'msig',
-  takaful: 'takaful-ikhlas',
-  tokio: 'tokio-marine',
-};
-
 const AVAILABLE_INSURER_MENTION_REGEX = new RegExp(
   AVAILABLE_INSURERS
     .flatMap((insurer) => [insurer.shortName, insurer.displayName, ...insurer.aliases])
@@ -158,17 +156,6 @@ const GATEWAY_PAYMENT_METHOD_MAP = {
   'cc-instalment': 'card',
   bnpl: 'bnpl',
 };
-
-function getApprovedFactInsurerSlugForMessage(message, state = {}) {
-  const mentionedKeys = getInsurerKeysFromText(message);
-  if (mentionedKeys.length === 1) {
-    return APPROVED_FACT_INSURER_SLUG_BY_KEY[mentionedKeys[0]] || null;
-  }
-  if (mentionedKeys.length > 1) return null;
-
-  const selectedQuoteKey = getQuoteInsurerKey(state?.selectedQuote);
-  return APPROVED_FACT_INSURER_SLUG_BY_KEY[selectedQuoteKey] || null;
-}
 
 function getSharedNcdPercent(quotes = []) {
   if (!Array.isArray(quotes) || quotes.length === 0) return null;
@@ -1122,9 +1109,12 @@ ${formatStepLine(5, 'Your Details')}
 ${buildPersonalDetailsRequest()}`;
 }
 
-const STEP_LINE_REGEX = /^\s*(?:\*{1,2})?\s*step\s+(?:\*{1,2})?\d+(?:\*{1,2})?\s+of\s+(?:\*{1,2})?6(?:\*{1,2})?\s*[—-]/im;
-const STEP_LINE_CAPTURE_REGEX = /^\s*(?:\*{1,2})?\s*(step\s+(?:\*{1,2})?\d+(?:\*{1,2})?\s+of\s+(?:\*{1,2})?6(?:\*{1,2})?\s*[—-]\s*[^\n*]+)\s*(?:\*{1,2})?/im;
-const STEP_LINE_ONLY_REGEX = /^\s*(?:\*{1,2})?\s*step\s+(?:\*{1,2})?\d+(?:\*{1,2})?\s+of\s+(?:\*{1,2})?6(?:\*{1,2})?\s*[—-]\s*[^\n]*$/i;
+const STAGE_HEADING_TITLES = '(?:Vehicle Info|Choose Insurer|Add-ons|Road Tax|Your Details|Payment)';
+const OLD_STEP_LINE_PATTERN = String.raw`(?:\*{1,2})?\s*step\s+(?:\*{1,2})?\d+(?:\*{1,2})?\s+of\s+(?:\*{1,2})?6(?:\*{1,2})?\s*[—-]\s*[^\n*]+`;
+const NEW_STAGE_HEADING_PATTERN = String.raw`(?:\*{1,2})?\s*${STAGE_HEADING_TITLES}\s*(?:\*{1,2})?`;
+const STEP_LINE_REGEX = new RegExp(String.raw`^\s*(?:${OLD_STEP_LINE_PATTERN}|${NEW_STAGE_HEADING_PATTERN})\s*$`, 'im');
+const STEP_LINE_CAPTURE_REGEX = new RegExp(String.raw`^\s*(${OLD_STEP_LINE_PATTERN}|${NEW_STAGE_HEADING_PATTERN})\s*$`, 'im');
+const STEP_LINE_ONLY_REGEX = new RegExp(String.raw`^\s*(?:${OLD_STEP_LINE_PATTERN}|${NEW_STAGE_HEADING_PATTERN})\s*$`, 'i');
 
 function isStepIndicator(text) {
   if (!text || typeof text !== 'string') return false;
@@ -1132,7 +1122,7 @@ function isStepIndicator(text) {
 }
 
 function formatStepLine(step, title) {
-  return `Step **${step}** of **6** — ${title}`;
+  return `**${title}**`;
 }
 
 function normalizeStepLine(stepLine) {
@@ -1247,9 +1237,12 @@ const PAYMENT_LINK_REGEX = /\/my\/payment\/[a-z0-9-]+/i;
 const SUMMARY_BLOCK_REGEX = /(?:^✓\s*(?:\*\*)?renewal summary(?:\*\*)?\s*[—-]\s*[^\n]+|(?:^|\n)\*\*Policy (?:Effective|Period):\*\*|(?:^|\n)(?:💰\s*)?(?:\*\*)?Total:?(?:\*\*)?\s*(?:&nbsp;)?\s*(?:<u>)?\s*RM\s*\d[\d,]*)/im;
 const CANONICAL_SUMMARY_MARKER_REGEX = /<span style="font-size:1\.12em[^"]*">\*\*✓ Renewal Summary\*\*/i;
 const SUMMARY_SECTION_REGEX = /(?:^|\n)\s*(?:<span[^>]*>\s*)?(?:\*{0,2})?✓?\s*renewal summary(?:\*{0,2})?[^\n]*(?:<\/span>)?[\s\S]*?(?:\n\s*(?:\*{0,2})?(?:💰\s*)?total:?(?:\*{0,2})?\s*(?:&nbsp;)?\s*(?:<u>)?\s*rm[^\n]*)/im;
-const ADDONS_SECTION_REGEX = /(?:^|\n)\s*(?:\*{0,2})?step\s+(?:\*{0,2})?3(?:\*{0,2})?\s+of\s+(?:\*{0,2})?6(?:\*{0,2})?\s*[—-]\s*add-ons(?:\*{0,2})?[\s\S]*?(?:\n\s*based on your situation,[^\n]*reply skip\.?)/im;
-const ROADTAX_SECTION_REGEX = /(?:^|\n)\s*(?:\*{0,2})?step\s+(?:\*{0,2})?4(?:\*{0,2})?\s+of\s+(?:\*{0,2})?6(?:\*{0,2})?\s*[—-]\s*road tax(?:\*{0,2})?[\s\S]*?(?:printed road tax is only for Foreign ID or Company vehicles\.?)/im;
-const PAYMENT_SECTION_REGEX = /(?:^|\n)\s*(?:\*{0,2})?step\s+(?:\*{0,2})?6(?:\*{0,2})?\s+of\s+(?:\*{0,2})?6(?:\*{0,2})?\s*[—-]\s*payment(?:\*{0,2})?[\s\S]*?(?:policy documents and payment receipt will be sent to your WhatsApp and email\.?)/im;
+const ADDONS_HEADING_REGEX_SOURCE = String.raw`(?:(?:\*{0,2})?step\s+(?:\*{0,2})?3(?:\*{0,2})?\s+of\s+(?:\*{0,2})?6(?:\*{0,2})?\s*[—-]\s*add-ons(?:\*{0,2})?|(?:\*{0,2})?add-ons(?:\*{0,2})?)`;
+const ROADTAX_HEADING_REGEX_SOURCE = String.raw`(?:(?:\*{0,2})?step\s+(?:\*{0,2})?4(?:\*{0,2})?\s+of\s+(?:\*{0,2})?6(?:\*{0,2})?\s*[—-]\s*road tax(?:\*{0,2})?|(?:\*{0,2})?road tax(?:\*{0,2})?)`;
+const PAYMENT_HEADING_REGEX_SOURCE = String.raw`(?:(?:\*{0,2})?step\s+(?:\*{0,2})?6(?:\*{0,2})?\s+of\s+(?:\*{0,2})?6(?:\*{0,2})?\s*[—-]\s*payment(?:\*{0,2})?|(?:\*{0,2})?payment(?:\*{0,2})?)`;
+const ADDONS_SECTION_REGEX = new RegExp(String.raw`(?:^|\n)\s*${ADDONS_HEADING_REGEX_SOURCE}\s*\n+[\s\S]*?(?:\n\s*based on your situation,[^\n]*reply skip\.?)`, 'im');
+const ROADTAX_SECTION_REGEX = new RegExp(String.raw`(?:^|\n)\s*${ROADTAX_HEADING_REGEX_SOURCE}\s*\n+[\s\S]*?(?:printed road tax is only for Foreign ID or Company vehicles\.?)`, 'im');
+const PAYMENT_SECTION_REGEX = new RegExp(String.raw`(?:^|\n)\s*${PAYMENT_HEADING_REGEX_SOURCE}\s*\n+[\s\S]*?(?:policy documents and payment receipt will be sent to your WhatsApp and email\.?)`, 'im');
 
 function ensurePaymentLinkIfMissing(response, paymentLink, shouldInject) {
   if (!shouldInject || !paymentLink) return response;
@@ -1847,60 +1840,6 @@ function updateExperimentTracking(state, intent, stepBeforeMutation) {
   state.experiment.updatedAt = Date.now();
 }
 
-function buildStepStyleInstruction(state) {
-  const prefs = state?.userPreferences || {};
-  const preferenceHints = [];
-  if (prefs.budgetFocused) preferenceHints.push('Emphasize value-for-money when comparing options.');
-  if (prefs.claimsFocused) preferenceHints.push('Highlight claim process convenience and support reliability.');
-  if (prefs.coverageFocused) preferenceHints.push('Highlight protection scope and higher coverage tradeoffs.');
-  if (prefs.concisePreferred === true) preferenceHints.push('Keep replies concise (1-2 short paragraphs).');
-  if (prefs.concisePreferred === false) preferenceHints.push('User accepts more detail when needed, but stay clear.');
-
-  if (!state.hasCompleteVehicleIdentification()) {
-    return `STEP STYLE PROFILE
-Mode: Intake mode
-Style: concise, guided, one clear request at a time.
-${preferenceHints.join('\n')}`;
-  }
-
-  if (state.step === FLOW_STEPS.QUOTES) {
-    return `STEP STYLE PROFILE
-Mode: Advisor mode
-Style: compare clearly, be decisive when recommending, ask one decision question.
-${preferenceHints.join('\n')}`;
-  }
-
-  if (state.step === FLOW_STEPS.ADDONS) {
-    return `STEP STYLE PROFILE
-Mode: Practical consultant mode
-Style: explain usefulness quickly, avoid jargon, then ask for add-on choice.
-${preferenceHints.join('\n')}`;
-  }
-
-  if (state.step === FLOW_STEPS.ROADTAX) {
-    return `STEP STYLE PROFILE
-Mode: Consultative close mode
-Style: short answer + light convenience pitch + direct yes/no road tax close.
-${preferenceHints.join('\n')}`;
-  }
-
-  if (state.step === FLOW_STEPS.PERSONAL_DETAILS) {
-    return `STEP STYLE PROFILE
-Mode: Checklist mode
-Style: structured bullets, clear missing fields, no unnecessary explanation.
-${preferenceHints.join('\n')}`;
-  }
-
-  if (state.step === FLOW_STEPS.OTP || state.step === FLOW_STEPS.PAYMENT) {
-    return `STEP STYLE PROFILE
-Mode: Transaction mode
-Style: clear, trust-building, action-oriented.
-${preferenceHints.join('\n')}`;
-  }
-
-  return null;
-}
-
 function shouldUseClarifyingTurn(intent, state) {
   if (!intent) return false;
   const confidence = Number(intent.confidence || 0);
@@ -1958,112 +1897,6 @@ Ask ONE clarifying question only:
   }
 
   return `Low intent confidence detected. Ask one concise clarifying question based on the current step.`;
-}
-
-function truncateKnowledgeFact(text, maxLen = 280) {
-  const clean = String(text || '').replace(/\s+/g, ' ').trim();
-  if (clean.length <= maxLen) return clean;
-  return `${clean.slice(0, maxLen - 1)}…`;
-}
-
-function isComparisonQuestion(text) {
-  const msg = String(text || '').toLowerCase();
-  if (!msg) return false;
-
-  if (/\b(compare|comparison|versus|vs\.?|difference|differentiate)\b/i.test(msg)) return true;
-  if (/\b(zero\s+betterment|waiver(?:\s+of)?\s+betterment|betterment)\b/i.test(msg)) return true;
-  if (/\bwhich insurer\b/i.test(msg)) return true;
-  if (/\bbetween\b.+\b(?:and|vs)\b/i.test(msg)) return true;
-
-  return false;
-}
-
-async function loadKnowledgeMatchesForQuestion(latestMessage, intent, options = {}) {
-  if (intent?.intent !== USER_INTENTS.ASK_QUESTION) return [];
-  const query = String(latestMessage || '').trim();
-  if (!query) return [];
-
-  const limit = Number(options.limit || 6);
-  const maxChunkCandidates = Number(options.maxChunkCandidates || 320);
-  const matches = await searchInsurerKnowledgeFromDb(query, { limit, maxChunkCandidates });
-  return Array.isArray(matches) ? matches : [];
-}
-
-function buildLiveKnowledgeSnapshot(matches = [], limit = 4) {
-  if (!Array.isArray(matches) || matches.length === 0) return [];
-  return matches.slice(0, limit).map((entry) => {
-    const sourceType = String(entry.sourceType || 'db_unknown').replace(/^db_/, '');
-    const sourceLabel = String(entry.question || 'Insurer knowledge').trim();
-    const fact = truncateKnowledgeFact(entry.answer, 180);
-    return `${sourceLabel} [${sourceType}]: ${fact}`;
-  });
-}
-
-function buildComparisonQuestionInstruction(latestMessage, intent, state) {
-  if (intent?.intent !== USER_INTENTS.ASK_QUESTION) return null;
-  const query = String(latestMessage || '').trim();
-  if (!query || !isComparisonQuestion(query)) return null;
-
-  return `COMPARISON ANSWER CONTRACT
-User asked a comparison-style insurance question.
-Format your answer in this order:
-1) One-line direct summary.
-2) A compact side-by-side list with one line per insurer/policy being compared.
-3) If a claim is not in PostgreSQL references, write: "not found in current insurer database".
-4) One practical recommendation line tied to user intent (budget, claims ease, or coverage).
-5) One clear close question that brings user back to current step (${state.step}).
-
-Style:
-- Up to 6 short lines total (not counting the close question).
-- Be specific and factual; no generic marketing claims.
-- Keep pricing/selection flow unchanged.`;
-}
-
-async function buildKnowledgeGroundingInstruction(latestMessage, intent, state, preloadedMatches = null, options = {}) {
-  if (intent?.intent !== USER_INTENTS.ASK_QUESTION) return null;
-  const query = String(latestMessage || '').trim();
-  if (!query) return null;
-
-  const matches = Array.isArray(preloadedMatches)
-    ? preloadedMatches
-    : await loadKnowledgeMatchesForQuestion(query, intent, { limit: 6, maxChunkCandidates: 320 });
-  if (!Array.isArray(matches) || matches.length === 0) {
-    if (options.allowGeneralConceptAnswer) {
-      return `GENERAL CONCEPT GROUNDING
-No PostgreSQL insurer-specific references were found, but the user is asking about an approved general insurance concept.
-- Use the APPROVED GENERAL INSURANCE CONCEPTS instruction if present.
-- Do not say "not found in current insurer database" for the general concept itself.
-- If the user asks whether a specific insurer includes/offers this, then say that insurer-specific proof is not found in the current insurer database.
-- After answering, guide back to the current flow step with one clear next-action question.
-Current step: ${state.step}.`;
-    }
-
-    return `QUESTION HANDLING CONTRACT
-No relevant PostgreSQL insurer knowledge was found for this question.
-- Do NOT guess or use generic memory for insurer-specific facts.
-- Say clearly that this detail is not found in the current insurer database.
-- Ask one short clarifying follow-up (insurer name, plan name, or exact term) so you can search again.
-- Then guide back to the current flow step with one clear next-action question.
-Current step: ${state.step}.`;
-  }
-
-  const factLines = matches.slice(0, 3).map((entry, index) => {
-    const question = String(entry.question || '').trim();
-    const answer = truncateKnowledgeFact(entry.answer, 260);
-    const sourceType = String(entry.sourceType || 'db_unknown').replace(/^db_/, '');
-    return `${index + 1}. ${question}\n   Source: PostgreSQL (${sourceType})\n   Key fact: ${answer}`;
-  }).join('\n');
-
-  return `QUESTION GROUNDING (MANDATORY)
-User asked: "${query}"
-Use ONLY the PostgreSQL grounded references below before adding advice:
-${factLines}
-
-Rules:
-- Answer the question first with concrete facts from these references only.
-- Do not use quote-card marketing bullets as policy truth.
-- Do not invent policy/regulatory details not supported by these references.
-- Then bridge back to the current step with one concise next-action question.`;
 }
 
 function normalizePriceFormatSpacing(text) {
@@ -2715,7 +2548,15 @@ async function executeFunction(functionName, args) {
 
 export async function POST(request) {
   try {
-    const { messages, state: clientState } = await request.json();
+    const requestBody = await request.json();
+    const requestMessages = Array.isArray(requestBody?.messages) ? requestBody.messages : [];
+    const sessionId = normalizeChatSessionId(requestBody?.sessionId);
+    const serverSession = await loadChatSession(sessionId);
+    const clientState = requestBody?.state || null;
+    const messages = resolveMessagesForTurn({
+      serverMessages: serverSession?.messages || [],
+      requestMessages,
+    });
 
     if (!Array.isArray(messages) || messages.length === 0) {
       return NextResponse.json({ error: "Missing messages array" }, { status: 400 });
@@ -2735,9 +2576,10 @@ export async function POST(request) {
     }
 
     // ========================================================================
-    // 1. BUILD STATE — prefer round-tripped state, fall back to text inference
+    // 1. BUILD STATE — prefer server session state, fall back to legacy client state/text inference
     // ========================================================================
-    const state = ConversationState.fromJSON(clientState) || ConversationState.fromMessages(messages);
+    const serverState = await getStateFromSession(serverSession);
+    const state = serverState || ConversationState.fromJSON(clientState) || ConversationState.fromMessages(messages);
     const stepBeforeMutation = state.step;
     const latestMessage = messages[messages.length - 1]?.content || "";
     const intent = detectUserIntent(latestMessage, state);
@@ -2751,7 +2593,8 @@ export async function POST(request) {
     let lowConfidenceNeedsClarification = false;
     let forcedAssistantResponse = null;
 
-    console.log('State source:', clientState ? 'round-tripped from client' : 'inferred from messages');
+    console.log('Session ID:', sessionId);
+    console.log('State source:', serverState ? 'server session' : (clientState ? 'legacy client fallback' : 'inferred from messages'));
     console.log('[AI_INTENT_TRACE]', JSON.stringify({
       step: state.step,
       intent: intent.intent,
@@ -2764,7 +2607,7 @@ export async function POST(request) {
 
     // ========================================================================
     // 1b. APPLY INTENT-DRIVEN STATE MUTATIONS
-    // When state is round-tripped, the latest user action hasn't been applied yet.
+    // The persisted state does not include the latest user action yet.
     // Apply it now based on the detected intent.
     // ========================================================================
     if (intent.intent === USER_INTENTS.SELECT_QUOTE && intent.data?.insurer) {
@@ -2851,6 +2694,13 @@ export async function POST(request) {
       }
     }
 
+    if (intent.intent === USER_INTENTS.CHANGE_ADDONS) {
+      state.resetToAddOns();
+      forcedAssistantResponse = `No problem — we can adjust your add-ons before continuing.
+
+${buildAddOnsStepBlock(buildSummaryBox(state))}`;
+    }
+
     if (intent.data?.cancelPendingAction) {
       state.setPendingAction(null);
     }
@@ -2920,11 +2770,20 @@ export async function POST(request) {
       messages,
       stepBeforeMutation,
     });
+    const turnPlan = buildTurnPlan({
+      message: latestMessage,
+      intent,
+      state,
+      decision: conversationDecision,
+      engineContext: conversationDecision.engineContext,
+    });
 
     console.log('=== LAJOO API ===');
     console.log('Intent:', intent.intent);
     console.log('Conversation mode:', conversationDecision.mode);
     console.log('Conversation action:', conversationDecision.action);
+    console.log('Turn plan:', turnPlan.responsePattern);
+    console.log('Turn safety:', turnPlan.safetyLevel);
     console.log('Step:', state.step);
     console.log('Prompt variant:', state?.experiment?.promptVariant || 'A');
     console.log('Experiment mode:', state?.experiment?.experimentMode || 'off');
@@ -2933,11 +2792,8 @@ export async function POST(request) {
     console.log('=================');
 
     // Deterministic policy guard: prevent incorrect "physical road tax" guidance.
-    if (intent.intent === USER_INTENTS.ASK_QUESTION && state.step === FLOW_STEPS.ROADTAX) {
-      const asksPrintedRoadTax = /\b(printed|physical|hard\s*copy|hardcopy|sticker|paper)\b/i.test(latestMessage);
-      if (asksPrintedRoadTax) {
-        forcedAssistantResponse = buildPrintedRoadTaxRestrictionReply(state);
-      }
+    if (turnPlan.forcedResponse === TURN_FORCED_RESPONSES.PRINTED_ROADTAX_RESTRICTION) {
+      forcedAssistantResponse = buildPrintedRoadTaxRestrictionReply(state);
     }
 
     // ========================================================================
@@ -3059,888 +2915,60 @@ Please re-enter your **vehicle plate** and **owner identification number** to co
     // ========================================================================
     // 3. BUILD AI MESSAGES
     // ========================================================================
-    const questionKnowledgeMatches = await loadKnowledgeMatchesForQuestion(latestMessage, intent, {
-      limit: 6,
-      maxChunkCandidates: 320,
-    });
-    const liveKnowledgeSnapshot = buildLiveKnowledgeSnapshot(questionKnowledgeMatches, 4);
-    const systemPrompt = buildSystemPrompt(state, vehicleProfile, promptVariant, liveKnowledgeSnapshot);
-
-    const openAiMessages = [
-      { role: "system", content: systemPrompt },
-      ...messages.map(msg => ({
-        role: msg.role === "assistant" ? "assistant" : "user",
-        content: String(msg.content || ""),
-      })),
-    ];
-    const advisorPolicyInstruction = buildAdvisorResponsePolicyInstruction(conversationDecision, state);
-    if (advisorPolicyInstruction) {
-      openAiMessages.push({ role: "system", content: advisorPolicyInstruction });
-    }
-    const quoteRecommendation = buildQuoteRecommendation({
-      quotes: getQuotesFromState(state),
-      state,
-      userPreferences: state.userPreferences,
-      message: latestMessage,
-    });
-    const advisorStrategyInstruction = buildAdvisorStrategyInstruction(conversationDecision, state, {
-      quoteRecommendation,
-      engineContext: conversationDecision.engineContext,
+    const { openAiMessages } = await buildProductionOpenAiMessages({
       latestMessage,
-    });
-    if (advisorStrategyInstruction) {
-      openAiMessages.push({ role: "system", content: advisorStrategyInstruction });
-    }
-    const insuranceConceptInstruction = buildInsuranceConceptInstruction(latestMessage, state);
-    if (insuranceConceptInstruction) {
-      openAiMessages.push({ role: "system", content: insuranceConceptInstruction });
-    }
-    const approvedFactsInstruction = buildApprovedFactsInstruction(latestMessage, {
-      insurerSlug: getApprovedFactInsurerSlugForMessage(latestMessage, state),
-      limit: 8,
-    });
-    if (approvedFactsInstruction) {
-      openAiMessages.push({ role: "system", content: approvedFactsInstruction });
-    }
-    const quoteRecommendationInstruction = buildQuoteRecommendationInstruction(conversationDecision, {
-      quoteRecommendation,
+      messages,
       state,
-      message: latestMessage,
-    });
-    if (quoteRecommendationInstruction) {
-      openAiMessages.push({ role: "system", content: quoteRecommendationInstruction });
-    }
-    const stepStyleInstruction = buildStepStyleInstruction(state);
-    if (stepStyleInstruction) {
-      openAiMessages.push({ role: "system", content: stepStyleInstruction });
-    }
-    const stepContractInstruction = buildStepContractInstruction(state, { intent, messages, vehicleProfile });
-    if (stepContractInstruction) {
-      openAiMessages.push({ role: "system", content: stepContractInstruction });
-    }
-    const antiRepetitionInstruction = buildAntiRepetitionInstruction(messages);
-    if (antiRepetitionInstruction) {
-      openAiMessages.push({ role: "system", content: antiRepetitionInstruction });
-    }
-    const knowledgeGroundingInstruction = await buildKnowledgeGroundingInstruction(
-      latestMessage,
+      decision: conversationDecision,
+      turnPlan,
       intent,
+      vehicleProfile,
+      promptVariant,
+      buildSystemPrompt,
+      buildStepContractInstruction,
+      buildAntiRepetitionInstruction,
+    });
+    const deterministicFlowResult = applyDeterministicFlowHandlers({
+      openAiMessages,
       state,
-      questionKnowledgeMatches,
-      { allowGeneralConceptAnswer: shouldUseGeneralConceptAnswer(latestMessage) }
-    );
-    if (knowledgeGroundingInstruction) {
-      openAiMessages.push({ role: "system", content: knowledgeGroundingInstruction });
-    }
-    const comparisonQuestionInstruction = buildComparisonQuestionInstruction(latestMessage, intent, state);
-    if (comparisonQuestionInstruction) {
-      openAiMessages.push({ role: "system", content: comparisonQuestionInstruction });
-    }
-    let vehicleRejectionHandled = false;
-
-    // ========================================================================
-    // DETERMINISTIC FLOW HINTS — code-built blocks the AI must include
-    // ========================================================================
-
-    // GLOBAL GUARD: No quotes or pricing without vehicle info
-    if (!state.hasCompleteVehicleIdentification()) {
-      const canAnswerGeneralQuestion = intent.intent === USER_INTENTS.ASK_QUESTION;
-      const isPlayfulStart = intent.intent === USER_INTENTS.UNCLEAR_OR_PLAYFUL && state.step === FLOW_STEPS.START;
-      const isGreetingStart = intent.intent === USER_INTENTS.GREETING && state.step === FLOW_STEPS.START;
-      const isNeutralStartProbe =
-        intent.intent === USER_INTENTS.OTHER &&
-        state.step === FLOW_STEPS.START &&
-        !state.plateNumber &&
-        !state.nricNumber &&
-        /^(?:just\s+)?(hi|hello|hey|yo|salam|assalam|test|testing|check|checking|ping|trial|demo)\b/i.test(String(latestMessage || '').trim().toLowerCase());
-
-      if (canAnswerGeneralQuestion) {
-        openAiMessages.push({
-          role: "system",
-          content: `User asked a general insurance question before sharing plate/owner ID.
-Answer the question helpfully first (no quotes/pricing cards).
-After answering, add one short line: "If you'd like renewal quotes, share your **vehicle plate** and **owner identification number**."`,
-        });
-      } else if (isGreetingStart) {
-        openAiMessages.push({
-          role: "system",
-          content: `User sent a greeting at the start. Reply naturally in 1-2 short lines (warm, human, non-robotic).
-Do NOT show the full numbered intake list yet.
-Briefly mention what LAJOO can help with (renew insurance, road tax, compare options, and payment).
-Then ask one discovery question: what do they want to do today?
-Only ask for **vehicle plate** and **owner identification number** after they clearly say they want to start renewal now.`,
-        });
-      } else if (isPlayfulStart) {
-        openAiMessages.push({
-          role: "system",
-          content: `User is playful/unclear at start. Reply naturally in 1-2 short lines:
-1) brief friendly acknowledgement
-2) ask what they need today and what LAJOO can help with (renewal quote, policy check, claims help, road tax).
-Do NOT ask for plate/owner ID yet unless they choose to start renewal.`,
-        });
-      } else if (isNeutralStartProbe) {
-        openAiMessages.push({
-          role: "system",
-          content: `User sent a neutral probe/test message at start.
-Reply like a human (short, natural), then ask what they want LAJOO to help with today.
-Do NOT show the strict intake list yet.
-Do NOT ask for plate/owner ID yet unless user confirms renewal intent.`,
-        });
-      } else {
-      // Determine what's still needed
-      const hasPlate = !!state.plateNumber;
-      const hasNRIC = !!state.nricNumber;
-
-      if (!hasPlate && !hasNRIC) {
-        // Use deterministic text to avoid LLM collapsing "1." and "2." onto one line.
-        forcedAssistantResponse = `${formatStepLine(1, 'Vehicle Info')}
-
-To get started, please provide your:
-
-1. **Vehicle Plate Number** (e.g. WXY 1234)
-2. **Owner Identification Number** (NRIC / Foreign ID / Army IC / Police IC / Company Reg. No.)`;
-      } else {
-        // One item provided, ask for the other
-        const missingItem = !hasPlate ? 'Vehicle Plate Number' : 'Owner Identification Number';
-        const missingExample = !hasPlate ? '(e.g. WXY 1234)' : '(NRIC / Foreign ID / Army IC / Police IC / Company Reg. No.)';
-        openAiMessages.push({
-          role: "system",
-          content: `CRITICAL RESTRICTION: User has NOT provided both plate + IC yet. You MUST NOT:
-- Show any insurance quotes or prices
-- Discuss specific insurers (${AVAILABLE_INSURER_NAMES_TEXT})
-- Talk about add-ons, road tax, or any pricing details
-
-Ask for the missing item only. Keep it brief: "Please provide your **${missingItem}** ${missingExample} to proceed with the insurance renewal."`,
-        });
-      }
-      }
-    }
-
-    // --- VEHICLE CONFIRMED → show quotes deterministically ---
-    if (
-      intent.intent === USER_INTENTS.CONFIRM &&
-      state.hasCompleteVehicleIdentification() &&
-      !state.selectedQuote &&
-      wasLastAssistantVehicleConfirmation(messages)
-    ) {
-      forcedAssistantResponse = buildQuoteSelectionReply(state);
-    }
-
-    // --- VEHICLE LOOKUP complete, show vehicle details ---
-    if (intent.intent === USER_INTENTS.PROVIDE_INFO && state.hasCompleteVehicleIdentification() && vehicleProfile) {
-      forcedAssistantResponse = buildVehicleFoundReply(vehicleProfile);
-    }
-
-    // --- NCD complaint: user says NCD is wrong / wants to change NCD ---
-    if (state.hasCompleteVehicleIdentification() && vehicleProfile && !state.selectedQuote) {
-      const latestMsg = messages[messages.length - 1]?.content || '';
-      const isNcdComplaint = /\bncd\b.*\b(wrong|incorrect|not right|different|should be|supposed to|change|update|actually)\b|\b(wrong|incorrect|change|update)\b.*\bncd\b|\bmy ncd is \d/i.test(latestMsg);
-
-      if (isNcdComplaint) {
-        vehicleRejectionHandled = true;
-        forcedAssistantResponse = buildVehicleNcdConcernReply(vehicleProfile);
-      }
-    }
-
-    // If user rejects vehicle details before selecting a quote, ask what to correct.
-    if (state.hasCompleteVehicleIdentification() &&
-        vehicleProfile &&
-        !state.selectedQuote &&
-        !vehicleRejectionHandled) {
-      const latestMsg = messages[messages.length - 1]?.content || '';
-      const isRejection = isVehicleDetailsRejectionMessage(latestMsg);
-      const isVehicleConfirmationContext = wasLastAssistantVehicleConfirmation(messages);
-
-      if (isRejection && isVehicleConfirmationContext) {
-        vehicleRejectionHandled = true;
-        forcedAssistantResponse = buildVehicleRejectionFollowUpReply(vehicleProfile);
-      }
-    }
-
-    // --- CONFIRM at QUOTES step: user accepting AI recommendation ---
-    if (
-      intent.intent === USER_INTENTS.CONFIRM &&
-      state.step === FLOW_STEPS.QUOTES &&
-      !state.selectedQuote &&
-      !wasLastAssistantVehicleConfirmation(messages)
-    ) {
-      // Find the last AI message to see which insurer was recommended
-      const lastAIMessage = [...messages].reverse().find(m => m.role === 'assistant')?.content || '';
-      const recommendedInsurerKey = state.lastRecommendedInsurer || parseRecommendedInsurerFromAssistantMessage(lastAIMessage);
-      const recommendedInsurer = recommendedInsurerKey ? quoteSelectionFromIntent(state, recommendedInsurerKey) : null;
-      const lowerLastAI = String(lastAIMessage).toLowerCase();
-      const mentionedInsurerCount = getInsurerKeysFromText(lowerLastAI).length;
-      const confirmedComparisonOffer =
-        /side-?by-?side|recommend one now|should i recommend/i.test(lowerLastAI) &&
-        mentionedInsurerCount >= 2;
-      const confirmedBettermentOffer = confirmedComparisonOffer && /betterment|zero betterment|waiver|depreciation/i.test(lowerLastAI);
-
-      if (recommendedInsurer) {
-        // Apply the selection
-        state.selectQuote(recommendedInsurer);
-        const summaryBox = buildSummaryBox(state);
-        const addOnsStepBlock = buildAddOnsStepBlock(summaryBox);
-        openAiMessages.push({
-          role: "system",
-          content: `User confirmed your recommendation of ${recommendedInsurer.insurer}. Your response MUST include:
-
-Great choice! ✅
-
-${addOnsStepBlock}
-
-Do NOT alter prices. You may add a brief line but MUST include the Step 3 block exactly.`,
-        });
-      } else if (confirmedBettermentOffer) {
-        openAiMessages.push({
-          role: "system",
-          content: `User replied "ok" to a zero-betterment comparison offer. Do NOT show full quotes list.
-Give a direct side-by-side answer using PostgreSQL-grounded facts only (from QUESTION GROUNDING / LIVE DATABASE context).
-If PostgreSQL evidence is missing for any insurer, say that clearly instead of guessing.
-Then close consultatively in one line: ask if user wants your recommendation based on current total premium, or if they want to pick ${AVAILABLE_INSURER_CHOICE_TEXT}.
-Do NOT move to next step until insurer is selected.`,
-        });
-      } else if (confirmedComparisonOffer) {
-        openAiMessages.push({
-          role: "system",
-          content: `User replied "ok" to your comparison offer. Do NOT re-show full quotes list.
-Provide a concise side-by-side comparison in 3 short bullets:
-- Best budget value
-- Best documented claims/service confidence (PostgreSQL-grounded only)
-- Best higher-coverage option
-
-Then ask one clear close question: "Would you like my recommendation, or do you want one of these: ${AVAILABLE_INSURER_NAMES_TEXT}?"
-Do NOT move to next step until insurer is selected.`,
-        });
-      } else {
-        // No clear recommendation found - re-show full quotes deterministically
-        forcedAssistantResponse = buildQuoteSelectionReply(state);
-      }
-    }
-
-    // --- QUOTES STEP: questions about insurers ---
-    if (intent.intent === USER_INTENTS.ASK_QUESTION && state.step === FLOW_STEPS.QUOTES) {
-      const latestMsg = messages[messages.length - 1]?.content?.toLowerCase() || '';
-      const mentionsUnavailablePreferredInsurer = UNAVAILABLE_INSURER_REGEX.test(latestMsg);
-      const isDilemma = /can'?t (choose|decide|pick|select)|torn between|stuck between|not sure which|help me (choose|decide|pick)|between .+ and/i.test(latestMsg);
-      const isAskingRecommendation = /recommend|which (one|should)|which is better|what(?:'s| is) better|better one|best one|what.*(suggest|think|pick)|help me (choose|decide|pick)|your (pick|choice|suggestion)/i.test(latestMsg);
-      const asksBetterment = /betterment|zero betterment|waiver of betterment|depreciation/i.test(latestMsg);
-      const asksToSeeQuotesAgain =
-        /(?:show|list|repeat|remind(?: me)?|display)\b.*\b(?:quote|quotes|options|price|prices)\b|\b(?:quote|quotes|options|price list)\b.*\b(?:again|repeat)\b|what are the options|show me (?:the )?quotes/i.test(latestMsg);
-
-      const rankedQuotes = getQuotesFromState(state)
-        .slice()
-        .sort((a, b) => Number(a?.pricing?.finalPremium || 0) - Number(b?.pricing?.finalPremium || 0));
-      const lowestQuote = rankedQuotes[0];
-      const lowestQuoteName = lowestQuote?.insurer?.displayName || "the lowest-premium option";
-      const lowestQuotePrice = formatRmAmount(lowestQuote?.pricing?.finalPremium || 0);
-
-      if (mentionsUnavailablePreferredInsurer) {
-        openAiMessages.push({
-          role: "system",
-          content: `User mentioned a preferred insurer that is not in today's available panel.
-Do NOT dump the full quote list unless explicitly requested.
-
-Your response must:
-1. Acknowledge their past preference/trust in that insurer.
-2. Clearly say that insurer is not available in the current options.
-3. Offer one best available fit using current quote prices.
-4. If you mention policy/service benefits, cite PostgreSQL-grounded facts only.
-5. Use a consultative, confident close: ask if they want you to lock that option now.
-
-Tone: helpful salesperson, non-pushy, 3-5 sentences max.`,
-        });
-      } else if (asksBetterment) {
-        openAiMessages.push({
-          role: "system",
-          content: `User asked which insurer has zero betterment.
-Answer directly using PostgreSQL-grounded facts only.
-If data is missing for any insurer, say "not found in current insurer database" and ask one clarifying follow-up.
-Then give one practical recommendation line based on current quote pricing (avoid unsupported policy claims).
-End with one clear close question:
-"Would you like my recommendation now, or do you want one of these: ${AVAILABLE_INSURER_NAMES_TEXT}?"`,
-        });
-      } else if (isAskingRecommendation) {
-        // User wants a recommendation - give a CONFIDENT, DIRECT answer
-        openAiMessages.push({
-          role: "system",
-          content: `User is asking for YOUR recommendation. Give a CONFIDENT, DIRECT recommendation. Do NOT:
-- Ask discovery questions
-- Show all quotes again
-- Be wishy-washy or indecisive
-
-DO:
-- Pick ONE insurer confidently (use your judgment based on value)
-- Give ONE clear reason why (price-first is allowed; insurer-policy claims must be PostgreSQL-grounded)
-- End with "Want to go with this?" or similar
-
-Use the current quote table for pricing reference. Lowest now: **${lowestQuoteName} (${lowestQuotePrice})**.
-
-Be decisive. Be smart. Pick one and recommend it confidently.`,
-        });
-      } else if (isDilemma) {
-        // User can't decide — use discovery questions from DISCOVERY QUESTIONS section
-        openAiMessages.push({
-          role: "system",
-          content: `User is having trouble deciding between insurers. DO NOT pick for them yet. Instead:
-
-1. Acknowledge their dilemma ("Tough choice! Both are great options.")
-2. Ask ONE discovery question to understand their priority. Pick the most relevant:
-   - "What matters most to you — **saving money**, **easy claims**, or **maximum coverage**?"
-   - "How do you mainly use your car — **daily commute**, **occasional trips**, or **long-distance highway**?"
-
-Do NOT show quotes again. Do NOT make a recommendation yet. Wait for their answer, then use the RECOMMENDATION RUBRIC to give a confident pick.`,
-        });
-      } else {
-        if (asksToSeeQuotesAgain) {
-          forcedAssistantResponse = buildQuoteSelectionReply(state);
-        } else {
-          openAiMessages.push({
-            role: "system",
-            content: `Answer the user's question briefly (2-3 sentences max) in a conversational tone.
-If the question relates to something LAJOO can help with, answer genuinely then add a natural bridge like "Good news — I can help you with that right here!" or "I can handle this end-to-end for you here."
-Do NOT reprint the full quotes block unless user asks to see options again.
-End with one consultative next-step question that keeps momentum without forcing an immediate pick, for example:
-"Want a quick side-by-side on this point for the available insurers, or should I recommend one now?"`,
-          });
-        }
-      }
-    }
-
-    // --- ASK_QUESTION at ADDONS step: answer naturally, show menu only on request ---
-    if (intent.intent === USER_INTENTS.ASK_QUESTION && state.step === FLOW_STEPS.ADDONS) {
-      const latestMsg = messages[messages.length - 1]?.content?.toLowerCase() || '';
-      const asksDirectCheaperOutside =
-        /direct|directly|save\s*\d+%|cheaper|lower|discount|better deal|better price/i.test(latestMsg) &&
-        (AVAILABLE_INSURER_MENTION_REGEX.test(latestMsg) || /(insur|renew)/i.test(latestMsg));
-      const asksUnavailableInsurerAtAddons = UNAVAILABLE_INSURER_REGEX.test(latestMsg);
-      const asksBetterment = /betterment|zero betterment|waiver of betterment|depreciation/i.test(latestMsg);
-      const isAskingWhichNeeded = /which (do i|one|should)|what (do i|should)|need|recommend/i.test(latestMsg);
-      const asksToSeeAddOnsAgain = /show|list|options|again|repeat|what add-?ons|addon menu/i.test(latestMsg);
-
-      if (asksDirectCheaperOutside) {
-        openAiMessages.push({
-          role: "system",
-          content: `User raised a price objection (direct insurer might be cheaper).
-Respond like a helpful advisor, not defensive:
-1) Acknowledge the concern and validate it.
-2) Be transparent: if direct truly offers better price for the same coverage, that's a valid option.
-3) Explain LAJOO value in one practical line (compare options, one flow, add-ons/road tax/payment handled together).
-4) Give a confident but non-pushy close with a clear next action.
-
-Close with ONE of these actions:
-- "Want me to keep your current insurer and continue with add-ons?"
-- "If you prefer lowest cost now, I can proceed with **skip add-ons**."
-
-Do NOT dump all quotes again.
-Do NOT sound scripted or repetitive.`,
-        });
-      } else if (asksUnavailableInsurerAtAddons) {
-        openAiMessages.push({
-          role: "system",
-          content: `User asked about an insurer that's not in today's panel while at add-ons step.
-Respond clearly and naturally:
-1) Confirm that insurer is not available in current panel.
-2) Explain the user can still renew directly with that insurer outside LAJOO.
-3) Offer the best next in-platform action based on current selected insurer (continue or switch).
-4) End with one concise close question for add-ons.
-
-Tone: human, practical, non-pushy.
-Do NOT ignore the user's question.
-Do NOT dump full quote cards unless explicitly requested.`,
-        });
-      } else if (asksBetterment) {
-        openAiMessages.push({
-          role: "system",
-          content: `User asked about zero betterment while in add-ons step.
-You MUST answer this question first using PostgreSQL-grounded insurer facts only.
-Do NOT use generic/hardcoded betterment text.
-If a detail is missing in PostgreSQL, say so clearly and ask one short clarifying follow-up.
-Then add ONE practical recommendation tied to the user's concern (avoiding unexpected repair bills), and include a soft sales bridge that keeps momentum.
-If relevant, mention the currently selected insurer is **${state.selectedQuote?.insurer || 'current option'}** and offer to switch before proceeding.
-
-Then return to add-ons with one clear close question:
-"Would you like **Windscreen** (choose coverage amount), **Special Perils (RM 150.00)**, **E-hailing (RM 2,000.00)**, or **skip add-ons**?"
-
-Style requirements:
-- Helpful and advisor-like, not pushy.
-- Do NOT skip answering the betterment question.
-- Do NOT jump steps.`,
-        });
-      } else if (isAskingWhichNeeded) {
-        // User asking "which do i need" — explain ALL 3 add-ons on separate lines
-        openAiMessages.push({
-          role: "system",
-          content: `User wants to know which add-ons they need. Explain ALL 3 add-ons clearly using numbered lines that match selection numbers:
-
-1. **Windscreen** — covers glass damage. Price depends on coverage amount: RM 500 coverage costs RM 75.00, RM 1,000 costs RM 150.00, RM 2,000 costs RM 300.00.
-
-2. **Special Perils** (RM 150.00) — covers flood and natural disaster damage. Recommended if your area is flood-prone or has landslides.
-
-3. **E-hailing** (RM 2,000.00) — required if you drive for Grab, inDrive, or any ride-sharing service. Skip this if you don't do e-hailing.
-
-Then ask: "${ADDONS_CLOSE_QUESTION}"
-
-Do NOT combine into one paragraph. Keep the same 1/2/3 numbering so user can reply by number.`,
-        });
-      } else {
-        if (asksToSeeAddOnsAgain) {
-          const addOnsMenu = buildAddOnsMenu();
-          openAiMessages.push({
-            role: "system",
-            content: `Answer briefly, then re-show the add-ons menu because user asked for options again:
-
-${addOnsMenu}
-
-Which would you like? You can reply with **1**, **2**, **3**, **8**, or a combo like **1 and 8**. Or skip if you don't need any.
-Do NOT auto-skip or assume. Wait for explicit confirmation before moving to road tax.`,
-          });
-        } else {
-          openAiMessages.push({
-            role: "system",
-            content: `Answer the user's question directly first (2-4 sentences) in a natural advisor tone.
-Use concrete facts when available (not generic wording).
-If user gives an indirect answer (e.g. "I don't drive much"), acknowledge it and give one practical recommendation.
-If the question relates to insurer choice/policy value, add one consultative sales bridge (time-saving, smoother claims, or avoiding unexpected costs) without being pushy.
-Then naturally tie it back: "I can add that for you right now" or "Since we're already here, want me to include it?"
-Avoid repeating stock phrasing from prior turns.
-Do NOT paste the full add-ons menu unless user asks to see options again.
-Use a compact reminder line instead: "You can add windscreen (choose coverage amount), special perils (RM 150.00), or e-hailing (RM 2,000.00) — or skip."
-End with one clear question.`,
-          });
-        }
-      }
-    }
-
-    // --- ASK_QUESTION at ROADTAX step: answer naturally, then concise handoff ---
-    if (intent.intent === USER_INTENTS.ASK_QUESTION && state.step === FLOW_STEPS.ROADTAX) {
-      const latestMsg = messages[messages.length - 1]?.content?.toLowerCase() || '';
-      const asksAlternativeRenewal = /where\s+else|elsewhere|other\s+place|besides|outside|where\s+can\s+i\s+renew|renew\s+this\s+where/i.test(latestMsg);
-      const asksPrintedOrPhysical = /\b(printed|physical|hard\s*copy|hardcopy|sticker|paper)\b/i.test(latestMsg);
-
-      if (asksPrintedOrPhysical) {
-        openAiMessages.push({
-          role: "system",
-          content: `User asked about printed/physical road tax.
-Give a clear factual answer first:
-- From ${PRINTED_ROAD_TAX_EFFECTIVE_DATE}, printed road tax is only for vehicles registered under a Foreign ID or Company Registration.
-- For individual-owned vehicles, guide to digital road tax.
-
-Keep it short and practical, then close with one question:
-"Would you like 12-month digital road tax (RM 90), or no road tax?"`,
-        });
-      } else if (asksAlternativeRenewal) {
-
-        openAiMessages.push({
-          role: "system",
-          content: `User is asking where else road tax can be renewed. Reply in a natural conversational style (not textbook):
-1) Give a direct one-line answer (JPJ office, MyEG, Pos Malaysia).
-2) Add a soft sales line highlighting convenience here (e.g. one flow, no re-keying details, settle it together now).
-3) Add one factual policy line: "From ${PRINTED_ROAD_TAX_EFFECTIVE_DATE}, printed road tax is only for Foreign ID or Company vehicles."
-4) Add one short bridge line back to this flow: "Here, I can proceed with 12-month digital road tax (RM 90) or no road tax."
-5) End with one clear question: "Want me to proceed with digital road tax, or skip road tax?"
-
-Do NOT reprint the full road tax menu or repeated "Please note" block unless user asks to see options again.`,
-        });
-      } else {
-        openAiMessages.push({
-          role: "system",
-          content: `Answer the user's question briefly in 1-2 short lines.
-Always tie it back naturally — e.g. "You can do that at JPJ too, but since you're already here, I can settle it for you in one go!"
-Then move them forward with one clear question.
-Give only a compact option reminder in one line: "12-month digital road tax (RM 90) or no road tax."
-Do NOT re-show the full road tax menu unless user explicitly asks for the options again.`,
-        });
-      }
-    }
-
-    // --- ASK_QUESTION at other steps: brief answer ---
-    if (intent.intent === USER_INTENTS.ASK_QUESTION &&
-        state.step !== FLOW_STEPS.ADDONS &&
-        state.step !== FLOW_STEPS.ROADTAX &&
-        state.step !== FLOW_STEPS.QUOTES) {
-      openAiMessages.push({
-        role: "system",
-        content: `Answer the question briefly and helpfully. If it relates to something LAJOO can do (insurance, road tax, claims), answer first then naturally remind them you can help right here — e.g. "Good thing is, I can sort that out for you right now!" Keep it warm, not pushy. End by guiding back to the current step.`,
-      });
-    }
-
-    // --- SELECT_QUOTE → transition to add-ons ---
-    if (intent.intent === USER_INTENTS.SELECT_QUOTE && state.selectedQuote) {
-      const summaryBox = buildSummaryBox(state);
-      const addOnsStepBlock = buildAddOnsStepBlock(summaryBox);
-      openAiMessages.push({
-        role: "system",
-        content: `User selected ${state.selectedQuote.insurer}. Your response MUST include:
-
-Great choice! ✅
-
-${addOnsStepBlock}
-
-Do NOT alter prices. You may add a brief line but MUST include the Step 3 block exactly.`,
-      });
-    }
-
-    // --- SELECT_ADDON → transition to road tax ---
-    if (intent.intent === USER_INTENTS.SELECT_ADDON) {
-      if (!state.hasCompleteVehicleIdentification()) {
-        openAiMessages.push({
-          role: "system",
-          content: `STOP. User hasn't provided vehicle info yet. Ask for: 1) Vehicle Plate Number, 2) Owner ID. Nothing else.`,
-        });
-      } else if (!state.selectedQuote) {
-        forcedAssistantResponse = buildQuoteSelectionReply(state);
-      } else {
-        const summaryBox = buildSummaryBox(state);
-        const roadTaxStepBlock = buildRoadTaxStepBlock(summaryBox, state);
-        const addOnNames = state.selectedAddOns.length > 0
-          ? state.selectedAddOns.map(a => `**${a.name}**`).join(', ')
-          : 'no add-ons';
-        openAiMessages.push({
-          role: "system",
-          content: `User confirmed ${addOnNames}. Your response MUST follow this exact structure and order:
-
-${roadTaxStepBlock}
-
-Rules:
-- First line must be a compact add-on confirmation (example: "Windscreen added! ✅").
-- Then show the renewal summary block.
-- Then show "${formatStepLine(4, 'Road Tax')}".
-- Then show the road tax question/menu block exactly.
-- Do NOT alter prices or wording in the road tax menu block.`,
-        });
-      }
-    }
-
-    // --- SELECT_ROADTAX blocked: delivered option not eligible ---
-    if (intent.intent === USER_INTENTS.SELECT_ROADTAX && roadTaxDeliveryBlocked) {
-      const summaryBox = buildSummaryBox(state);
-      const roadTaxStepBlock = buildRoadTaxStepBlock(summaryBox, state);
-      const attemptedLabel = blockedRoadTaxOption?.includes('deliver')
-        ? 'printed + delivered road tax'
-        : 'road tax delivery';
-      openAiMessages.push({
-        role: "system",
-        content: `User asked for ${attemptedLabel}, but it is not eligible for this ownership type.
-Explain briefly and politely: from ${PRINTED_ROAD_TAX_EFFECTIVE_DATE}, printed delivery is available only for vehicles registered under a Foreign ID or Company Registration.
-Then ask them to choose the 12-month digital option or no road tax.
-
-${roadTaxStepBlock}
-
-Ask clearly: "Reply **ok** for 12-month digital, or **no road tax**."`,
-      });
-    }
-
-    // --- SELECT_ROADTAX → transition to personal details ---
-    if (intent.intent === USER_INTENTS.SELECT_ROADTAX && state.selectedRoadTax && !roadTaxDeliveryBlocked) {
-      const summaryBox = buildSummaryBox(state);
-      const rawRoadTaxName = state.selectedRoadTax?.name || 'No Road Tax';
-      const roadTaxName = rawRoadTaxName === 'No Road Tax' ? rawRoadTaxName : getRoadTaxDisplayName(state.selectedRoadTax);
-      openAiMessages.push({
-        role: "system",
-        content: `User selected road tax: ${roadTaxName}. Your response MUST include:
-
-${roadTaxName !== 'No Road Tax' ? `${roadTaxName} added!` : 'No road tax.'} ✅
-
-${formatStepLine(5, 'Your Details')}
-
-${summaryBox}
-
-${buildPersonalDetailsRequest()}
-
-Do NOT alter the summary. MUST include all 3 items to collect.`,
-      });
-    }
-
-    // --- SUBMIT_DETAILS → collect or confirm personal info ---
-    if (intent.intent === USER_INTENTS.SUBMIT_DETAILS) {
-      const details = (state.personalDetails && typeof state.personalDetails === 'object') ? state.personalDetails : {};
-      const recoveredDetails = collectPersonalDetailsFromMessages(messages);
-      const canonicalDetails = {
-        email: asNonEmptyString(details.email) || recoveredDetails.email || null,
-        phone: asNonEmptyString(details.phone) || recoveredDetails.phone || null,
-        address: asNonEmptyString(details.address) || recoveredDetails.address || null,
-      };
-      const missing = [];
-      const latestDetails = extractPersonalInfo(sanitizePersonalDetailExtractionInput(latestMessage));
-      const typoSignals = detectLikelyPersonalDetailTypos(latestMessage, latestDetails);
-      if (!canonicalDetails.email) missing.push('Email');
-      if (!canonicalDetails.phone) missing.push('Phone number');
-      if (!canonicalDetails.address) missing.push('Address');
-
-      openAiMessages.push({
-        role: "system",
-        content: missing.length === 0
-          ? `All 3 required details are collected. Ask the user to confirm before sending OTP. Your response MUST follow this format:
-
-Thanks — here are the details I captured:
-
-- **Email:** ${canonicalDetails.email || '(provided)'}
-- **Phone:** ${canonicalDetails.phone || '(provided)'}
-- **Address:** ${canonicalDetails.address || '(provided)'}
-
-Does everything look **correct** ?
-If yes, I will send the OTP now. If not, tell me what to change.
-
-Do NOT send OTP yet. Wait for user confirmation first.`
-          : `User is submitting personal details.
-Currently still missing: ${missing.join(', ')}.
-Acknowledge what was received, then ask ONLY for missing item(s) in this exact bullet format:
-${buildPersonalDetailExampleList(missing)}
-${typoSignals.length > 0 ? `If relevant, briefly mention likely format issue(s): ${typoSignals.join(' ')}` : ''}
-Do NOT proceed to OTP until all 3 are collected.`,
-      });
-    }
-
-    // --- CONFIRM at OTP step → user confirmed details, now send OTP ---
-    if (intent.intent === USER_INTENTS.CONFIRM && state.step === FLOW_STEPS.OTP) {
-      openAiMessages.push({
-        role: "system",
-        content: `User confirmed their personal details are correct. Now ask for OTP. Your response MUST be:
-
-"${OTP_PROMPT_COPY}"`,
-      });
-    }
-
-    // --- VERIFY_OTP → show payment link ---
-    if (intent.intent === USER_INTENTS.VERIFY_OTP) {
-      if (state.isQuoteExpired()) {
-        const summaryBox = buildSummaryBox(state);
-        openAiMessages.push({
-          role: "system",
-          content: `⚠️ Quote expired. Respond with:
-
-"Your quote has expired. Let me refresh it for you...
-
-✅ **Quote refreshed!** Same prices apply.
-
-${summaryBox}
-
-${OTP_PROMPT_COPY}"`,
-        });
-        state.refreshQuoteTimestamps();
-      } else {
-        const paymentLink = buildPaymentLink(state);
-        paymentLinkFallback = paymentLink;
-        shouldInjectPaymentLinkFallback = true;
-        const summaryBox = buildSummaryBox(state);
-        const paymentStepBlock = buildPaymentStepBlock(summaryBox, paymentLink);
-        openAiMessages.push({
-          role: "system",
-          content: `OTP verified! Your response MUST include:
-
-✅ All set!
-
-${paymentStepBlock}
-
-Do NOT alter the payment link URL or amounts.`,
-        });
-      }
-    }
-
-    // --- SELECT_PAYMENT / quote expired during payment ---
-    if (intent.intent === USER_INTENTS.SELECT_PAYMENT) {
-      if (state.isQuoteExpired()) {
-        const summaryBox = buildSummaryBox(state);
-        const paymentLink = buildPaymentLink(state);
-        paymentLinkFallback = paymentLink;
-        shouldInjectPaymentLinkFallback = true;
-        openAiMessages.push({
-          role: "system",
-          content: `⚠️ Quote expired. Respond with:
-
-"Your quote has expired. Let me refresh it for you...
-
-✅ **Quote refreshed!** Same prices still apply.
-
-${summaryBox}
-
-${paymentLink}"`,
-        });
-        state.refreshQuoteTimestamps();
-      } else {
-        // User confirmed payment - show the payment link
-        const paymentLink = buildPaymentLink(state);
-        paymentLinkFallback = paymentLink;
-        shouldInjectPaymentLinkFallback = true;
-        const summaryBox = buildSummaryBox(state);
-        const paymentStepBlock = buildPaymentStepBlock(summaryBox, paymentLink);
-        openAiMessages.push({
-          role: "system",
-          content: `User is ready to pay. Your response MUST include:
-
-${paymentStepBlock}
-
-Do NOT alter the payment link URL or amounts.`,
-        });
-      }
-    }
-
-    // --- CHANGE_QUOTE: AI asks for confirmation ---
-    if (intent.intent === USER_INTENTS.CHANGE_QUOTE && intent.data) {
-      const currentInsurer = state.selectedQuote?.insurer || 'current insurer';
-      const newKey = intent.data.newInsurer;
-      const nextInsurerName = getInsurerByKey(newKey)?.displayName || newKey;
-      openAiMessages.push({
-        role: "system",
-        content: `User wants to change from ${currentInsurer} to ${nextInsurerName}. This will reset all selections (add-ons, road tax). Ask for confirmation: "Switching from **${currentInsurer}** to **${nextInsurerName}** will restart from the insurer step. Are you sure?"`,
-      });
-    }
-
-    // --- UNCLEAR_OR_PLAYFUL: human-like recovery ---
-    if (intent.intent === USER_INTENTS.UNCLEAR_OR_PLAYFUL) {
-      const latest = latestMessage.toLowerCase();
-
-      if (state.step === FLOW_STEPS.QUOTES && !state.selectedQuote) {
-        const isBudgetSignal = /cheap|cheapest|save|saving|budget|broke|lower|lowest|value/.test(latest);
-        if (isBudgetSignal) {
-          const lowestQuote = getQuotesFromState(state)
-            .slice()
-            .sort((a, b) => Number(a?.pricing?.finalPremium || 0) - Number(b?.pricing?.finalPremium || 0))[0];
-          const lowestName = lowestQuote?.insurer?.displayName || 'the lowest premium option';
-          const lowestPrice = formatRmAmount(lowestQuote?.pricing?.finalPremium || 0);
-          openAiMessages.push({
-            role: "system",
-            content: `User gave a playful/unclear response with budget signal. Reply naturally:
-1) acknowledge casually in one short line,
-2) give one confident recommendation: **${lowestName} (${lowestPrice})** with one reason,
-3) ask: "Want me to lock this in?"`,
-          });
-        } else {
-          openAiMessages.push({
-            role: "system",
-            content: `User reply is playful/unclear at quote selection. Keep tone human:
-1) short acknowledgement (friendly, not robotic),
-2) ask ONE decision question: "What matters most: lowest price, easier claims, or higher coverage?",
-3) offer direct shortcut: "Or say **pick for me**."`,
-          });
-        }
-      } else if (state.step === FLOW_STEPS.ADDONS) {
-        openAiMessages.push({
-          role: "system",
-          content: `User reply is playful/unclear at add-ons. Keep it human and practical:
-1) acknowledge briefly,
-2) give one default suggestion: **Windscreen** for most drivers, then ask for the coverage amount if they choose it,
-3) ask one clear action: "Add windscreen, add flood too, or skip all?"`,
-        });
-      } else if (state.step === FLOW_STEPS.ROADTAX) {
-        openAiMessages.push({
-          role: "system",
-          content: `User reply is playful/unclear at road tax. Keep response simple:
-1) acknowledge briefly,
-2) recommend **12-month digital (RM 90)** as default convenience,
-3) ask confirmation: "Reply **ok** to proceed with 12-month digital, or reply **no road tax**."`,
-        });
-      } else if (state.step === FLOW_STEPS.PERSONAL_DETAILS) {
-        openAiMessages.push({
-          role: "system",
-          content: `User reply is playful/unclear while collecting details. Stay warm, then redirect:
-"No worries 😄 I just need these to issue your policy:"
-${buildPersonalDetailExampleList()}
-Ask for whichever is missing first.`,
-        });
-      } else {
-        openAiMessages.push({
-          role: "system",
-          content: `User reply is playful/unclear. Acknowledge naturally and ask one clear next-step question based on current step.`,
-        });
-      }
-    }
-
-    // --- OTHER: low-confidence / unclear messages ---
-    if (intent.intent === USER_INTENTS.OTHER) {
-      if (intent.data?.cancelPendingAction) {
-        openAiMessages.push({
-          role: "system",
-          content: `User canceled insurer switch confirmation. Acknowledge and continue with the CURRENT selected insurer and current step. Do not reset flow.`,
-        });
-      } else if (state.step === FLOW_STEPS.QUOTES && !state.selectedQuote && !vehicleRejectionHandled) {
-        const latestMsg = messages[messages.length - 1]?.content?.toLowerCase() || '';
-        const mentionsUnavailablePreferredInsurer = UNAVAILABLE_INSURER_REGEX.test(latestMsg);
-        const asksToSeeQuotesAgain =
-          /(?:show|list|repeat|remind(?: me)?|display)\b.*\b(?:quote|quotes|options|price|prices)\b|\b(?:quote|quotes|options|price list)\b.*\b(?:again|repeat)\b|what are the options|show me (?:the )?quotes/i.test(latestMsg);
-        if (asksToSeeQuotesAgain) {
-          forcedAssistantResponse = buildQuoteSelectionReply(state);
-        } else if (mentionsUnavailablePreferredInsurer) {
-          openAiMessages.push({
-            role: "system",
-            content: `User prefers an insurer not in current available options.
-Do NOT ignore this. Do NOT dump full quote list.
-Answer in 3-5 sentences:
-1) acknowledge trust in their previous insurer,
-2) explain it is not available in current panel,
-3) recommend ONE best-fit available option with one concrete reason (price-based or PostgreSQL-grounded benefit),
-4) ask if they want you to lock it in now.
-Keep tone persuasive but respectful, non-pushy.`,
-          });
-        } else {
-          openAiMessages.push({
-            role: "system",
-            content: `User response is unclear. Reply naturally:
-1) brief acknowledgement,
-2) answer/clarify their point first in one helpful line,
-3) ask one consultative next action that keeps them engaged, for example:
-"Would you like a quick side-by-side, or should I recommend one based on your priority (budget, claims, or coverage)?"`,
-          });
-        }
-      } else if (state.step === FLOW_STEPS.ADDONS) {
-        const latestMsg = messages[messages.length - 1]?.content?.toLowerCase() || '';
-        const looksLikeInsuranceQuestion =
-          (
-            /^(which|what|how|why|when|where|can|could|would|is|are|do|does|should)\b/i.test(latestMsg) &&
-            (/\b(insurer|policy|coverage|cover|claims?|betterment|waiver|depreciation|premium|sum insured|ncd)\b/i.test(latestMsg) || AVAILABLE_INSURER_MENTION_REGEX.test(latestMsg))
-          ) ||
-          /betterment|zero betterment|clarify this|direct|directly|save\s*\d+%|cheaper|discount/i.test(latestMsg) ||
-          UNAVAILABLE_INSURER_REGEX.test(latestMsg) ||
-          AVAILABLE_INSURER_MENTION_REGEX.test(latestMsg);
-
-        if (looksLikeInsuranceQuestion) {
-          openAiMessages.push({
-            role: "system",
-            content: `User asked a policy/insurer question during add-ons.
-Do NOT ignore the question. Answer it directly first in 2-4 clear sentences with PostgreSQL-grounded facts only.
-If the needed insurer detail is missing in PostgreSQL, say so clearly and ask one short clarifying follow-up.
-Then add one short consultative bridge that gives confidence to continue with LAJOO now (non-pushy).
-If appropriate, offer to compare or switch insurer before continuing add-ons.
-End with exactly one clear add-ons close question:
-"Would you like **Windscreen** (choose coverage amount), **Special Perils (RM 150.00)**, **E-hailing (RM 2,000.00)**, or **skip add-ons**?"`,
-          });
-        } else {
-        openAiMessages.push({
-          role: "system",
-          content: `User response is unclear at add-ons step. Reply naturally in one short line, then ask one clear next-step question.
-Use compact options only: "Windscreen (choose coverage amount), special perils (RM 150.00), e-hailing (RM 2,000.00), or skip?"
-Do NOT paste the full add-ons menu unless user explicitly asks to see the options.`,
-        });
-        }
-      } else if (state.step === FLOW_STEPS.ROADTAX) {
-        openAiMessages.push({
-          role: "system",
-          content: `User response is unclear at road tax step. Reply naturally in one short line, then ask one clear next-step question.
-Use compact options only: "12-month digital road tax (RM 90) or no road tax?"
-Do NOT paste the full road tax menu unless user explicitly asks to see the options.`,
-        });
-      }
-    }
-
-    const questionOrderInstruction = buildQuestionFirstThenStepCloseInstruction(state, { intent, messages, vehicleProfile });
-    if (questionOrderInstruction && !lowConfidenceNeedsClarification) {
-      openAiMessages.push({
-        role: "system",
-        content: questionOrderInstruction,
-      });
-    }
-
-    if (lowConfidenceNeedsClarification) {
-      openAiMessages.push({
-        role: "system",
-        content: `${buildClarifyingQuestionInstruction(state)}
-
-Response rule for this turn:
-- Ask exactly ONE clarifying question.
-- Do not advance to the next flow step yet.
-- Do not dump long menus or long summaries.`,
-      });
-    }
+      intent,
+      turnPlan,
+      messages,
+      latestMessage,
+      vehicleProfile,
+      forcedAssistantResponse,
+      roadTaxDeliveryBlocked,
+      blockedRoadTaxOption,
+      lowConfidenceNeedsClarification,
+      paymentLinkFallback,
+      shouldInjectPaymentLinkFallback,
+      callbacks: {
+        formatStepLine,
+        buildQuoteSelectionReply,
+        buildVehicleFoundReply,
+        buildVehicleNcdConcernReply,
+        buildVehicleRejectionFollowUpReply,
+        buildSummaryBox,
+        buildAddOnsStepBlock,
+        buildRoadTaxStepBlock,
+        buildAddOnsMenu,
+        buildPersonalDetailsRequest,
+        buildPersonalDetailExampleList,
+        collectPersonalDetailsFromMessages,
+        asNonEmptyString,
+        sanitizePersonalDetailExtractionInput,
+        detectLikelyPersonalDetailTypos,
+        buildPaymentLink,
+        buildPaymentStepBlock,
+        buildQuestionFirstThenStepCloseInstruction,
+        buildClarifyingQuestionInstruction,
+        OTP_PROMPT_COPY,
+        formatRmAmount,
+      },
+    });
+    forcedAssistantResponse = deterministicFlowResult.forcedAssistantResponse;
+    paymentLinkFallback = deterministicFlowResult.paymentLinkFallback;
+    shouldInjectPaymentLinkFallback = deterministicFlowResult.shouldInjectPaymentLinkFallback;
 
     // ========================================================================
     // GLOBAL SUMMARY BOX INJECTION
@@ -4160,6 +3188,26 @@ This summary box must appear in EVERY response from now on until payment is comp
       });
     }
 
+    const persistedMessages = appendAssistantMessageForStorage(messages, {
+      content: aiResponse,
+      summaryCard,
+      addOnsCard,
+      roadTaxCard,
+      paymentCard,
+    });
+    const savedSession = await saveChatSession({
+      sessionId,
+      state,
+      messages: persistedMessages,
+      lastIntent: intent,
+      metadata: {
+        step: state.step,
+        conversationMode: conversationDecision.mode,
+        turnPlan: turnPlan.responsePattern,
+        promptVariant: state?.experiment?.promptVariant || 'A',
+      },
+    });
+
     // ========================================================================
     // 5. STREAM RESPONSE
     // ========================================================================
@@ -4179,7 +3227,8 @@ This summary box must appear in EVERY response from now on until payment is comp
           `data: ${JSON.stringify({
             type: "done",
             reply: aiResponse,
-            state: state.toJSON(),
+            sessionId: savedSession.sessionId,
+            state: serializeStateForClient(state),
             summaryCard,
             addOnsCard,
             roadTaxCard,

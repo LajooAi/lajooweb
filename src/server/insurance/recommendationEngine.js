@@ -4,16 +4,7 @@ import {
   getApprovedPrivateCarFacts,
   inferFactTagsFromMessage,
 } from './approvedFactStore.js';
-
-const APPROVED_FACT_INSURER_SLUG_BY_KEY = {
-  allianz: 'allianz',
-  etiqa: 'etiqa',
-  generali: 'generali',
-  lonpac: 'lonpac',
-  msig: 'msig',
-  takaful: 'takaful-ikhlas',
-  tokio: 'tokio-marine',
-};
+import { getApprovedFactInsurerSlugForKey } from './insurerFactSlugs.js';
 
 const BRAND_TAGS = new Set([
   'perodua',
@@ -41,7 +32,7 @@ function normalizeText(text) {
 }
 
 function getQuoteApprovedFactInsurerSlug(quote) {
-  return APPROVED_FACT_INSURER_SLUG_BY_KEY[quote?.insurerKey] || null;
+  return getApprovedFactInsurerSlugForKey(quote?.insurerKey);
 }
 
 function getVehicleContextText(state = {}) {
@@ -318,17 +309,32 @@ function scoreApprovedFact(fact, desiredTags) {
   };
 }
 
-function buildFactSignals(quote, desiredTags) {
+function dedupeApprovedFacts(facts = []) {
+  const seen = new Set();
+  return facts.filter((fact) => {
+    const key = fact?.id || `${fact?.insurerSlug}|${fact?.statement}|${fact?.sourceRelativePath}`;
+    if (!key || seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
+function buildFactSignals(quote, desiredTags, extraApprovedFacts = []) {
   const insurerSlug = getQuoteApprovedFactInsurerSlug(quote);
   if (!insurerSlug || desiredTags.length === 0) {
     return { score: 0, reasons: [], facts: [], riskNotes: [] };
   }
 
-  const facts = getApprovedPrivateCarFacts({
+  const staticFacts = getApprovedPrivateCarFacts({
     insurerSlug,
     tags: desiredTags,
     limit: 14,
   }).filter((fact) => fact.insurerSlug === insurerSlug);
+  const databaseFacts = (Array.isArray(extraApprovedFacts) ? extraApprovedFacts : [])
+    .filter((fact) => fact?.approvedForAi)
+    .filter((fact) => fact.insurerSlug === insurerSlug)
+    .filter((fact) => desiredTags.some((tag) => fact.tags?.includes(tag)));
+  const facts = dedupeApprovedFacts([...databaseFacts, ...staticFacts]);
 
   const scoredFacts = facts
     .map((fact) => ({ fact, ...scoreApprovedFact(fact, desiredTags) }))
@@ -383,7 +389,13 @@ function buildReasonBundle(quote, scores, weights, allQuotes, factSignals = {}) 
   return { reasons, tradeoff };
 }
 
-export function buildQuoteRecommendation({ quotes = [], state = {}, userPreferences = null, message = '' } = {}) {
+export function buildQuoteRecommendation({
+  quotes = [],
+  state = {},
+  userPreferences = null,
+  message = '',
+  extraApprovedFacts = [],
+} = {}) {
   const normalizedQuotes = (Array.isArray(quotes) ? quotes : [])
     .map(normalizeQuote)
     .filter((quote) => quote && quote.finalPremium > 0);
@@ -416,7 +428,7 @@ export function buildQuoteRecommendation({ quotes = [], state = {}, userPreferen
     const value = quote.finalPremium > 0 ? normalizeRange(quote.sumInsured / quote.finalPremium, Math.min(...normalizedQuotes.map((q) => q.sumInsured / q.finalPremium)), Math.max(...normalizedQuotes.map((q) => q.sumInsured / q.finalPremium))) : 0;
     const claims = scoreClaimsSignals(quote);
     const shariah = scoreBoolean(quote.insurerType === 'takaful' || /takaful|ikhlas/i.test(quote.insurerName));
-    const factSignals = buildFactSignals(quote, recommendationTags);
+    const factSignals = buildFactSignals(quote, recommendationTags, extraApprovedFacts);
     const facts = factSignals.score;
     const cheapestBonus = explicitlyBudgetFocused && quote.finalPremium === minPrice ? 0.9 : 0;
     const total =

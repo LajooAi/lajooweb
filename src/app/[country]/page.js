@@ -38,6 +38,11 @@ const createId = () =>
     ? crypto.randomUUID()
     : `msg-${Date.now()}-${Math.random()}`;
 
+const createBrowserSessionId = () =>
+  typeof crypto !== "undefined" && crypto.randomUUID
+    ? `chat_${crypto.randomUUID()}`
+    : `chat_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+
 const flattenNodeText = (node) => {
   if (node == null) return "";
   if (typeof node === "string" || typeof node === "number") return String(node);
@@ -48,20 +53,37 @@ const flattenNodeText = (node) => {
   return "";
 };
 
-const isStepIndicator = (text) => /^step\s*\d+\s*of\s*\d+\s*[—-]/i.test(text.trim());
+const simpleStageHeadingRegexSource = String.raw`(?:vehicle info|choose insurer|add-ons|road tax|your details|payment)`;
+const oldStepIndicatorRegexSource = String.raw`step\s*(\d+)\s*of\s*(\d+)\s*[—-]\s*(.+)`;
+const stepIndicatorRegex = new RegExp(String.raw`^(?:${oldStepIndicatorRegexSource}|${simpleStageHeadingRegexSource})$`, "i");
+const isStepIndicator = (text) => stepIndicatorRegex.test(text.trim().replace(/\*/g, ""));
 const parseStepIndicator = (text) => {
-  const match = text.trim().match(/^step\s*(\d+)\s*of\s*(\d+)\s*[—-]\s*(.+)$/i);
-  if (!match) return null;
-  return { current: match[1], total: match[2], title: match[3] };
+  const normalized = text.trim().replace(/\*/g, "");
+  const match = normalized.match(new RegExp(String.raw`^${oldStepIndicatorRegexSource}$`, "i"));
+  if (match) return { title: match[3] };
+  if (new RegExp(String.raw`^${simpleStageHeadingRegexSource}$`, "i").test(normalized)) {
+    return { title: normalized };
+  }
+  return null;
 };
 const isSummaryTitleLine = (text) => /^summary$/i.test(text.trim()) || /^✓\s*renewal summary\b/i.test(text.trim());
 const isSummaryDividerLine = (text) => /^[\-_─—–]{8,}$/.test(text.trim());
 const isSummaryTotalLine = (text) => /^(?:💰\s*)?total:\s*rm\s*\d[\d,]*/i.test(text.trim());
 const quoteBlockRegex = /<span[^>]*>\s*<img\s+src="([^"]+)"\s+alt="([^"]+)"[^>]*\/>\s*<strong>([^<]+)<\/strong>\s*—\s*<strong>RM\s*([\d,]+)<\/strong>\s*<\/span>\s*\n<span[^>]*>Sum Insured:\s*RM\s*([\d,]+)<\/span>\s*\n([\s\S]*?)\n<span[^>]*>~~RM\s*([\d,]+)~~\s*→\s*RM\s*([\d,]+)(?:\s*\(([^)]*)\))?<\/span>/g;
 const summarySectionRegex = /(?:^|\n)\s*(?:<span[^>]*>\s*)?(?:\*{0,2})?✓?\s*renewal summary(?:\*{0,2})?[^\n]*(?:<\/span>)?[\s\S]*?(?:\n\s*(?:\*{0,2})?(?:💰\s*)?total:?(?:\*{0,2})?\s*(?:&nbsp;)?\s*(?:<u>)?\s*rm[^\n]*)/i;
-const addOnsSectionRegex = /(?:^|\n)\s*(?:\*{0,2})?step\s+(?:\*{0,2})?3(?:\*{0,2})?\s+of\s+(?:\*{0,2})?6(?:\*{0,2})?\s*[—-]\s*add-ons(?:\*{0,2})?[\s\S]*?(?:\n\s*based on your situation,[^\n]*reply skip\.?)/i;
-const roadTaxSectionRegex = /(?:^|\n)\s*(?:\*{0,2})?step\s+(?:\*{0,2})?4(?:\*{0,2})?\s+of\s+(?:\*{0,2})?6(?:\*{0,2})?\s*[—-]\s*road tax(?:\*{0,2})?[\s\S]*?(?:printed road tax is only for Foreign ID or Company vehicles\.?)/i;
-const paymentSectionRegex = /(?:^|\n)\s*(?:\*{0,2})?step\s+(?:\*{0,2})?6(?:\*{0,2})?\s+of\s+(?:\*{0,2})?6(?:\*{0,2})?\s*[—-]\s*payment(?:\*{0,2})?[\s\S]*?(?:policy documents and payment receipt will be sent to your WhatsApp and email\.?)/i;
+const addOnsHeadingRegexSource = String.raw`(?:(?:\*{0,2})?step\s+(?:\*{0,2})?3(?:\*{0,2})?\s+of\s+(?:\*{0,2})?6(?:\*{0,2})?\s*[—-]\s*add-ons(?:\*{0,2})?|(?:\*{0,2})?add-ons(?:\*{0,2})?)`;
+const roadTaxHeadingRegexSource = String.raw`(?:(?:\*{0,2})?step\s+(?:\*{0,2})?4(?:\*{0,2})?\s+of\s+(?:\*{0,2})?6(?:\*{0,2})?\s*[—-]\s*road tax(?:\*{0,2})?|(?:\*{0,2})?road tax(?:\*{0,2})?)`;
+const paymentHeadingRegexSource = String.raw`(?:(?:\*{0,2})?step\s+(?:\*{0,2})?6(?:\*{0,2})?\s+of\s+(?:\*{0,2})?6(?:\*{0,2})?\s*[—-]\s*payment(?:\*{0,2})?|(?:\*{0,2})?payment(?:\*{0,2})?)`;
+const addOnsHeadingRegex = new RegExp(String.raw`(?:^|\n)\s*${addOnsHeadingRegexSource}\s*\n+`, "i");
+const roadTaxHeadingRegex = new RegExp(String.raw`(?:^|\n)\s*${roadTaxHeadingRegexSource}\s*\n+`, "i");
+const paymentHeadingRegex = new RegExp(String.raw`(?:^|\n)\s*${paymentHeadingRegexSource}\s*\n+`, "i");
+const addOnsHeadingSignalRegex = new RegExp(addOnsHeadingRegexSource, "i");
+const roadTaxHeadingSignalRegex = new RegExp(roadTaxHeadingRegexSource, "i");
+const paymentHeadingSignalRegex = new RegExp(paymentHeadingRegexSource, "i");
+const postAddOnsHeadingSignalRegex = new RegExp(String.raw`(?:${roadTaxHeadingRegexSource}|(?:\*{0,2})?your details(?:\*{0,2})?|${paymentHeadingRegexSource})`, "i");
+const addOnsSectionRegex = new RegExp(String.raw`(?:^|\n)\s*${addOnsHeadingRegexSource}\s*\n+[\s\S]*?(?:\n\s*based on your situation,[^\n]*reply skip\.?)`, "i");
+const roadTaxSectionRegex = new RegExp(String.raw`(?:^|\n)\s*${roadTaxHeadingRegexSource}\s*\n+[\s\S]*?(?:printed road tax is only for Foreign ID or Company vehicles\.?)`, "i");
+const paymentSectionRegex = new RegExp(String.raw`(?:^|\n)\s*${paymentHeadingRegexSource}\s*\n+[\s\S]*?(?:policy documents and payment receipt will be sent to your WhatsApp and email\.?)`, "i");
 const WINDSCREEN_PREMIUM_RATE = 0.15;
 
 const getQuoteSelectionText = (insurerName = "") => {
@@ -178,7 +200,7 @@ const parseAssistantSummaryPresentation = (content = "", summaryCard = null) => 
 };
 
 const parseAssistantAddOnsPresentation = (content = "", addOnsCard = null) => {
-  if (!addOnsCard || !/step\s+(?:\*{0,2})?3(?:\*{0,2})?\s+of\s+(?:\*{0,2})?6(?:\*{0,2})?\s*[—-]\s*add-ons/i.test(content)) return null;
+  if (!addOnsCard || !addOnsHeadingSignalRegex.test(content)) return null;
   const match = content.match(addOnsSectionRegex);
   if (!match) return null;
 
@@ -195,7 +217,7 @@ const parseAssistantAddOnsPresentation = (content = "", addOnsCard = null) => {
 };
 
 const parseAssistantRoadTaxPresentation = (content = "", roadTaxCard = null) => {
-  if (!roadTaxCard || !/step\s+(?:\*{0,2})?4(?:\*{0,2})?\s+of\s+(?:\*{0,2})?6(?:\*{0,2})?\s*[—-]\s*road tax/i.test(content)) return null;
+  if (!roadTaxCard || !roadTaxHeadingSignalRegex.test(content)) return null;
   const match = content.match(roadTaxSectionRegex);
   if (!match) return null;
 
@@ -212,7 +234,7 @@ const parseAssistantRoadTaxPresentation = (content = "", roadTaxCard = null) => 
 };
 
 const parseAssistantPaymentPresentation = (content = "", paymentCard = null) => {
-  if (!paymentCard || !/step\s+(?:\*{0,2})?6(?:\*{0,2})?\s+of\s+(?:\*{0,2})?6(?:\*{0,2})?\s*[—-]\s*payment/i.test(content)) return null;
+  if (!paymentCard || !paymentHeadingSignalRegex.test(content)) return null;
   const match = content.match(paymentSectionRegex);
   if (!match) return null;
 
@@ -230,7 +252,9 @@ const parseAssistantPaymentPresentation = (content = "", paymentCard = null) => 
 
 const withSummaryDisplayState = (summary, followingContent = "") => {
   if (!summary) return null;
-  const hasReachedPostAddOnsStep = /step\s+(?:\*{0,2})?[4-6](?:\*{0,2})?\s+of\s+(?:\*{0,2})?6/i.test(followingContent);
+  const hasReachedPostAddOnsStep =
+    /step\s+(?:\*{0,2})?[4-6](?:\*{0,2})?\s+of\s+(?:\*{0,2})?6/i.test(followingContent) ||
+    postAddOnsHeadingSignalRegex.test(followingContent);
   return {
     ...summary,
     addOnsConfirmed: !!summary.addOnsConfirmed || hasReachedPostAddOnsStep,
@@ -1112,12 +1136,15 @@ export default function Home() {
   const keepTurnAnchoredRef = useRef(false);
   const userInterruptedAnchoringRef = useRef(false);
   const lastRequestRef = useRef(null); // Store last request for retry
-  const conversationStateRef = useRef(null); // Server state round-tripped each turn
+  const conversationStateRef = useRef(null); // Public server-state mirror for UI fallbacks only
+  const generatedSessionRef = useRef(null);
   const processedPaymentsRef = useRef(new Set()); // Avoid duplicate payment success messages
   const searchParams = useSearchParams();
-  const sessionKey = searchParams.get("session") || "default";
+  if (!generatedSessionRef.current) {
+    generatedSessionRef.current = createBrowserSessionId();
+  }
+  const sessionKey = searchParams.get("session") || generatedSessionRef.current;
   const paymentStatus = searchParams.get("payment");
-  const stateStorageKey = `lajoo_state_${sessionKey}`;
   const params = useParams();
   const country = (params?.country || "my").toLowerCase();
 
@@ -1475,16 +1502,18 @@ export default function Home() {
     userInterruptedAnchoringRef.current = false;
     conversationStateRef.current = null;
     localStorage.removeItem(`lajoo_chat_${sessionKey}`);
-    localStorage.removeItem(stateStorageKey);
+    void fetch("/api/chat/session", {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ sessionId: sessionKey }),
+    }).catch(() => {});
     if (inputRef.current) inputRef.current.style.height = 'auto';
   };
 
-  // Load saved conversation from localStorage on mount/session change.
-  // Default behavior: hard refresh/new navigation starts a fresh chat.
-  // Exception: preserve chat when returning from payment flow.
+  // Load saved conversation from the server session when needed.
+  // Browser storage should not hold sensitive renewal state or full chat data.
   useEffect(() => {
-    const storageKey = `lajoo_chat_${sessionKey}`;
-    const savedStateRaw = localStorage.getItem(stateStorageKey);
+    let cancelled = false;
     const pendingPaymentSuccess = localStorage.getItem("lajoo_payment_success");
     const navEntries = performance?.getEntriesByType?.("navigation");
     const navType = navEntries?.[0]?.type;
@@ -1492,63 +1521,56 @@ export default function Home() {
     const isPaymentReturn = paymentStatus === "success" || !!pendingPaymentSuccess;
 
     if (isHardLoad && !isPaymentReturn) {
-      localStorage.removeItem(storageKey);
-      localStorage.removeItem(stateStorageKey);
+      localStorage.removeItem(`lajoo_chat_${sessionKey}`);
       conversationStateRef.current = null;
+      void fetch("/api/chat/session", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sessionId: sessionKey }),
+      }).catch(() => {});
       setMessages([]);
       setInputText("");
       if (inputRef.current) inputRef.current.style.height = "auto";
-      return;
+      return undefined;
     }
 
-    // Restore server-side conversation state first (if present)
-    if (savedStateRaw) {
+    const restoreServerSession = async () => {
       try {
-        const parsedState = JSON.parse(savedStateRaw);
-        if (parsedState && typeof parsedState === 'object') {
-          conversationStateRef.current = parsedState;
-        }
-      } catch (e) {
-        console.error('Error loading saved state:', e);
-        localStorage.removeItem(stateStorageKey);
-        conversationStateRef.current = null;
-      }
-    } else {
-      conversationStateRef.current = null;
-    }
+        const response = await fetch(`/api/chat/session?sessionId=${encodeURIComponent(sessionKey)}`);
+        if (!response.ok) return;
+        const data = await response.json();
+        if (cancelled) return;
 
-    // Restore saved conversation when available.
-    const saved = localStorage.getItem(storageKey);
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          setMessages(parsed);
+        conversationStateRef.current = data?.state || null;
+        if (Array.isArray(data?.messages) && data.messages.length > 0) {
+          const restoredMessages = data.messages.map((message) => ({
+            id: createId(),
+            role: message.role,
+            content: message.content || "",
+            summaryCard: message.summaryCard || null,
+            addOnsCard: message.addOnsCard || null,
+            roadTaxCard: message.roadTaxCard || null,
+            paymentCard: message.paymentCard || null,
+            paymentSuccessCard: message.paymentSuccessCard || null,
+          }));
+          setMessages(restoredMessages);
           return;
         }
+
+        setMessages([]);
       } catch (e) {
-        console.error('Error loading saved chat:', e);
-        localStorage.removeItem(storageKey);
+        console.error('Error loading server chat session:', e);
       }
-    }
-    // No saved chat for this session: start blank without clearing unrelated sessions.
-    conversationStateRef.current = null;
-    localStorage.removeItem(stateStorageKey);
-    setMessages([]);
+    };
+
+    restoreServerSession();
     setInputText("");
     if (inputRef.current) inputRef.current.style.height = 'auto';
-  }, [sessionKey, stateStorageKey, paymentStatus]);
 
-  // Save conversation to localStorage when messages change
-  useEffect(() => {
-    if (messages.length > 0) {
-      // Only save complete messages (not empty streaming messages)
-      const completeMessages = messages.filter(m => m.content && m.content.trim() !== "");
-      if (completeMessages.length > 0) {
-        localStorage.setItem(`lajoo_chat_${sessionKey}`, JSON.stringify(completeMessages));
-      }
-    }
-  }, [messages, sessionKey]);
+    return () => {
+      cancelled = true;
+    };
+  }, [sessionKey, paymentStatus]);
 
   // Listen for payment success from payment tab via localStorage
   useEffect(() => {
@@ -1693,8 +1715,8 @@ export default function Home() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          sessionId: sessionKey,
           messages: history.map(({ role, content }) => ({ role, content })),
-          state: conversationStateRef.current || null,
         }),
       });
 
@@ -1761,10 +1783,9 @@ export default function Home() {
             ))
           );
 
-          // Persist server state so we can send it back next turn
+          // Keep a public server-state mirror only for UI fallback rendering.
           if (data.state) {
             conversationStateRef.current = data.state;
-            localStorage.setItem(stateStorageKey, JSON.stringify(data.state));
           }
         }
       };
@@ -1953,7 +1974,7 @@ export default function Home() {
         if (parsed) {
           return (
             <p className="chat-step-indicator">
-              Step <strong>{parsed.current}</strong> of <strong>{parsed.total}</strong> — {parsed.title}
+              {parsed.title}
             </p>
           );
         }
