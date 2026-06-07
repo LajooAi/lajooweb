@@ -19,6 +19,7 @@ const store = globalThis.__paymentStore;
  * Payment statuses
  */
 export const PAYMENT_STATUS = {
+  REQUIRES_PROVIDER: "requires_provider",
   PENDING: "pending",
   PROCESSING: "processing",
   CONFIRMED: "confirmed",
@@ -32,7 +33,7 @@ export const PAYMENT_STATUS = {
 export function createPayment(paymentData) {
   const payment = {
     ...paymentData,
-    status: PAYMENT_STATUS.PENDING,
+    status: paymentData.status || PAYMENT_STATUS.PENDING,
     createdAt: Date.now(),
     expiresAt: Date.now() + 30 * 60 * 1000, // 30 minutes
   };

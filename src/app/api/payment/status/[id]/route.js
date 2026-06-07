@@ -37,6 +37,10 @@ export async function GET(request, { params }) {
       paymentId,
       status: payment.status,
       found: true,
+      provider: payment.provider || "unknown",
+      providerMode: payment.providerMode || null,
+      paymentAvailable: Boolean(payment.paymentAvailable),
+      canIssuePolicy: false,
     };
 
     // Include payment details only if confirmed (for success message)
@@ -54,7 +58,7 @@ export async function GET(request, { params }) {
     }
 
     // Include expiry info for pending payments
-    if (payment.status === PAYMENT_STATUS.PENDING) {
+    if (payment.status === PAYMENT_STATUS.PENDING || payment.status === PAYMENT_STATUS.REQUIRES_PROVIDER) {
       response.expiresAt = payment.expiresAt;
     }
 

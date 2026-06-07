@@ -19,7 +19,7 @@ const PAYMENT_METHODS = [
   },
   {
     id: "fpx",
-    name: "Online Bnaking",
+    name: "Online Banking",
     subtitle: "Direct bank transfer",
     logos: [
       { src: "/payments/fpx.svg", alt: "FPX", label: "FPX", width: 50, height: 19 },
@@ -113,6 +113,8 @@ export default function PaymentPage() {
   const searchParams = useSearchParams();
   const [selectedMethod, setSelectedMethod] = useState(null);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [paymentNotice, setPaymentNotice] = useState(null);
+  const [paymentError, setPaymentError] = useState(null);
 
   const parseAmount = (value, fallback = 0) => {
     const cleaned = String(value ?? "").replace(/[^\d.]/g, "");
@@ -191,36 +193,89 @@ export default function PaymentPage() {
     if (!selectedMethod) return;
 
     setIsProcessing(true);
+    setPaymentNotice(null);
+    setPaymentError(null);
 
-    // Simulate payment processing
-    await new Promise(resolve => setTimeout(resolve, 2000));
+    try {
+      const processResponse = await fetch("/api/payment/process", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          paymentId,
+          total,
+          insurer,
+          plate,
+          insurance,
+          addons,
+          tax,
+          roadtax,
+          paymentMethod: selectedMethod,
+          sessionId: session,
+        }),
+      });
+      const processData = await processResponse.json().catch(() => ({}));
 
-    // Store payment success in localStorage for the chat page to detect
-    const paymentData = {
-      type: 'PAYMENT_SUCCESS',
-      timestamp: Date.now(),
-      data: {
-        paymentId,
-        total,
-        insurer,
-        plate,
-        insurance,
-        addons,
-        tax,
-        roadtax,
-        paymentMethod: selectedMethod,
-      },
-    };
-    localStorage.setItem('lajoo_payment_success', JSON.stringify(paymentData));
+      if (!processResponse.ok || !processData.success) {
+        throw new Error(processData.message || "Payment could not be initiated.");
+      }
 
-    // Close this tab - the chat page will detect the localStorage change
-    window.close();
+      if (!processData.paymentAvailable) {
+        setPaymentNotice(
+          processData.message ||
+          "Payment is not live yet because LAJOO has not connected a payment provider."
+        );
+        return;
+      }
 
-    // Fallback: if window.close() doesn't work (some browsers block it),
-    // redirect after a short delay
-    setTimeout(() => {
-      window.location.href = `/${params.country}?session=${encodeURIComponent(session)}&payment=success&ref=${paymentId}`;
-    }, 500);
+      if (!processData.clientConfirmationToken) {
+        setPaymentNotice("Payment intent created. Waiting for payment provider confirmation.");
+        return;
+      }
+
+      const confirmResponse = await fetch("/api/payment/confirm", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          paymentId,
+          paymentMethod: selectedMethod,
+          clientConfirmationToken: processData.clientConfirmationToken,
+          transactionRef: processData.transactionRef,
+        }),
+      });
+      const confirmData = await confirmResponse.json().catch(() => ({}));
+
+      if (!confirmResponse.ok || confirmData.status !== "confirmed") {
+        throw new Error(confirmData.message || "Payment could not be confirmed.");
+      }
+
+      const paymentData = {
+        type: "PAYMENT_SUCCESS",
+        timestamp: Date.now(),
+        data: {
+          paymentId,
+          total,
+          insurer,
+          plate,
+          insurance,
+          addons,
+          tax,
+          roadtax,
+          paymentMethod: selectedMethod,
+          isMock: Boolean(confirmData.isMock),
+        },
+      };
+      localStorage.setItem("lajoo_payment_success", JSON.stringify(paymentData));
+
+      window.close();
+
+      setTimeout(() => {
+        window.location.href = `/${params.country}?session=${encodeURIComponent(session)}&payment=success&ref=${paymentId}`;
+      }, 500);
+    } catch (error) {
+      setPaymentError(error?.message || "Payment could not be processed right now.");
+    } finally {
+      setIsProcessing(false);
+    }
   };
 
   return (
@@ -409,6 +464,18 @@ export default function PaymentPage() {
             )}
           </button>
 
+          {paymentNotice && (
+            <div className="payment-inline-alert notice" role="status">
+              {paymentNotice}
+            </div>
+          )}
+
+          {paymentError && (
+            <div className="payment-inline-alert error" role="alert">
+              {paymentError}
+            </div>
+          )}
+
           <div className="security-note">
             <span>
               <Image src="/icons/payment-lock-grey.svg" alt="" width={24} height={24} aria-hidden="true" />
@@ -416,7 +483,7 @@ export default function PaymentPage() {
             </span>
             <span>
               <Image src="/icons/payment-shield.svg" alt="" width={24} height={24} aria-hidden="true" />
-              Trusted payment partner
+              Provider confirmation required
             </span>
           </div>
         </div>
@@ -932,6 +999,28 @@ export default function PaymentPage() {
 
         @keyframes spin {
           to { transform: rotate(360deg); }
+        }
+
+        .payment-inline-alert {
+          margin: 13px 0 0;
+          padding: 11px 12px;
+          border-radius: 10px;
+          font-size: 14px;
+          font-weight: 500;
+          line-height: 18px;
+          letter-spacing: 0;
+        }
+
+        .payment-inline-alert.notice {
+          background: #fff7ed;
+          border: 1px solid #fed7aa;
+          color: #9a3412;
+        }
+
+        .payment-inline-alert.error {
+          background: #fef2f2;
+          border: 1px solid #fecaca;
+          color: #991b1b;
         }
 
         .security-note {

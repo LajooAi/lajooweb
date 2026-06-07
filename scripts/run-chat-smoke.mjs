@@ -1,10 +1,42 @@
 #!/usr/bin/env node
 
+import { existsSync, readFileSync } from 'node:fs';
+
 const DEFAULT_BASE_URL = 'http://localhost:3000';
 const DEFAULT_TIMEOUT_MS = 45_000;
+const LOCAL_ENV_KEYS = new Set([
+  'CHAT_SMOKE_VERCEL_BYPASS_SECRET',
+  'VERCEL_AUTOMATION_BYPASS_SECRET',
+]);
 
 const CHECK = '✓';
 const CROSS = '✕';
+
+function unquoteEnvValue(value) {
+  const trimmed = String(value || '').trim();
+  if (
+    (trimmed.startsWith('"') && trimmed.endsWith('"')) ||
+    (trimmed.startsWith("'") && trimmed.endsWith("'"))
+  ) {
+    return trimmed.slice(1, -1);
+  }
+  return trimmed;
+}
+
+function loadLocalSmokeEnv() {
+  const path = '.env.local';
+  if (!existsSync(path)) return;
+  const lines = readFileSync(path, 'utf8').split(/\r?\n/);
+  for (const line of lines) {
+    const match = line.match(/^\s*([A-Z0-9_]+)\s*=\s*(.*)\s*$/);
+    if (!match) continue;
+    const [, key, rawValue] = match;
+    if (!LOCAL_ENV_KEYS.has(key) || process.env[key]) continue;
+    process.env[key] = unquoteEnvValue(rawValue);
+  }
+}
+
+loadLocalSmokeEnv();
 
 function normalizeBaseUrl(value) {
   return String(value || DEFAULT_BASE_URL).trim().replace(/\/+$/, '');
@@ -35,7 +67,7 @@ function assertState(condition, label, details = null) {
 async function clearSession(baseUrl, sessionId) {
   await fetch(`${baseUrl}/api/chat/session?sessionId=${encodeURIComponent(sessionId)}`, {
     method: 'DELETE',
-    headers: { 'Content-Type': 'application/json' },
+    headers: buildRequestHeaders(),
     body: '{}',
   }).catch(() => {});
 }
@@ -65,6 +97,23 @@ function parseSseResult(rawText) {
   return { donePayload, errorPayload };
 }
 
+function getVercelBypassSecret() {
+  return (
+    process.env.CHAT_SMOKE_VERCEL_BYPASS_SECRET ||
+    process.env.VERCEL_AUTOMATION_BYPASS_SECRET ||
+    ''
+  ).trim();
+}
+
+function buildRequestHeaders() {
+  const headers = { 'Content-Type': 'application/json' };
+  const bypassSecret = getVercelBypassSecret();
+  if (bypassSecret) {
+    headers['x-vercel-protection-bypass'] = bypassSecret;
+  }
+  return headers;
+}
+
 async function postChat(baseUrl, sessionId, messages, timeoutMs = DEFAULT_TIMEOUT_MS) {
   const maxAttempts = 3;
 
@@ -75,7 +124,7 @@ async function postChat(baseUrl, sessionId, messages, timeoutMs = DEFAULT_TIMEOU
     try {
       const response = await fetch(`${baseUrl}/api/chat`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: buildRequestHeaders(),
         body: JSON.stringify({
           sessionId,
           messages,
@@ -86,9 +135,14 @@ async function postChat(baseUrl, sessionId, messages, timeoutMs = DEFAULT_TIMEOU
       const rawText = await response.text();
 
       if (response.status === 401 && /vercel|login|sso/i.test(rawText)) {
+        const hasBypassSecret = Boolean(getVercelBypassSecret());
         fail('Deployment is protected by Vercel login/SSO before LAJOO code runs.', {
           status: response.status,
           baseUrl,
+          bypassSecretConfigured: hasBypassSecret,
+          nextStep: hasBypassSecret
+            ? 'Confirm the Vercel automation bypass secret is enabled for this project.'
+            : 'Set VERCEL_AUTOMATION_BYPASS_SECRET or CHAT_SMOKE_VERCEL_BYPASS_SECRET locally.',
         });
       }
 
@@ -139,6 +193,7 @@ async function run() {
   console.log(`LAJOO chat smoke test`);
   console.log(`Base URL: ${baseUrl}`);
   console.log(`Session: ${sessionId}`);
+  console.log(`Vercel bypass: ${getVercelBypassSecret() ? 'configured' : 'not configured'}`);
   console.log('');
 
   await clearSession(baseUrl, sessionId);

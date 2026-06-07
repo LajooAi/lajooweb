@@ -10,6 +10,10 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { createPayment, PAYMENT_STATUS } from "@/lib/paymentStore";
+import {
+  PaymentProviderError,
+  createProviderPaymentIntent,
+} from "@/server/payment/paymentProvider";
 
 // Payment request validation
 const PaymentRequestSchema = z.object({
@@ -38,33 +42,47 @@ export async function POST(request) {
     }
 
     const paymentData = validation.data;
+    const providerIntent = createProviderPaymentIntent(paymentData);
 
-    // Generate a unique transaction reference
-    const transactionRef = `TXN-${Date.now()}-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
-
-    // Store payment as pending using shared store
     const payment = createPayment({
       ...paymentData,
-      transactionRef,
+      status: providerIntent.paymentAvailable
+        ? PAYMENT_STATUS.PENDING
+        : PAYMENT_STATUS.REQUIRES_PROVIDER,
+      transactionRef: providerIntent.providerPaymentIntentId,
+      provider: providerIntent.provider,
+      providerMode: providerIntent.mode,
+      providerPaymentIntentId: providerIntent.providerPaymentIntentId,
+      clientConfirmationToken: providerIntent.clientConfirmationToken,
+      paymentAvailable: providerIntent.paymentAvailable,
+      canIssuePolicy: providerIntent.canIssuePolicy,
+      paymentMethod: providerIntent.paymentMethod,
+      breakdown: providerIntent.breakdown,
     });
-
-    // In production, this is where you'd:
-    // 1. Call the payment gateway API (Stripe, etc.)
-    // 2. Get a redirect URL or payment intent
-    // 3. Return that to the client
 
     return NextResponse.json({
       success: true,
       paymentId: paymentData.paymentId,
-      transactionRef,
-      status: PAYMENT_STATUS.PENDING,
-      message: "Payment initiated",
+      transactionRef: payment.transactionRef,
+      provider: payment.provider,
+      providerMode: payment.providerMode,
+      paymentAvailable: payment.paymentAvailable,
+      clientConfirmationToken: payment.clientConfirmationToken || undefined,
+      status: payment.status,
+      canIssuePolicy: false,
+      message: providerIntent.message,
     });
 
   } catch (error) {
     console.error("Payment processing error:", error);
+    if (error instanceof PaymentProviderError) {
+      return NextResponse.json(
+        { error: error.code, message: error.message },
+        { status: error.status }
+      );
+    }
     return NextResponse.json(
-      { error: "Payment processing failed", message: error.message },
+      { error: "Payment processing failed", message: "Payment processing failed." },
       { status: 500 }
     );
   }

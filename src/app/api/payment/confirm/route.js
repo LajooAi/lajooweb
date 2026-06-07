@@ -4,21 +4,23 @@
  * This endpoint confirms a payment after successful processing.
  * In production, this would be called by a payment gateway webhook.
  *
- * For demo purposes, we also allow direct confirmation.
+ * For mock/demo purposes, confirmation requires the server-created
+ * clientConfirmationToken returned by /api/payment/process.
  */
 
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { confirmPayment, getPayment, PAYMENT_STATUS } from "@/lib/paymentStore";
-
-// For demo: simple shared secret (in production, use proper webhook signatures)
-const DEMO_SECRET = process.env.PAYMENT_WEBHOOK_SECRET || "lajoo-demo-secret-2024";
+import {
+  PaymentProviderError,
+  confirmProviderPaymentIntent,
+} from "@/server/payment/paymentProvider";
 
 const ConfirmRequestSchema = z.object({
   paymentId: z.string().min(1),
-  // In production, this would be a cryptographic signature from the payment provider
+  paymentMethod: z.enum(["card", "fpx", "ewallet", "cc-instalment", "bnpl"]).optional(),
   secret: z.string().optional(),
-  // Transaction reference from payment provider
+  clientConfirmationToken: z.string().optional(),
   transactionRef: z.string().optional(),
 });
 
@@ -34,22 +36,7 @@ export async function POST(request) {
       );
     }
 
-    const { paymentId, secret, transactionRef } = validation.data;
-
-    // In production, verify webhook signature from payment provider
-    // For demo, we accept requests with either:
-    // 1. Valid secret
-    // 2. From same origin (trusted internal call)
-    const origin = request.headers.get("origin") || "";
-    const isInternalCall = origin.includes("localhost") || origin.includes("lajoo");
-    const hasValidSecret = secret === DEMO_SECRET;
-
-    if (!isInternalCall && !hasValidSecret) {
-      return NextResponse.json(
-        { error: "Unauthorized" },
-        { status: 401 }
-      );
-    }
+    const { paymentId } = validation.data;
 
     // Get existing payment
     const existingPayment = getPayment(paymentId);
@@ -66,6 +53,7 @@ export async function POST(request) {
         paymentId,
         status: PAYMENT_STATUS.CONFIRMED,
         message: "Payment already confirmed",
+        canIssuePolicy: false,
         payment: {
           paymentId: existingPayment.paymentId,
           total: existingPayment.total,
@@ -76,8 +64,9 @@ export async function POST(request) {
       });
     }
 
-    // Confirm the payment
-    const confirmedPayment = confirmPayment(paymentId, transactionRef);
+    const providerConfirmation = confirmProviderPaymentIntent(existingPayment, validation.data);
+
+    const confirmedPayment = confirmPayment(paymentId, providerConfirmation.transactionRef);
 
     if (!confirmedPayment) {
       return NextResponse.json(
@@ -90,7 +79,10 @@ export async function POST(request) {
       success: true,
       paymentId,
       status: PAYMENT_STATUS.CONFIRMED,
-      message: "Payment confirmed successfully",
+      provider: providerConfirmation.provider,
+      isMock: providerConfirmation.isMock,
+      canIssuePolicy: false,
+      message: providerConfirmation.message,
       payment: {
         paymentId: confirmedPayment.paymentId,
         total: confirmedPayment.total,
@@ -100,11 +92,18 @@ export async function POST(request) {
         addons: confirmedPayment.addons,
         roadtax: confirmedPayment.roadtax,
         confirmedAt: confirmedPayment.confirmedAt,
+        transactionRef: confirmedPayment.transactionRef,
       },
     });
 
   } catch (error) {
     console.error("Payment confirmation error:", error);
+    if (error instanceof PaymentProviderError) {
+      return NextResponse.json(
+        { error: error.code, message: error.message },
+        { status: error.status }
+      );
+    }
     return NextResponse.json(
       { error: "Payment confirmation failed" },
       { status: 500 }
