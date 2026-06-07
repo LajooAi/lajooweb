@@ -103,6 +103,7 @@ import {
   serializeStateForClient,
 } from "@/server/chat/sessionStore";
 import { createPayment, PAYMENT_STATUS } from "@/lib/paymentStore";
+import { getPaymentProviderConfig } from "@/server/payment/paymentProvider";
 
 // ============================================================================
 // DETERMINISTIC BLOCK BUILDERS — code-generated markdown the AI must include
@@ -921,7 +922,7 @@ async function persistPaymentSnapshotForState(state, sessionId) {
   const snapshot = await createPayment({
     paymentId: checkout.paymentId,
     sessionId,
-    provider: 'mock',
+    provider: getPaymentProviderConfig().provider,
     providerMode: 'snapshot',
     status: PAYMENT_STATUS.REQUIRES_PROVIDER,
     total: checkout.total,

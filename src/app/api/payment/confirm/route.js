@@ -10,6 +10,11 @@
 
 import { NextResponse } from "next/server";
 import { z } from "zod";
+import {
+  PAYMENT_AUDIT_DIRECTION,
+  PAYMENT_AUDIT_STATUS,
+  recordPaymentAuditEvent,
+} from "@/lib/paymentAuditStore";
 import { confirmPayment, getPayment, PAYMENT_STATUS } from "@/lib/paymentStore";
 import {
   PaymentProviderError,
@@ -24,7 +29,17 @@ const ConfirmRequestSchema = z.object({
   transactionRef: z.string().optional(),
 });
 
+async function safeRecordPaymentAuditEvent(event) {
+  try {
+    return await recordPaymentAuditEvent(event);
+  } catch (error) {
+    console.warn("[payment-confirm] Unable to write payment audit event.", error?.message || error);
+    return null;
+  }
+}
+
 export async function POST(request) {
+  let validatedBody = null;
   try {
     const body = await request.json();
     const validation = ConfirmRequestSchema.safeParse(body);
@@ -36,11 +51,36 @@ export async function POST(request) {
       );
     }
 
-    const { paymentId } = validation.data;
+    validatedBody = validation.data;
+    const { paymentId } = validatedBody;
+
+    await safeRecordPaymentAuditEvent({
+      paymentId,
+      provider: process.env.LAJOO_PAYMENT_PROVIDER || process.env.PAYMENT_PROVIDER || "mock",
+      direction: PAYMENT_AUDIT_DIRECTION.CLIENT_REQUEST,
+      eventType: "payment.confirm.requested",
+      eventStatus: PAYMENT_AUDIT_STATUS.RECEIVED,
+      payload: {
+        paymentId,
+        paymentMethod: validatedBody.paymentMethod || null,
+        hasClientConfirmationToken: Boolean(validatedBody.clientConfirmationToken),
+        hasSecret: Boolean(validatedBody.secret),
+      },
+    });
 
     // Get existing payment
     const existingPayment = await getPayment(paymentId);
     if (!existingPayment) {
+      await safeRecordPaymentAuditEvent({
+        paymentId,
+        provider: process.env.LAJOO_PAYMENT_PROVIDER || process.env.PAYMENT_PROVIDER || "mock",
+        direction: PAYMENT_AUDIT_DIRECTION.PROVIDER_RESPONSE,
+        eventType: "payment.confirm.rejected",
+        eventStatus: PAYMENT_AUDIT_STATUS.REJECTED,
+        errorCode: "PAYMENT_NOT_FOUND",
+        errorMessage: "Payment was not found.",
+      });
+
       return NextResponse.json(
         { error: "Payment not found" },
         { status: 404 }
@@ -64,7 +104,7 @@ export async function POST(request) {
       });
     }
 
-    const providerConfirmation = confirmProviderPaymentIntent(existingPayment, validation.data);
+    const providerConfirmation = confirmProviderPaymentIntent(existingPayment, validatedBody);
 
     const confirmedPayment = await confirmPayment(paymentId, providerConfirmation.transactionRef);
 
@@ -74,6 +114,21 @@ export async function POST(request) {
         { status: 500 }
       );
     }
+
+    await safeRecordPaymentAuditEvent({
+      paymentId,
+      provider: providerConfirmation.provider,
+      direction: PAYMENT_AUDIT_DIRECTION.PROVIDER_RESPONSE,
+      eventType: "payment.confirm.confirmed",
+      eventStatus: PAYMENT_AUDIT_STATUS.APPLIED,
+      providerPaymentId: providerConfirmation.providerPaymentIntentId,
+      payload: {
+        status: PAYMENT_STATUS.CONFIRMED,
+        transactionRef: providerConfirmation.transactionRef,
+        isMock: providerConfirmation.isMock,
+        canIssuePolicy: false,
+      },
+    });
 
     return NextResponse.json({
       success: true,
@@ -99,11 +154,31 @@ export async function POST(request) {
   } catch (error) {
     console.error("Payment confirmation error:", error);
     if (error instanceof PaymentProviderError) {
+      await safeRecordPaymentAuditEvent({
+        paymentId: validatedBody?.paymentId || null,
+        provider: process.env.LAJOO_PAYMENT_PROVIDER || process.env.PAYMENT_PROVIDER || "mock",
+        direction: PAYMENT_AUDIT_DIRECTION.PROVIDER_RESPONSE,
+        eventType: "payment.confirm.failed",
+        eventStatus: PAYMENT_AUDIT_STATUS.FAILED,
+        errorCode: error.code,
+        errorMessage: error.message,
+      });
+
       return NextResponse.json(
         { error: error.code, message: error.message },
         { status: error.status }
       );
     }
+    await safeRecordPaymentAuditEvent({
+      paymentId: validatedBody?.paymentId || null,
+      provider: process.env.LAJOO_PAYMENT_PROVIDER || process.env.PAYMENT_PROVIDER || "mock",
+      direction: PAYMENT_AUDIT_DIRECTION.PROVIDER_RESPONSE,
+      eventType: "payment.confirm.failed",
+      eventStatus: PAYMENT_AUDIT_STATUS.FAILED,
+      errorCode: "PAYMENT_CONFIRMATION_FAILED",
+      errorMessage: "Payment confirmation failed.",
+    });
+
     return NextResponse.json(
       { error: "Payment confirmation failed" },
       { status: 500 }

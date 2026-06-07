@@ -218,3 +218,26 @@ model PaymentIntentSnapshot {
   @@index([status])
   @@index([expiresAt])
 }
+
+model PaymentAuditEvent {
+  id                String   @id @default(cuid())
+  paymentId         String?
+  provider          String
+  direction         String
+  eventType         String
+  eventStatus       String
+  signatureStatus   String?
+  providerEventId   String?
+  providerPaymentId String?
+  requestId         String?
+  rawBodyHash       String?
+  payload           Json?
+  errorCode         String?
+  errorMessage      String?
+  createdAt         DateTime @default(now())
+
+  @@index([paymentId])
+  @@index([provider, eventType])
+  @@index([eventStatus])
+  @@index([createdAt])
+}

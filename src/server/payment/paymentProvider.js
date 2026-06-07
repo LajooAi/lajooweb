@@ -1,8 +1,12 @@
-import { randomBytes } from "node:crypto";
+import { createHash, createHmac, randomBytes, timingSafeEqual } from "node:crypto";
 
 export const PAYMENT_PROVIDER_KEYS = {
   MOCK: "mock",
   DISABLED: "disabled",
+  BILLPLZ: "billplz",
+  STRIPE: "stripe",
+  IPAY88: "ipay88",
+  TOYYIBPAY: "toyyibpay",
 };
 
 export const PAYMENT_PROVIDER_STATUSES = {
@@ -12,12 +16,26 @@ export const PAYMENT_PROVIDER_STATUSES = {
   FAILED: "failed",
 };
 
+export const PAYMENT_WEBHOOK_EVENT_TYPES = {
+  PAYMENT_SUCCEEDED: "payment.succeeded",
+  PAYMENT_FAILED: "payment.failed",
+  PAYMENT_PENDING: "payment.pending",
+  PAYMENT_UNKNOWN: "payment.unknown",
+};
+
 const SUPPORTED_PAYMENT_METHODS = new Set([
   "card",
   "fpx",
   "ewallet",
   "cc-instalment",
   "bnpl",
+]);
+
+const KNOWN_EXTERNAL_PROVIDERS = new Set([
+  PAYMENT_PROVIDER_KEYS.BILLPLZ,
+  PAYMENT_PROVIDER_KEYS.STRIPE,
+  PAYMENT_PROVIDER_KEYS.IPAY88,
+  PAYMENT_PROVIDER_KEYS.TOYYIBPAY,
 ]);
 
 export class PaymentProviderError extends Error {
@@ -38,12 +56,112 @@ function normalizeProvider(value) {
   const provider = String(value || "").trim().toLowerCase();
   if (!provider) return PAYMENT_PROVIDER_KEYS.MOCK;
   if (provider === "none") return PAYMENT_PROVIDER_KEYS.DISABLED;
-  if (provider === PAYMENT_PROVIDER_KEYS.MOCK || provider === PAYMENT_PROVIDER_KEYS.DISABLED) return provider;
   return provider;
 }
 
-export function getPaymentProviderConfig(env = process.env) {
-  const provider = normalizeProvider(env.LAJOO_PAYMENT_PROVIDER || env.PAYMENT_PROVIDER);
+function getHeader(headers, name) {
+  if (!headers) return "";
+  if (typeof headers.get === "function") return headers.get(name) || "";
+
+  const lowerName = String(name).toLowerCase();
+  if (headers instanceof Map) {
+    return headers.get(name) || headers.get(lowerName) || "";
+  }
+
+  for (const [key, value] of Object.entries(headers)) {
+    if (String(key).toLowerCase() === lowerName) return String(value || "");
+  }
+  return "";
+}
+
+function parseJsonBody(rawBody) {
+  try {
+    return JSON.parse(String(rawBody || "{}"));
+  } catch {
+    throw new PaymentProviderError("Webhook body is not valid JSON.", {
+      code: "WEBHOOK_INVALID_JSON",
+      status: 400,
+    });
+  }
+}
+
+function makeProviderReference(prefix) {
+  return `${prefix}_${Date.now()}_${randomBytes(5).toString("hex")}`;
+}
+
+function getWebhookSecret(env = process.env) {
+  return String(
+    env.LAJOO_PAYMENT_WEBHOOK_SECRET ||
+    env.PAYMENT_WEBHOOK_SECRET ||
+    env.MOCK_PAYMENT_WEBHOOK_SECRET ||
+    ""
+  ).trim();
+}
+
+function normalizeSignature(value) {
+  return String(value || "").trim().replace(/^sha256=/i, "");
+}
+
+function safeEqualHex(a, b) {
+  const left = Buffer.from(normalizeSignature(a), "hex");
+  const right = Buffer.from(normalizeSignature(b), "hex");
+  if (left.length === 0 || right.length === 0 || left.length !== right.length) return false;
+  return timingSafeEqual(left, right);
+}
+
+function isSuccessStatus(value) {
+  const normalized = String(value || "").trim().toLowerCase();
+  return ["paid", "success", "succeeded", "completed", "confirmed"].includes(normalized);
+}
+
+function isFailedStatus(value) {
+  const normalized = String(value || "").trim().toLowerCase();
+  return ["failed", "cancelled", "canceled", "expired", "void"].includes(normalized);
+}
+
+function normalizeWebhookEventType(payload = {}) {
+  const type = String(payload.type || payload.eventType || "").trim().toLowerCase();
+  const status = String(payload.status || payload.paymentStatus || "").trim().toLowerCase();
+
+  if (type.includes("succeeded") || type.includes("completed") || isSuccessStatus(status)) {
+    return PAYMENT_WEBHOOK_EVENT_TYPES.PAYMENT_SUCCEEDED;
+  }
+  if (type.includes("failed") || type.includes("cancel") || isFailedStatus(status)) {
+    return PAYMENT_WEBHOOK_EVENT_TYPES.PAYMENT_FAILED;
+  }
+  if (type.includes("pending") || type.includes("processing") || ["pending", "processing"].includes(status)) {
+    return PAYMENT_WEBHOOK_EVENT_TYPES.PAYMENT_PENDING;
+  }
+  return PAYMENT_WEBHOOK_EVENT_TYPES.PAYMENT_UNKNOWN;
+}
+
+function normalizeWebhookEvent(provider, payload = {}, rawBody = "") {
+  const paymentId = String(payload.paymentId || payload.reference || payload.referenceId || "").trim();
+  if (!paymentId) {
+    throw new PaymentProviderError("Webhook event does not include a LAJOO paymentId/reference.", {
+      code: "WEBHOOK_PAYMENT_ID_MISSING",
+      status: 400,
+    });
+  }
+
+  return {
+    provider,
+    eventType: normalizeWebhookEventType(payload),
+    providerEventId: payload.eventId || payload.id || null,
+    providerPaymentIntentId: payload.providerPaymentIntentId || payload.providerPaymentId || payload.transactionId || null,
+    paymentId,
+    paymentMethod: payload.paymentMethod || null,
+    transactionRef: payload.transactionRef || payload.transactionId || payload.providerPaymentIntentId || null,
+    failureReason: payload.failureReason || payload.reason || null,
+    amount: payload.amount ?? payload.total ?? null,
+    currency: payload.currency || "MYR",
+    rawBodyHash: hashWebhookBody(rawBody),
+    payload,
+    canIssuePolicy: false,
+  };
+}
+
+function buildConfigForProvider(provider, env = process.env) {
   const mockConfirmationEnabled =
     provider === PAYMENT_PROVIDER_KEYS.MOCK &&
     envFlag(env, "LAJOO_ALLOW_MOCK_PAYMENT_CONFIRM");
@@ -52,6 +170,7 @@ export function getPaymentProviderConfig(env = process.env) {
     return {
       provider,
       mode: "disabled",
+      implemented: false,
       paymentAvailable: false,
       mockConfirmationEnabled: false,
       canIssuePolicy: false,
@@ -63,6 +182,7 @@ export function getPaymentProviderConfig(env = process.env) {
     return {
       provider,
       mode: "sandbox",
+      implemented: true,
       paymentAvailable: mockConfirmationEnabled,
       mockConfirmationEnabled,
       canIssuePolicy: false,
@@ -74,12 +194,161 @@ export function getPaymentProviderConfig(env = process.env) {
 
   return {
     provider,
-    mode: "external",
+    mode: KNOWN_EXTERNAL_PROVIDERS.has(provider) ? "external" : "unknown",
+    implemented: false,
     paymentAvailable: false,
     mockConfirmationEnabled: false,
     canIssuePolicy: false,
     message: `Payment provider "${provider}" is not implemented yet.`,
   };
+}
+
+function createProviderIntentFromConfig(payload = {}, config) {
+  const method = normalizePaymentMethod(payload.paymentMethod);
+  const breakdown = validatePaymentBreakdown(payload);
+
+  if (!breakdown.ok) {
+    throw new PaymentProviderError("Payment total does not match the itemized breakdown.", {
+      code: "PAYMENT_TOTAL_MISMATCH",
+      status: 400,
+    });
+  }
+
+  const providerPaymentIntentId =
+    config.provider === PAYMENT_PROVIDER_KEYS.MOCK
+      ? makeProviderReference("mock_pi")
+      : makeProviderReference("pending_pi");
+
+  const clientConfirmationToken =
+    config.mockConfirmationEnabled && config.provider === PAYMENT_PROVIDER_KEYS.MOCK
+      ? randomBytes(16).toString("hex")
+      : null;
+
+  return {
+    provider: config.provider,
+    mode: config.mode,
+    paymentAvailable: config.paymentAvailable,
+    canIssuePolicy: config.canIssuePolicy,
+    providerPaymentIntentId,
+    clientConfirmationToken,
+    status: config.paymentAvailable
+      ? PAYMENT_PROVIDER_STATUSES.PENDING
+      : PAYMENT_PROVIDER_STATUSES.REQUIRES_PROVIDER,
+    paymentMethod: method,
+    amount: breakdown.total,
+    breakdown,
+    message: config.message,
+  };
+}
+
+const mockPaymentAdapter = {
+  key: PAYMENT_PROVIDER_KEYS.MOCK,
+  getConfig(env) {
+    return buildConfigForProvider(PAYMENT_PROVIDER_KEYS.MOCK, env);
+  },
+  createPaymentIntent(payload, options = {}) {
+    return createProviderIntentFromConfig(payload, this.getConfig(options.env || process.env));
+  },
+  confirmPaymentIntent(payment = {}, payload = {}, options = {}) {
+    const env = options.env || process.env;
+    const config = this.getConfig(env);
+    const method = normalizePaymentMethod(payload.paymentMethod || payment.paymentMethod);
+
+    if (!config.mockConfirmationEnabled) {
+      throw new PaymentProviderError("Mock payment confirmation is disabled.", {
+        code: "MOCK_PAYMENT_DISABLED",
+        status: 403,
+      });
+    }
+
+    const expectedToken = payment.clientConfirmationToken || "";
+    const providedToken = String(payload.clientConfirmationToken || "").trim();
+    const webhookSecret = getWebhookSecret(env);
+    const providedSecret = String(payload.secret || "").trim();
+    const hasValidClientToken = Boolean(expectedToken && providedToken && providedToken === expectedToken);
+    const hasValidWebhookSecret = Boolean(webhookSecret && providedSecret && providedSecret === webhookSecret);
+
+    if (!hasValidClientToken && !hasValidWebhookSecret) {
+      throw new PaymentProviderError("Payment confirmation is not authorized.", {
+        code: "PAYMENT_CONFIRMATION_UNAUTHORIZED",
+        status: 401,
+      });
+    }
+
+    return {
+      provider: config.provider,
+      providerPaymentIntentId: payment.providerPaymentIntentId || payment.paymentId,
+      status: PAYMENT_PROVIDER_STATUSES.SUCCEEDED,
+      paymentMethod: method,
+      transactionRef: payload.transactionRef || makeProviderReference("mock_txn"),
+      isMock: true,
+      canIssuePolicy: false,
+      message: "Mock payment confirmed for internal testing only.",
+    };
+  },
+  verifyWebhook(rawBody, headers, options = {}) {
+    const env = options.env || process.env;
+    const config = this.getConfig(env);
+    if (!config.mockConfirmationEnabled) {
+      throw new PaymentProviderError("Mock payment webhook confirmation is disabled.", {
+        code: "MOCK_PAYMENT_DISABLED",
+        status: 403,
+      });
+    }
+
+    const secret = getWebhookSecret(env);
+    if (!secret) {
+      throw new PaymentProviderError("Payment webhook secret is not configured.", {
+        code: "PAYMENT_WEBHOOK_SECRET_MISSING",
+        status: 500,
+      });
+    }
+
+    const signature = getHeader(headers, "x-lajoo-mock-signature") || getHeader(headers, "x-payment-signature");
+    if (!signature || !verifyWebhookSignature(rawBody, signature, secret)) {
+      throw new PaymentProviderError("Payment webhook signature is invalid.", {
+        code: "WEBHOOK_SIGNATURE_INVALID",
+        status: 401,
+      });
+    }
+
+    const payload = parseJsonBody(rawBody);
+    return normalizeWebhookEvent(PAYMENT_PROVIDER_KEYS.MOCK, payload, rawBody);
+  },
+};
+
+function createUnavailableAdapter(provider) {
+  return {
+    key: provider,
+    getConfig(env) {
+      return buildConfigForProvider(provider, env);
+    },
+    createPaymentIntent(payload, options = {}) {
+      return createProviderIntentFromConfig(payload, this.getConfig(options.env || process.env));
+    },
+    confirmPaymentIntent() {
+      throw new PaymentProviderError("Payment provider confirmation is not implemented yet.", {
+        code: "PAYMENT_PROVIDER_NOT_IMPLEMENTED",
+        status: 501,
+      });
+    },
+    verifyWebhook() {
+      throw new PaymentProviderError("Payment provider webhook is not implemented yet.", {
+        code: "PAYMENT_WEBHOOK_NOT_IMPLEMENTED",
+        status: 501,
+      });
+    },
+  };
+}
+
+export function getPaymentProvider(providerKey, options = {}) {
+  const provider = normalizeProvider(providerKey || options.env?.LAJOO_PAYMENT_PROVIDER || options.env?.PAYMENT_PROVIDER);
+  if (provider === PAYMENT_PROVIDER_KEYS.MOCK) return mockPaymentAdapter;
+  return createUnavailableAdapter(provider);
+}
+
+export function getPaymentProviderConfig(env = process.env) {
+  return getPaymentProvider(null, { env }).getConfig(env);
 }
 
 export function normalizePaymentMethod(method) {
@@ -125,91 +394,40 @@ export function validatePaymentBreakdown(payload = {}) {
   };
 }
 
-function makeProviderReference(prefix) {
-  return `${prefix}_${Date.now()}_${randomBytes(5).toString("hex")}`;
+export function createWebhookSignature(rawBody, secret) {
+  return createHmac("sha256", String(secret || "")).update(String(rawBody || "")).digest("hex");
+}
+
+export function verifyWebhookSignature(rawBody, signature, secret) {
+  const expected = createWebhookSignature(rawBody, secret);
+  return safeEqualHex(signature, expected);
+}
+
+export function hashWebhookBody(rawBody) {
+  return createHash("sha256").update(String(rawBody || "")).digest("hex");
 }
 
 export function createProviderPaymentIntent(payload = {}, options = {}) {
   const env = options.env || process.env;
-  const config = getPaymentProviderConfig(env);
-  const method = normalizePaymentMethod(payload.paymentMethod);
-  const breakdown = validatePaymentBreakdown(payload);
-
-  if (!breakdown.ok) {
-    throw new PaymentProviderError("Payment total does not match the itemized breakdown.", {
-      code: "PAYMENT_TOTAL_MISMATCH",
-      status: 400,
-    });
-  }
-
-  const providerPaymentIntentId =
-    config.provider === PAYMENT_PROVIDER_KEYS.MOCK
-      ? makeProviderReference("mock_pi")
-      : makeProviderReference("pending_pi");
-
-  const clientConfirmationToken =
-    config.mockConfirmationEnabled && config.provider === PAYMENT_PROVIDER_KEYS.MOCK
-      ? randomBytes(16).toString("hex")
-      : null;
-
-  return {
-    provider: config.provider,
-    mode: config.mode,
-    paymentAvailable: config.paymentAvailable,
-    canIssuePolicy: config.canIssuePolicy,
-    providerPaymentIntentId,
-    clientConfirmationToken,
-    status: config.paymentAvailable
-      ? PAYMENT_PROVIDER_STATUSES.PENDING
-      : PAYMENT_PROVIDER_STATUSES.REQUIRES_PROVIDER,
-    paymentMethod: method,
-    amount: breakdown.total,
-    breakdown,
-    message: config.message,
-  };
+  const provider = getPaymentProvider(payload.provider || env.LAJOO_PAYMENT_PROVIDER || env.PAYMENT_PROVIDER, { env });
+  return provider.createPaymentIntent(payload, { env });
 }
 
 export function confirmProviderPaymentIntent(payment = {}, payload = {}, options = {}) {
   const env = options.env || process.env;
-  const config = getPaymentProviderConfig(env);
-  const method = normalizePaymentMethod(payload.paymentMethod || payment.paymentMethod);
+  const provider = getPaymentProvider(payment.provider || env.LAJOO_PAYMENT_PROVIDER || env.PAYMENT_PROVIDER, { env });
+  return provider.confirmPaymentIntent(payment, payload, { env });
+}
 
-  if (config.provider !== PAYMENT_PROVIDER_KEYS.MOCK) {
-    throw new PaymentProviderError("Payment provider confirmation is not implemented yet.", {
-      code: "PAYMENT_PROVIDER_NOT_IMPLEMENTED",
-      status: 501,
-    });
-  }
-
-  if (!config.mockConfirmationEnabled) {
-    throw new PaymentProviderError("Mock payment confirmation is disabled.", {
-      code: "MOCK_PAYMENT_DISABLED",
-      status: 403,
-    });
-  }
-
-  const expectedToken = payment.clientConfirmationToken || "";
-  const providedToken = String(payload.clientConfirmationToken || "").trim();
-  const webhookSecret = String(env.PAYMENT_WEBHOOK_SECRET || "").trim();
-  const providedSecret = String(payload.secret || "").trim();
-  const hasValidClientToken = Boolean(expectedToken && providedToken && providedToken === expectedToken);
-  const hasValidWebhookSecret = Boolean(webhookSecret && providedSecret && providedSecret === webhookSecret);
-
-  if (!hasValidClientToken && !hasValidWebhookSecret) {
-    throw new PaymentProviderError("Payment confirmation is not authorized.", {
-      code: "PAYMENT_CONFIRMATION_UNAUTHORIZED",
-      status: 401,
-    });
-  }
-
+export function verifyProviderWebhook(providerKey, rawBody, headers, options = {}) {
+  const env = options.env || process.env;
+  const provider = getPaymentProvider(providerKey, { env });
+  const event = provider.verifyWebhook(rawBody, headers, { env });
   return {
-    provider: config.provider,
-    providerPaymentIntentId: payment.providerPaymentIntentId || payment.paymentId,
-    status: PAYMENT_PROVIDER_STATUSES.SUCCEEDED,
-    paymentMethod: method,
-    transactionRef: payload.transactionRef || makeProviderReference("mock_txn"),
-    isMock: true,
-    canIssuePolicy: false,
-    message: "Mock payment confirmed for internal testing only.",
+    ok: true,
+    provider: provider.key,
+    signatureStatus: "verified",
+    rawBodyHash: event.rawBodyHash || hashWebhookBody(rawBody),
+    event,
   };
 }

@@ -3,10 +3,13 @@ import assert from 'node:assert/strict';
 import {
   PaymentProviderError,
   PAYMENT_PROVIDER_STATUSES,
+  PAYMENT_WEBHOOK_EVENT_TYPES,
   confirmProviderPaymentIntent,
   createProviderPaymentIntent,
+  createWebhookSignature,
   getPaymentProviderConfig,
   validatePaymentBreakdown,
+  verifyProviderWebhook,
 } from '../src/server/payment/paymentProvider.js';
 
 const basePayload = {
@@ -80,6 +83,67 @@ test('mock confirmation stays disabled without explicit flag', () => {
       paymentMethod: 'fpx',
       clientConfirmationToken: 'anything',
     }, { env: {} }),
+    (error) => error instanceof PaymentProviderError && error.code === 'MOCK_PAYMENT_DISABLED'
+  );
+});
+
+test('unknown external provider remains unavailable but adapter contract is stable', () => {
+  const env = { LAJOO_PAYMENT_PROVIDER: 'billplz' };
+  const config = getPaymentProviderConfig(env);
+  const intent = createProviderPaymentIntent(basePayload, { env });
+
+  assert.equal(config.provider, 'billplz');
+  assert.equal(config.implemented, false);
+  assert.equal(config.paymentAvailable, false);
+  assert.equal(intent.provider, 'billplz');
+  assert.equal(intent.status, PAYMENT_PROVIDER_STATUSES.REQUIRES_PROVIDER);
+  assert.match(intent.message, /not implemented yet/i);
+});
+
+test('mock webhook requires explicit flag and valid HMAC signature', () => {
+  const secret = 'test-webhook-secret';
+  const env = {
+    LAJOO_ALLOW_MOCK_PAYMENT_CONFIRM: 'true',
+    LAJOO_PAYMENT_WEBHOOK_SECRET: secret,
+  };
+  const rawBody = JSON.stringify({
+    id: 'evt_mock_1',
+    type: 'payment.succeeded',
+    paymentId: 'PAY-webhook-test',
+    transactionId: 'mock_txn_1',
+    paymentMethod: 'fpx',
+  });
+  const signature = createWebhookSignature(rawBody, secret);
+  const result = verifyProviderWebhook('mock', rawBody, {
+    'x-lajoo-mock-signature': `sha256=${signature}`,
+  }, { env });
+
+  assert.equal(result.ok, true);
+  assert.equal(result.signatureStatus, 'verified');
+  assert.equal(result.event.paymentId, 'PAY-webhook-test');
+  assert.equal(result.event.eventType, PAYMENT_WEBHOOK_EVENT_TYPES.PAYMENT_SUCCEEDED);
+  assert.equal(result.event.transactionRef, 'mock_txn_1');
+
+  assert.throws(
+    () => verifyProviderWebhook('mock', rawBody, {
+      'x-lajoo-mock-signature': 'sha256=bad',
+    }, { env }),
+    (error) => error instanceof PaymentProviderError && error.code === 'WEBHOOK_SIGNATURE_INVALID'
+  );
+});
+
+test('mock webhook stays disabled without explicit testing flag', () => {
+  const secret = 'test-webhook-secret';
+  const rawBody = JSON.stringify({
+    type: 'payment.succeeded',
+    paymentId: 'PAY-webhook-disabled-test',
+  });
+  const signature = createWebhookSignature(rawBody, secret);
+
+  assert.throws(
+    () => verifyProviderWebhook('mock', rawBody, {
+      'x-lajoo-mock-signature': signature,
+    }, { env: { LAJOO_PAYMENT_WEBHOOK_SECRET: secret } }),
     (error) => error instanceof PaymentProviderError && error.code === 'MOCK_PAYMENT_DISABLED'
   );
 });

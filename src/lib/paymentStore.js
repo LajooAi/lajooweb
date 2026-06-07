@@ -37,7 +37,7 @@ function shouldUseDatabaseStore() {
 }
 
 async function getPrismaClient() {
-  const { default: prisma } = await import("@/lib/prisma");
+  const { default: prisma } = await import("./prisma.js");
   return prisma;
 }
 

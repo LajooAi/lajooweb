@@ -9,6 +9,11 @@
 
 import { NextResponse } from "next/server";
 import { z } from "zod";
+import {
+  PAYMENT_AUDIT_DIRECTION,
+  PAYMENT_AUDIT_STATUS,
+  recordPaymentAuditEvent,
+} from "@/lib/paymentAuditStore";
 import { getPayment, updatePaymentStatus, PAYMENT_STATUS } from "@/lib/paymentStore";
 import {
   PaymentProviderError,
@@ -30,7 +35,17 @@ const PaymentRequestSchema = z.object({
   roadtax: z.number().optional(),
 });
 
+async function safeRecordPaymentAuditEvent(event) {
+  try {
+    return await recordPaymentAuditEvent(event);
+  } catch (error) {
+    console.warn("[payment-process] Unable to write payment audit event.", error?.message || error);
+    return null;
+  }
+}
+
 export async function POST(request) {
+  let requestData = null;
   try {
     const body = await request.json();
     const validation = PaymentRequestSchema.safeParse(body);
@@ -42,10 +57,33 @@ export async function POST(request) {
       );
     }
 
-    const requestData = validation.data;
+    requestData = validation.data;
+    await safeRecordPaymentAuditEvent({
+      paymentId: requestData.paymentId,
+      provider: process.env.LAJOO_PAYMENT_PROVIDER || process.env.PAYMENT_PROVIDER || "mock",
+      direction: PAYMENT_AUDIT_DIRECTION.CLIENT_REQUEST,
+      eventType: "payment.process.requested",
+      eventStatus: PAYMENT_AUDIT_STATUS.RECEIVED,
+      payload: {
+        paymentId: requestData.paymentId,
+        paymentMethod: requestData.paymentMethod,
+        sessionId: requestData.sessionId || null,
+      },
+    });
+
     const existingSnapshot = await getPayment(requestData.paymentId);
 
     if (!existingSnapshot) {
+      await safeRecordPaymentAuditEvent({
+        paymentId: requestData.paymentId,
+        provider: process.env.LAJOO_PAYMENT_PROVIDER || process.env.PAYMENT_PROVIDER || "mock",
+        direction: PAYMENT_AUDIT_DIRECTION.PROVIDER_RESPONSE,
+        eventType: "payment.process.rejected",
+        eventStatus: PAYMENT_AUDIT_STATUS.REJECTED,
+        errorCode: "PAYMENT_SNAPSHOT_NOT_FOUND",
+        errorMessage: "Payment snapshot was not found.",
+      });
+
       return NextResponse.json(
         {
           error: "PAYMENT_SNAPSHOT_NOT_FOUND",
@@ -56,6 +94,16 @@ export async function POST(request) {
     }
 
     if (existingSnapshot.status === PAYMENT_STATUS.EXPIRED) {
+      await safeRecordPaymentAuditEvent({
+        paymentId: requestData.paymentId,
+        provider: existingSnapshot.provider || "mock",
+        direction: PAYMENT_AUDIT_DIRECTION.PROVIDER_RESPONSE,
+        eventType: "payment.process.rejected",
+        eventStatus: PAYMENT_AUDIT_STATUS.REJECTED,
+        errorCode: "PAYMENT_SNAPSHOT_EXPIRED",
+        errorMessage: "Payment snapshot was expired.",
+      });
+
       return NextResponse.json(
         {
           error: "PAYMENT_SNAPSHOT_EXPIRED",
@@ -67,6 +115,7 @@ export async function POST(request) {
 
     const paymentData = {
       paymentId: existingSnapshot.paymentId,
+      provider: existingSnapshot.provider,
       total: existingSnapshot.total,
       insurer: existingSnapshot.insurer,
       plate: existingSnapshot.plate,
@@ -106,6 +155,25 @@ export async function POST(request) {
       );
     }
 
+    await safeRecordPaymentAuditEvent({
+      paymentId: requestData.paymentId,
+      provider: payment.provider,
+      direction: PAYMENT_AUDIT_DIRECTION.PROVIDER_RESPONSE,
+      eventType: "payment.process.prepared",
+      eventStatus: providerIntent.paymentAvailable
+        ? PAYMENT_AUDIT_STATUS.APPLIED
+        : PAYMENT_AUDIT_STATUS.IGNORED,
+      providerPaymentId: providerIntent.providerPaymentIntentId,
+      payload: {
+        status: payment.status,
+        paymentMethod: providerIntent.paymentMethod,
+        amount: providerIntent.amount,
+        providerMode: providerIntent.mode,
+        paymentAvailable: providerIntent.paymentAvailable,
+        canIssuePolicy: false,
+      },
+    });
+
     return NextResponse.json({
       success: true,
       paymentId: requestData.paymentId,
@@ -122,11 +190,31 @@ export async function POST(request) {
   } catch (error) {
     console.error("Payment processing error:", error);
     if (error instanceof PaymentProviderError) {
+      await safeRecordPaymentAuditEvent({
+        paymentId: requestData?.paymentId || null,
+        provider: process.env.LAJOO_PAYMENT_PROVIDER || process.env.PAYMENT_PROVIDER || "mock",
+        direction: PAYMENT_AUDIT_DIRECTION.PROVIDER_RESPONSE,
+        eventType: "payment.process.failed",
+        eventStatus: PAYMENT_AUDIT_STATUS.FAILED,
+        errorCode: error.code,
+        errorMessage: error.message,
+      });
+
       return NextResponse.json(
         { error: error.code, message: error.message },
         { status: error.status }
       );
     }
+    await safeRecordPaymentAuditEvent({
+      paymentId: requestData?.paymentId || null,
+      provider: process.env.LAJOO_PAYMENT_PROVIDER || process.env.PAYMENT_PROVIDER || "mock",
+      direction: PAYMENT_AUDIT_DIRECTION.PROVIDER_RESPONSE,
+      eventType: "payment.process.failed",
+      eventStatus: PAYMENT_AUDIT_STATUS.FAILED,
+      errorCode: "PAYMENT_PROCESSING_FAILED",
+      errorMessage: "Payment processing failed.",
+    });
+
     return NextResponse.json(
       { error: "Payment processing failed", message: "Payment processing failed." },
       { status: 500 }
