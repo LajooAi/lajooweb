@@ -667,6 +667,55 @@ ${PRINTED_ROAD_TAX_POLICY_NOTE}
 I can proceed with **12 months (Digital) — RM 90** or **no road tax** right now. Which would you like?`;
 }
 
+function isPaymentCompletionClaim(message) {
+  const text = String(message || '').toLowerCase();
+  return (
+    /\b(payment|pay|paid|bayar|payment successful|payment success)\b/.test(text) &&
+    /\b(done|successful|success|completed|complete|already|paid|settled|made)\b/.test(text)
+  );
+}
+
+function buildUnverifiedPaymentClaimReply(state) {
+  const currentStep = state?.step;
+  const base = `I can’t verify payment yet because a secure checkout has not been completed in LAJOO. I also cannot mark a policy as paid from chat alone.`;
+
+  if (currentStep === FLOW_STEPS.PERSONAL_DETAILS) {
+    return `${base}
+
+Before payment, I still need your details:
+
+${buildPersonalDetailsRequest()}`;
+  }
+
+  if (currentStep === FLOW_STEPS.OTP) {
+    return `${base}
+
+Please enter the **4-digit OTP** first. After verification, I’ll show the secure payment step.`;
+  }
+
+  if (currentStep === FLOW_STEPS.PAYMENT) {
+    return `${base}
+
+Please use the secure checkout link shown above. Once the payment provider confirms success, LAJOO can update the payment status.`;
+  }
+
+  if (currentStep === FLOW_STEPS.ROADTAX) {
+    return `${base}
+
+Before payment, please choose road tax first: **12 months (Digital) — RM 90** or **no road tax**.`;
+  }
+
+  if (currentStep === FLOW_STEPS.ADDONS) {
+    return `${base}
+
+Before payment, please confirm your add-ons first, or say **skip add-ons**.`;
+  }
+
+  return `${base}
+
+Let’s complete the renewal details first, then I’ll guide you to the secure payment step.`;
+}
+
 function updateLastRecommendedInsurerMemory(state, assistantReply) {
   if (!state || state.selectedQuote) {
     if (state) state.lastRecommendedInsurer = null;
@@ -1116,6 +1165,38 @@ Optional protection (add-ons):
 ${buildAddOnsMenu()}
 
 ${ADDONS_CLOSE_QUESTION}`;
+}
+
+function buildQuoteChangeConfirmationReply(state, intentData = {}) {
+  const currentInsurer = state?.selectedQuote?.insurer || 'your current insurer';
+  const nextInsurerName = getInsurerByKey(intentData?.newInsurer)?.displayName || 'the new insurer';
+  const currentTotal = calculateCurrentGrandTotal(state);
+  const totalLine = currentTotal > 0
+    ? ` Your current total is **RM ${formatMoneyTwoDecimals(currentTotal)}**.`
+    : '';
+
+  return `No problem — I can switch you from **${currentInsurer}** to **${nextInsurerName}**.${totalLine}
+
+Because the insurer affects the premium and total, I’ll clear your add-ons and road tax choices after you confirm.
+
+Reply **yes** to switch to **${nextInsurerName}**, or **keep current** to stay with **${currentInsurer}**.`;
+}
+
+function buildQuoteChangeCompletedReply(state, selectedQuote) {
+  const insurerName = selectedQuote?.insurer || state?.selectedQuote?.insurer || 'the new insurer';
+  return `Done — I’ve switched you to **${insurerName}** and cleared add-ons and road tax so the total stays accurate.
+
+${buildAddOnsStepBlock(buildSummaryBox(state))}`;
+}
+
+function buildQuoteChangeCancelledReply(state) {
+  const currentInsurer = state?.selectedQuote?.insurer || 'your current insurer';
+  const summaryBox = state?.selectedQuote ? buildSummaryBox(state) : null;
+  const continuation = state?.step === FLOW_STEPS.ROADTAX && summaryBox
+    ? `\n\n${formatStepLine(4, 'Road Tax')}\n\n${buildRoadTaxMenu(state)}`
+    : '';
+
+  return `No problem — we’ll keep **${currentInsurer}**.${summaryBox ? `\n\n${summaryBox}` : ''}${continuation}`;
 }
 
 function buildDetailsStepBlock(summaryBox, roadTaxName = null) {
@@ -2199,6 +2280,71 @@ Return only the final rewritten assistant message.`;
   }
 }
 
+function createOpenAiApiError(response, errorText) {
+  const text = String(errorText || '');
+
+  if (/invalid_api_key/i.test(text)) {
+    const error = new Error('OPENAI_API_KEY is invalid. Update your key and restart the app.');
+    error.code = 'OPENAI_INVALID_API_KEY';
+    error.retryable = false;
+    return error;
+  }
+
+  if (
+    Number(response?.status || 0) === 429 ||
+    /rate[_\s-]?limit|tokens per min|too many requests/i.test(text)
+  ) {
+    const error = new Error('LAJOO is receiving many AI requests right now. Please wait a few seconds and try again.');
+    error.code = 'OPENAI_RATE_LIMIT';
+    error.retryable = true;
+    return error;
+  }
+
+  const error = new Error('LAJOO could not reach the AI service right now. Please try again in a moment.');
+  error.code = 'OPENAI_UNAVAILABLE';
+  error.retryable = true;
+  error.providerMessage = text.slice(0, 1200);
+  return error;
+}
+
+function buildSafeChatErrorPayload(error) {
+  const code = String(error?.code || '').toUpperCase();
+
+  if (code === 'OPENAI_RATE_LIMIT') {
+    return {
+      type: 'error',
+      code: 'OPENAI_RATE_LIMIT',
+      retryable: true,
+      message: 'LAJOO is receiving many AI requests right now. Please wait a few seconds and try again.',
+    };
+  }
+
+  if (code === 'OPENAI_INVALID_API_KEY' || /OPENAI_API_KEY/i.test(error?.message || '')) {
+    return {
+      type: 'error',
+      code: 'OPENAI_CONFIGURATION',
+      retryable: false,
+      message: 'LAJOO is not configured yet. Please set a valid OpenAI API key and restart the app.',
+    };
+  }
+
+  if (code === 'OPENAI_UNAVAILABLE' || /OpenAI API/i.test(error?.message || '')) {
+    return {
+      type: 'error',
+      code: 'OPENAI_UNAVAILABLE',
+      retryable: true,
+      message: 'LAJOO could not reach the AI service right now. Please try again in a moment.',
+    };
+  }
+
+  return {
+    type: 'error',
+    code: 'CHAT_SERVICE_ERROR',
+    retryable: false,
+    message: 'LAJOO chat is unavailable right now. Please try again shortly.',
+  };
+}
+
 export const runtime = "nodejs";
 
 // ============================================================================
@@ -2707,14 +2853,37 @@ export async function POST(request) {
       state.setPendingAction({
         type: 'confirm_quote_change',
         newInsurer: intent.data?.newInsurer || null,
+        currentInsurer: intent.data?.currentInsurer || getQuoteInsurerKey(state.selectedQuote) || null,
       });
+      forcedAssistantResponse = buildQuoteChangeConfirmationReply(state, intent.data);
     }
 
     if (intent.intent === USER_INTENTS.CONFIRM_CHANGE_QUOTE) {
       // Guard against accidental "yes/ok" in non-change contexts.
       if (state.pendingAction?.type === 'confirm_quote_change' && intent.confidence >= 0.85) {
+        const pendingQuoteChange = state.pendingAction;
+        const selectedQuote = pendingQuoteChange?.newInsurer
+          ? quoteSelectionFromIntent(state, pendingQuoteChange.newInsurer)
+          : null;
+
         state.resetToQuotes();
+
+        if (selectedQuote) {
+          state.selectQuote(selectedQuote);
+          const tx = ensureTransactionState(state);
+          tx.quoteId = selectedQuote.quoteId || tx.quoteId || null;
+          forcedAssistantResponse = buildQuoteChangeCompletedReply(state, selectedQuote);
+        } else {
+          forcedAssistantResponse = `No problem — please choose the insurer you want again.
+
+${buildQuoteSelectionReply(state)}`;
+        }
       }
+    }
+
+    if (intent.data?.cancelPendingAction) {
+      forcedAssistantResponse = buildQuoteChangeCancelledReply(state);
+      state.setPendingAction(null);
     }
 
     if (intent.intent === USER_INTENTS.CHANGE_ADDONS) {
@@ -2722,10 +2891,6 @@ export async function POST(request) {
       forcedAssistantResponse = `No problem — we can adjust your add-ons before continuing.
 
 ${buildAddOnsStepBlock(buildSummaryBox(state))}`;
-    }
-
-    if (intent.data?.cancelPendingAction) {
-      state.setPendingAction(null);
     }
 
     // Pending quote-change confirmation is one-turn scoped. If user moves on, clear it.
@@ -2935,6 +3100,13 @@ Please re-enter your **vehicle plate** and **owner identification number** to co
       }
     }
 
+    if (
+      isPaymentCompletionClaim(latestMessage) &&
+      String(ensureTransactionState(state).paymentStatus || '').toUpperCase() !== 'PAID'
+    ) {
+      forcedAssistantResponse = buildUnverifiedPaymentClaimReply(state);
+    }
+
     // ========================================================================
     // 3. BUILD AI MESSAGES
     // ========================================================================
@@ -3077,10 +3249,7 @@ This summary box must appear in EVERY response from now on until payment is comp
 
         if (!completion.ok) {
           const errorText = await completion.text();
-          if (errorText.includes("invalid_api_key")) {
-            throw new Error("OPENAI_API_KEY is invalid. Update your key and restart the app.");
-          }
-          throw new Error(`OpenAI API error: ${errorText}`);
+          throw createOpenAiApiError(completion, errorText);
         }
 
         const data = await completion.json();
@@ -3281,8 +3450,9 @@ This summary box must appear in EVERY response from now on until payment is comp
 
   } catch (error) {
     console.error("Chat API Error:", error);
+    const safeErrorPayload = buildSafeChatErrorPayload(error);
     return new Response(
-      `data: ${JSON.stringify({ type: "error", message: error.message })}\n\n`,
+      `data: ${JSON.stringify(safeErrorPayload)}\n\n`,
       {
         headers: {
           "Content-Type": "text/event-stream; charset=utf-8",

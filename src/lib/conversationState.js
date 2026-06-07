@@ -1290,8 +1290,12 @@ export function detectUserIntent(message, currentState) {
 
     // Also accept direct confirmations like "windscreen" alone or "windscreen and flood"
     const isDirectSelection = mentionedAddOns.length > 0 && /^(windscreen|flood|special perils|e.?hailing|betterment waiver|all drivers|personal accident|both|all)(\s*(and|,|\+)\s*(windscreen|flood|special perils|e.?hailing|betterment waiver|all drivers|personal accident))*\.?$/i.test(msg.trim());
+    const isPoliteDirectSelection =
+      mentionedAddOns.length > 0 &&
+      /\b(please|pls|only|just|lah|la)\b/i.test(msg) &&
+      !/\b(what|which|why|how|explain|tell|recommend|should|need|worth|necessary|meaning|mean)\b/i.test(msg);
 
-    if (mentionedAddOns.length > 0 && (hasSelectionIntent || isDirectSelection)) {
+    if (mentionedAddOns.length > 0 && (hasSelectionIntent || isDirectSelection || isPoliteDirectSelection)) {
       // User explicitly wants to add these
       return {
         intent: USER_INTENTS.SELECT_ADDON,

@@ -39,6 +39,23 @@ test('quote-change confirmation should only happen when pending action exists', 
   assert.equal(cancelIntent.data.cancelPendingAction, true);
 });
 
+test('road tax step should detect explicit insurer switch request', () => {
+  const state = {
+    step: FLOW_STEPS.ROADTAX,
+    selectedQuote: { insurer: 'Takaful Ikhlas Insurance' },
+    selectedAddOns: [{ id: 'flood', name: 'Special Perils', price: 50 }],
+    addOnsConfirmed: true,
+    selectedRoadTax: null,
+    pendingAction: null,
+  };
+
+  const intent = detectUserIntent('Actually change insurer to Etiqa', state);
+
+  assert.equal(intent.intent, 'change_quote');
+  assert.equal(intent.data.newInsurer, 'etiqa');
+  assert.equal(intent.data.currentInsurer, 'takaful');
+});
+
 test('playful uncertainty at quotes should be recognized explicitly', () => {
   const state = {
     step: FLOW_STEPS.QUOTES,
@@ -306,6 +323,19 @@ test('addons step should keep betterment explanation request as question', () =>
   };
   const intent = detectUserIntent('what is betterment?', state);
   assert.equal(intent.intent, 'ask_question');
+});
+
+test('addons step should treat polite direct add-on choices as selection', () => {
+  const state = {
+    step: FLOW_STEPS.ADDONS,
+    selectedQuote: { insurer: 'Etiqa Insurance' },
+    addOnsConfirmed: false,
+  };
+
+  const intent = detectUserIntent('Flood only please', state);
+
+  assert.equal(intent.intent, 'select_addon');
+  assert.deepEqual(intent.data.addOns, ['flood']);
 });
 
 test('addons step should parse extended number selections', () => {

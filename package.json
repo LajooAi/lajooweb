@@ -34,6 +34,8 @@
     "eval:judge": "node scripts/run-llm-judge-eval.mjs",
     "eval:ab": "node scripts/run-llm-judge-eval.mjs --file tests/evals/llm-judge-transcripts.json",
     "eval:assistant": "npm run -s eval:intent && npm run -s eval:flow && npm run -s eval:conversation",
+    "smoke:chat": "node scripts/run-chat-smoke.mjs",
+    "smoke:chat:staging": "CHAT_SMOKE_BASE_URL=https://lajooweb-git-staging-lajoo-ais-projects.vercel.app node scripts/run-chat-smoke.mjs",
     "test:insurer:contract": "node scripts/run-insurer-adapter-contract.mjs",
     "test:insurer:contract:full": "node scripts/run-insurer-adapter-contract.mjs --mode full",
     "test:insurer:contract:batch": "node scripts/run-insurer-contract-batch.mjs"
