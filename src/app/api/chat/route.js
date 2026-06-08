@@ -62,6 +62,9 @@ import {
   buildProductionOpenAiMessages,
 } from "@/server/ai/productionOpenAiMessageBuilder";
 import {
+  buildAdvisoryFallbackResponse,
+} from "@/server/ai/advisoryFallbacks";
+import {
   appendKnowledgeSourceTraceToMetadata,
   logKnowledgeSourceTrace,
 } from "@/server/ai/sourceTrace";
@@ -3283,7 +3286,7 @@ Please re-enter your **vehicle plate** and **owner identification number** to co
     // ========================================================================
     // 3. BUILD AI MESSAGES
     // ========================================================================
-    const { openAiMessages, knowledgeSourceTrace } = await buildProductionOpenAiMessages({
+    const { openAiMessages, knowledgeSourceTrace, productionTurnInstructions } = await buildProductionOpenAiMessages({
       sessionId,
       latestMessage,
       messages,
@@ -3419,50 +3422,72 @@ This summary box must appear in EVERY response from now on until payment is comp
     if (forcedAssistantResponse) {
       aiResponse = forcedAssistantResponse;
     } else {
-      const MAX_ITERATIONS = 5;
-      for (let i = 0; i < MAX_ITERATIONS; i++) {
-        const completion = await fetch("https://api.openai.com/v1/chat/completions", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${apiKey}`,
-          },
-          body: JSON.stringify({
-            model: process.env.OPENAI_MODEL || "gpt-4o",
-            messages: openAiMessages,
-            functions: AI_FUNCTIONS,
-            function_call: "auto",
-            temperature: 0.7,
-          }),
+      try {
+        const MAX_ITERATIONS = 5;
+        for (let i = 0; i < MAX_ITERATIONS; i++) {
+          const completion = await fetch("https://api.openai.com/v1/chat/completions", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${apiKey}`,
+            },
+            body: JSON.stringify({
+              model: process.env.OPENAI_MODEL || "gpt-4o",
+              messages: openAiMessages,
+              functions: AI_FUNCTIONS,
+              function_call: "auto",
+              temperature: 0.7,
+            }),
+          });
+
+          if (!completion.ok) {
+            const errorText = await completion.text();
+            throw createOpenAiApiError(completion, errorText);
+          }
+
+          const data = await completion.json();
+          const message = data.choices[0].message;
+          openAiMessages.push(message);
+
+          if (message.function_call) {
+            const result = await executeFunction(
+              message.function_call.name,
+              JSON.parse(message.function_call.arguments)
+            );
+            functionCalls.push({ name: message.function_call.name, result });
+            openAiMessages.push({
+              role: "function",
+              name: message.function_call.name,
+              content: JSON.stringify(result),
+            });
+            continue;
+          }
+
+          if (message.content) {
+            aiResponse = message.content;
+            break;
+          }
+        }
+      } catch (openAiError) {
+        const advisoryFallbackResponse = buildAdvisoryFallbackResponse({
+          error: openAiError,
+          state,
+          intent,
+          decision: conversationDecision,
+          turnPlan,
+          latestMessage,
+          productionTurnInstructions,
         });
 
-        if (!completion.ok) {
-          const errorText = await completion.text();
-          throw createOpenAiApiError(completion, errorText);
+        if (!advisoryFallbackResponse) {
+          throw openAiError;
         }
 
-        const data = await completion.json();
-        const message = data.choices[0].message;
-        openAiMessages.push(message);
-
-        if (message.function_call) {
-          const result = await executeFunction(
-            message.function_call.name,
-            JSON.parse(message.function_call.arguments)
-          );
-          functionCalls.push({ name: message.function_call.name, result });
-          openAiMessages.push({
-            role: "function",
-            name: message.function_call.name,
-            content: JSON.stringify(result),
-          });
-          continue;
-        }
-
-        if (message.content) {
-          aiResponse = message.content;
-          break;
-        }
+        console.warn(
+          '[ai-advisory-fallback] Used deterministic advisory fallback after OpenAI capacity error.',
+          openAiError?.code || openAiError?.message
+        );
+        aiResponse = advisoryFallbackResponse;
       }
     }
 
