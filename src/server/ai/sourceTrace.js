@@ -1,4 +1,5 @@
 import { createHash } from 'node:crypto';
+import { maskSensitiveText } from '../../lib/piiMasking.js';
 import { shouldRequireDatedFactsForAi } from '../knowledge/sourceAudit.js';
 
 const MAX_TRACE_SOURCES = 12;
@@ -8,14 +9,6 @@ function cleanText(value, maxLength = 240) {
   const clean = String(value || '').replace(/\s+/g, ' ').trim();
   if (clean.length <= maxLength) return clean;
   return `${clean.slice(0, maxLength - 1)}...`;
-}
-
-function maskSensitiveTraceText(value = '') {
-  return cleanText(value, 280)
-    .replace(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi, '[email]')
-    .replace(/\b\d{6}-?\d{2}-?\d{4}\b/g, '[owner-id]')
-    .replace(/\b01\d[\s-]?\d{3,4}[\s-]?\d{4}\b/g, '[phone]')
-    .replace(/\b\d{8,}\b/g, '[number]');
 }
 
 function formatDate(value) {
@@ -157,7 +150,7 @@ export function buildKnowledgeSourceTrace({
     conversationMode: decision?.mode || null,
     responsePattern: turnPlan?.responsePattern || null,
     strictDatedFactsRequired: shouldRequireDatedFactsForAi(),
-    questionPreview: maskSensitiveTraceText(latestMessage),
+    questionPreview: maskSensitiveText(cleanText(latestMessage, 280), { maxLength: 280 }),
     sourceCount: sources.length,
     sources,
     recommendation,

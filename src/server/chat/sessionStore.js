@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { ConversationState } from '../../lib/conversationState.js';
+import { maskSensitiveText } from '../../lib/piiMasking.js';
 
 const DEFAULT_TTL_MS = 24 * 60 * 60 * 1000;
 const MAX_MESSAGES_PER_SESSION = 120;
@@ -48,13 +49,16 @@ export function normalizeChatSessionId(value) {
 export function sanitizeChatMessages(messages = [], options = {}) {
   if (!Array.isArray(messages)) return [];
   const allowKnowledgeTrace = Boolean(options.allowKnowledgeTrace);
+  const maskSensitiveContent = Boolean(options.maskSensitiveContent);
 
   return messages
     .filter((message) => message && (message.role === 'user' || message.role === 'assistant'))
     .map((message) => {
       const sanitized = {
         role: message.role,
-        content: String(message.content || '').slice(0, MAX_CONTENT_LENGTH),
+        content: maskSensitiveContent
+          ? maskSensitiveText(message.content || '', { maxLength: MAX_CONTENT_LENGTH })
+          : String(message.content || '').slice(0, MAX_CONTENT_LENGTH),
       };
 
       if (message.summaryCard) sanitized.summaryCard = cloneJson(message.summaryCard);
@@ -113,7 +117,10 @@ function mapDatabaseSession(session) {
     expiresAt: toEpochMs(session.expiresAt),
     state: session.state || null,
     publicState: session.publicState || null,
-    messages: sanitizeChatMessages((session.messages || []).map(mapDatabaseMessage), { allowKnowledgeTrace: true }),
+    messages: sanitizeChatMessages((session.messages || []).map(mapDatabaseMessage), {
+      allowKnowledgeTrace: true,
+      maskSensitiveContent: true,
+    }),
     lastIntent: session.lastIntent || null,
     metadata: session.metadata || {},
   });
@@ -143,7 +150,10 @@ async function loadDatabaseSession(id) {
 
 async function saveDatabaseSession(session) {
   const prisma = await getPrismaClient();
-  const messages = sanitizeChatMessages(session.messages, { allowKnowledgeTrace: true });
+  const messages = sanitizeChatMessages(session.messages, {
+    allowKnowledgeTrace: true,
+    maskSensitiveContent: true,
+  });
 
   await prisma.$transaction(async (tx) => {
     await tx.chatSession.upsert({
@@ -199,24 +209,23 @@ async function clearDatabaseSession(id) {
 }
 
 export function resolveMessagesForTurn({ serverMessages = [], requestMessages = [] } = {}) {
-  const safeServerMessages = sanitizeChatMessages(serverMessages, { allowKnowledgeTrace: true });
+  const safeServerMessages = sanitizeChatMessages(serverMessages, {
+    allowKnowledgeTrace: true,
+    maskSensitiveContent: true,
+  });
   const safeRequestMessages = sanitizeChatMessages(requestMessages);
 
   if (safeServerMessages.length === 0) return safeRequestMessages;
   if (safeRequestMessages.length === 0) return safeServerMessages;
 
-  // Current browser sends the whole visible history. Prefer it when it is at
-  // least as complete as the server history, because it includes the latest user turn.
-  if (safeRequestMessages.length >= safeServerMessages.length) {
-    return safeRequestMessages;
-  }
-
-  // Future-safe path: if the browser sends only the newest user message, append
-  // it to server history without duplicating the previous turn.
+  // Prefer server history once a session exists so older browser-submitted turns
+  // cannot reintroduce raw NRIC/phone/email/address text into storage or prompts.
   const latestRequestUser = getLastUserMessage(safeRequestMessages);
   const latestServerMessage = safeServerMessages[safeServerMessages.length - 1];
   if (latestRequestUser && !sameMessage(latestRequestUser, latestServerMessage)) {
-    return sanitizeChatMessages([...safeServerMessages, latestRequestUser], { allowKnowledgeTrace: true });
+    return sanitizeChatMessages([...safeServerMessages, latestRequestUser], {
+      allowKnowledgeTrace: true,
+    });
   }
 
   return safeServerMessages;
@@ -276,7 +285,10 @@ export async function saveChatSession({
     expiresAt: now + getTtlMs(),
     state: serializeStateForStorage(state),
     publicState: serializeStateForClient(state),
-    messages: sanitizeChatMessages(messages, { allowKnowledgeTrace: true }),
+    messages: sanitizeChatMessages(messages, {
+      allowKnowledgeTrace: true,
+      maskSensitiveContent: true,
+    }),
     lastIntent: lastIntent ? cloneJson(lastIntent) : null,
     metadata: cloneJson(metadata || {}),
   };
@@ -306,7 +318,7 @@ export async function getStateFromSession(session) {
 
 export function appendAssistantMessageForStorage(messages = [], assistantMessage = {}) {
   return sanitizeChatMessages([
-    ...sanitizeChatMessages(messages),
+    ...sanitizeChatMessages(messages, { maskSensitiveContent: true }),
     {
       role: 'assistant',
       content: assistantMessage.content || '',
@@ -317,7 +329,10 @@ export function appendAssistantMessageForStorage(messages = [], assistantMessage
       paymentSuccessCard: assistantMessage.paymentSuccessCard || null,
       knowledgeTrace: assistantMessage.knowledgeTrace || null,
     },
-  ], { allowKnowledgeTrace: true });
+  ], {
+    allowKnowledgeTrace: true,
+    maskSensitiveContent: true,
+  });
 }
 
 export function cleanupExpiredChatSessions() {

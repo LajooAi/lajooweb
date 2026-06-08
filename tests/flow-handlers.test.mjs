@@ -34,7 +34,7 @@ function makeCallbacks(overrides = {}) {
   };
 }
 
-test('flow handler forces missing vehicle identification request before quotes', () => {
+test('flow handler forces consent-safe vehicle intake before quotes', () => {
   const state = new ConversationState();
   const openAiMessages = [];
 
@@ -48,8 +48,9 @@ test('flow handler forces missing vehicle identification request before quotes',
     callbacks: makeCallbacks(),
   });
 
-  assert.match(result.forcedAssistantResponse, /Vehicle Plate Number/i);
-  assert.match(result.forcedAssistantResponse, /Owner Identification Number/i);
+  assert.match(result.forcedAssistantResponse, /vehicle plate number/i);
+  assert.match(result.forcedAssistantResponse, /Reply \*\*I agree\*\*/);
+  assert.doesNotMatch(result.forcedAssistantResponse, /2\.\s+\*\*Owner Identification Number/);
 });
 
 test('flow handler locks recommended insurer and injects add-on transition guidance', () => {

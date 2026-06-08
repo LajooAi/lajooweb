@@ -1,4 +1,5 @@
 import prisma from '../../lib/prisma.js';
+import { maskSensitiveText } from '../../lib/piiMasking.js';
 
 export const CONVERSATION_AUDIT_STATUSES = ['good', 'needs_review', 'wrong'];
 
@@ -22,16 +23,8 @@ function safeDate(value) {
   return Number.isNaN(date.getTime()) ? null : date.toISOString();
 }
 
-function maskSensitiveConversationText(value = '') {
-  return String(value || '')
-    .replace(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi, '[email]')
-    .replace(/\b\d{6}-?\d{2}-?\d{4}\b/g, '[owner-id]')
-    .replace(/\b01\d[\s-]?\d{3,4}[\s-]?\d{4}\b/g, '[phone]')
-    .replace(/\b\d{8,}\b/g, '[number]');
-}
-
 function preview(value, maxLength = 180) {
-  const clean = maskSensitiveConversationText(cleanString(value, maxLength + 80));
+  const clean = maskSensitiveText(cleanString(value, maxLength + 80), { maxLength: maxLength + 80 });
   return clean.length > maxLength ? `${clean.slice(0, maxLength - 1)}...` : clean;
 }
 
@@ -117,7 +110,7 @@ function compactKnowledgeTrace(trace = null) {
 }
 
 export function mapConversationMessageForAdmin(message = {}) {
-  const maskedContent = maskSensitiveConversationText(message.content || '');
+  const maskedContent = maskSensitiveText(message.content || '');
   const knowledgeTrace = compactKnowledgeTrace(message.knowledgeTrace);
   return {
     id: message.id,

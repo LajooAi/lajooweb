@@ -1,6 +1,7 @@
 import crypto from 'node:crypto';
 import fs from 'node:fs/promises';
 import path from 'node:path';
+import { maskSensitiveText } from './piiMasking.js';
 import { getInsurerKeysFromText } from "./insurerCatalog.js";
 
 const DEFAULT_CAPTURE_FILE = 'tests/evals/captured/unknown-intents.jsonl';
@@ -31,15 +32,7 @@ function normalizeMessageForHash(message) {
 }
 
 function sanitizeMessage(text) {
-  let out = normalizeWhitespace(text);
-  if (!out) return out;
-
-  out = out.replace(/[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/g, '[email]');
-  out = out.replace(/\b0?1[0-9][\s\-]?[0-9]{3,4}[\s\-]?[0-9]{4}\b/g, '[phone]');
-  out = out.replace(/\b\d{12}\b/g, '[owner_id]');
-  out = out.replace(/\b[A-Z]{1,3}\s?\d{1,4}[A-Z]{0,3}\b/gi, '[plate]');
-  out = out.replace(/https?:\/\/\S+/gi, '[url]');
-  return out;
+  return maskSensitiveText(normalizeWhitespace(text), { maxLength: 1200 });
 }
 
 function hasQuestionSignal(message) {

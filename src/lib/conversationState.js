@@ -22,6 +22,12 @@ import {
   isKnownInsurerKey,
   UNAVAILABLE_INSURER_REGEX,
 } from './insurerCatalog.js';
+import {
+  PDPA_CONSENT_VERSION,
+  buildPdpaConsentState,
+  detectPdpaConsentAcceptance,
+  hasPdpaConsent,
+} from './pdpaConsent.js';
 
 // ============================================================================
 // FLOW STEPS - The insurance renewal journey
@@ -63,6 +69,7 @@ export class ConversationState {
     this.addOnsConfirmed = false;  // Track if add-ons have been confirmed
     this.selectedRoadTax = null;
     this.personalDetails = null;
+    this.pdpaConsent = buildPdpaConsentState();
     this.otpVerified = false;
     this.paymentMethod = null;
     this.transaction = {
@@ -179,6 +186,19 @@ export class ConversationState {
     state.addOnsConfirmed = !!json.addOnsConfirmed;
     state.selectedRoadTax = json.selectedRoadTax || null;
     state.personalDetails = json.personalDetails || null;
+    state.pdpaConsent = buildPdpaConsentState(
+      json.pdpaConsent && typeof json.pdpaConsent === 'object'
+        ? {
+            accepted: !!json.pdpaConsent.accepted,
+            acceptedAt: json.pdpaConsent.acceptedAt || null,
+            version: json.pdpaConsent.version || null,
+          }
+        : {
+            accepted: !!json.pdpaConsentAccepted,
+            acceptedAt: json.pdpaConsentAcceptedAt || null,
+            version: json.pdpaConsentAccepted ? PDPA_CONSENT_VERSION : null,
+          }
+    );
     state.otpVerified = !!json.otpVerified;
     state.paymentMethod = json.paymentMethod || null;
     state.transaction = {
@@ -243,6 +263,9 @@ export class ConversationState {
       if (msg.role !== 'user') continue;
 
       const content = msg.content || '';
+      if (detectPdpaConsentAcceptance(content, { requireExplicit: true })) {
+        state.acceptPdpaConsent();
+      }
       const extracted = extractVehicleInfo(content);
 
       // Extract plate number
@@ -251,7 +274,7 @@ export class ConversationState {
       }
 
       // Extract owner ID (NRIC or other accepted formats)
-      if (!state.nricNumber && extracted.ownerId) {
+      if (!state.nricNumber && extracted.ownerId && state.hasPdpaConsent()) {
         state.nricNumber = extracted.ownerId;
         state.ownerIdType = extracted.ownerIdType || null;
       }
@@ -358,6 +381,10 @@ export class ConversationState {
    */
   hasCompleteVehicleIdentification() {
     return !!(this.plateNumber && this.nricNumber);
+  }
+
+  hasPdpaConsent() {
+    return hasPdpaConsent(this);
   }
 
   /**
@@ -501,6 +528,15 @@ export class ConversationState {
     return this;
   }
 
+  acceptPdpaConsent({ acceptedAt = Date.now(), version = PDPA_CONSENT_VERSION } = {}) {
+    this.pdpaConsent = buildPdpaConsentState({
+      accepted: true,
+      acceptedAt,
+      version,
+    });
+    return this;
+  }
+
   /**
    * Export state for API response
    */
@@ -520,6 +556,11 @@ export class ConversationState {
       selectedAddOns: this.selectedAddOns,
       addOnsConfirmed: this.addOnsConfirmed,
       selectedRoadTax: this.selectedRoadTax,
+      pdpaConsent: this.pdpaConsent ? {
+        accepted: !!this.pdpaConsent.accepted,
+        acceptedAt: this.pdpaConsent.acceptedAt || null,
+        version: this.pdpaConsent.version || null,
+      } : buildPdpaConsentState(),
       personalDetails: this.personalDetails ? {
         email: !!this.personalDetails.email,
         phone: !!this.personalDetails.phone,
@@ -613,6 +654,7 @@ export class ConversationState {
       const collected = ['email', 'phone', 'address'].filter(k => this.personalDetails[k]).length;
       parts.push(`Personal details collected: ${collected}/3`);
     }
+    parts.push(`PDPA renewal consent: ${this.hasPdpaConsent() ? 'accepted' : 'not accepted yet'}`);
     if (this.transaction?.proposalId) {
       parts.push(`Proposal: ${this.transaction.proposalId} (${this.transaction.proposalStatus || 'DRAFT'})`);
     }

@@ -241,3 +241,20 @@ model PaymentAuditEvent {
   @@index([eventStatus])
   @@index([createdAt])
 }
+
+model PdpaConsentAuditEvent {
+  id             String   @id @default(cuid())
+  sessionId      String
+  action         String   @default("accepted")
+  consentVersion String
+  acceptedAt     DateTime
+  source         String   @default("chat")
+  reason         String?
+  messageHash    String?
+  createdAt      DateTime @default(now())
+
+  @@index([sessionId])
+  @@index([consentVersion])
+  @@index([acceptedAt])
+  @@index([createdAt])
+}

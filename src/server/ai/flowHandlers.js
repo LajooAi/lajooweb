@@ -1,5 +1,10 @@
 import { FLOW_STEPS, USER_INTENTS } from '../../lib/conversationState.js';
 import {
+  buildPdpaConsentRequestReply,
+  createPdpaPendingAction,
+  hasPdpaConsent,
+} from '../../lib/pdpaConsent.js';
+import {
   AVAILABLE_INSURERS,
   AVAILABLE_INSURER_CHOICE_TEXT,
   AVAILABLE_INSURER_NAMES_TEXT,
@@ -86,7 +91,7 @@ export function applyDeterministicFlowHandlers({
   }
 
   // GLOBAL GUARD: no quotes or pricing before both vehicle identifiers.
-  if (!state.hasCompleteVehicleIdentification()) {
+  if (!state.hasCompleteVehicleIdentification() && !nextForcedAssistantResponse) {
     const canAnswerGeneralQuestion = intent.intent === USER_INTENTS.ASK_QUESTION;
     const isPlayfulStart = intent.intent === USER_INTENTS.UNCLEAR_OR_PLAYFUL && state.step === FLOW_STEPS.START;
     const isGreetingStart = intent.intent === USER_INTENTS.GREETING && state.step === FLOW_STEPS.START;
@@ -98,15 +103,15 @@ export function applyDeterministicFlowHandlers({
       /^(?:just\s+)?(hi|hello|hey|yo|salam|assalam|test|testing|check|checking|ping|trial|demo)\b/i.test(String(latestMessage || '').trim().toLowerCase());
 
     if (canAnswerGeneralQuestion) {
-      pushSystem(openAiMessages, `User asked a general insurance question before sharing plate/owner ID.
+      pushSystem(openAiMessages, `User asked a general insurance question before sharing complete vehicle details.
 Answer the question helpfully first (no quotes/pricing cards).
-After answering, add one short line: "If you'd like renewal quotes, share your **vehicle plate** and **owner identification number**."`);
+After answering, add one short line: "If you'd like renewal quotes, share your **vehicle plate** first. I’ll ask for consent before owner ID or contact details."`);
     } else if (isGreetingStart) {
       pushSystem(openAiMessages, `User sent a greeting at the start. Reply naturally in 1-2 short lines (warm, human, non-robotic).
 Do NOT show the full numbered intake list yet.
 Briefly mention what LAJOO can help with (renew insurance, road tax, compare options, and payment).
 Then ask one discovery question: what do they want to do today?
-Only ask for **vehicle plate** and **owner identification number** after they clearly say they want to start renewal now.`);
+Only ask for **vehicle plate** after they clearly say they want to start renewal now. Get consent before owner ID or contact details.`);
     } else if (isPlayfulStart) {
       pushSystem(openAiMessages, `User is playful/unclear at start. Reply naturally in 1-2 short lines:
 1) brief friendly acknowledgement
@@ -120,14 +125,23 @@ Do NOT ask for plate/owner ID yet unless user confirms renewal intent.`);
     } else {
       const hasPlate = !!state.plateNumber;
       const hasNRIC = !!state.nricNumber;
+      const consentAccepted = hasPdpaConsent(state);
 
       if (!hasPlate && !hasNRIC) {
-        nextForcedAssistantResponse = `${formatStepLine(1, 'Vehicle Info')}
+        if (consentAccepted) {
+          nextForcedAssistantResponse = `${formatStepLine(1, 'Vehicle Info')}
 
 To get started, please provide your:
 
 1. **Vehicle Plate Number** (e.g. WXY 1234)
 2. **Owner Identification Number** (NRIC / Foreign ID / Army IC / Police IC / Company Reg. No.)`;
+        } else {
+          state.setPendingAction?.(createPdpaPendingAction('start_renewal'));
+          nextForcedAssistantResponse = buildPdpaConsentRequestReply({ state, reason: 'start_renewal' });
+        }
+      } else if (hasPlate && !hasNRIC && !consentAccepted) {
+        state.setPendingAction?.(createPdpaPendingAction('owner_id'));
+        nextForcedAssistantResponse = buildPdpaConsentRequestReply({ state, reason: 'owner_id' });
       } else {
         const missingItem = !hasPlate ? 'Vehicle Plate Number' : 'Owner Identification Number';
         const missingExample = !hasPlate ? '(e.g. WXY 1234)' : '(NRIC / Foreign ID / Army IC / Police IC / Company Reg. No.)';
@@ -267,7 +281,7 @@ Do NOT alter prices. You may add a brief line but MUST include the Step 3 block 
 
   if (intent.intent === USER_INTENTS.SELECT_ADDON) {
     if (!state.hasCompleteVehicleIdentification()) {
-      pushSystem(openAiMessages, `STOP. User hasn't provided vehicle info yet. Ask for: 1) Vehicle Plate Number, 2) Owner ID. Nothing else.`);
+      pushSystem(openAiMessages, `STOP. User hasn't provided vehicle info yet. Ask for the vehicle plate first. If owner ID is still needed, get consent before collecting it. Nothing else.`);
     } else if (!state.selectedQuote) {
       nextForcedAssistantResponse = buildQuoteSelectionReply(state);
     } else {
@@ -308,7 +322,11 @@ Ask clearly: "Reply **ok** for 12-month digital, or **no road tax**."`);
     const summaryBox = buildSummaryBox(state);
     const rawRoadTaxName = state.selectedRoadTax?.name || 'No Road Tax';
     const roadTaxName = rawRoadTaxName === 'No Road Tax' ? rawRoadTaxName : getRoadTaxDisplayName(state.selectedRoadTax);
-    pushSystem(openAiMessages, `User selected road tax: ${roadTaxName}. Your response MUST include:
+    if (!hasPdpaConsent(state)) {
+      state.setPendingAction?.(createPdpaPendingAction('personal_details'));
+      nextForcedAssistantResponse = buildPdpaConsentRequestReply({ state, reason: 'personal_details' });
+    } else {
+      pushSystem(openAiMessages, `User selected road tax: ${roadTaxName}. Your response MUST include:
 
 ${roadTaxName !== 'No Road Tax' ? `${roadTaxName} added!` : 'No road tax.'} ✅
 
@@ -319,6 +337,7 @@ ${summaryBox}
 ${buildPersonalDetailsRequest()}
 
 Do NOT alter the summary. MUST include all 3 items to collect.`);
+    }
   }
 
   if (intent.intent === USER_INTENTS.SUBMIT_DETAILS) {
