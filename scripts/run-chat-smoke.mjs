@@ -184,15 +184,48 @@ function displayStep(index, userMessage, result) {
   console.log(`${CHECK} ${index}. "${userMessage}" -> step=${stateStep}; reply="${reply.slice(0, 110)}${reply.length > 110 ? '...' : ''}"`);
 }
 
+function getPaymentHref(reply) {
+  const match = String(reply || '').match(/\]\((\/my\/payment\/[^)]+)\)/);
+  return match?.[1] || null;
+}
+
+function getPaymentIdFromHref(href) {
+  const match = String(href || '').match(/\/payment\/([^?/#]+)/);
+  return match ? decodeURIComponent(match[1]) : null;
+}
+
+async function getPaymentStatus(baseUrl, paymentId, timeoutMs = DEFAULT_TIMEOUT_MS) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const response = await fetch(`${baseUrl}/api/payment/status/${encodeURIComponent(paymentId)}`, {
+      headers: buildRequestHeaders(),
+      signal: controller.signal,
+    });
+    const body = await response.json().catch(() => null);
+    if (!response.ok) {
+      fail(`Payment status API returned HTTP ${response.status}.`, {
+        status: response.status,
+        body,
+      });
+    }
+    return body;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 async function run() {
   const baseUrl = normalizeBaseUrl(process.env.CHAT_SMOKE_BASE_URL || process.argv[2]);
   const sessionId = process.env.CHAT_SMOKE_SESSION_ID || makeSessionId();
+  const mode = String(process.env.CHAT_SMOKE_MODE || 'full').trim().toLowerCase();
   const messages = [];
   const results = [];
 
   console.log(`LAJOO chat smoke test`);
   console.log(`Base URL: ${baseUrl}`);
   console.log(`Session: ${sessionId}`);
+  console.log(`Mode: ${mode}`);
   console.log(`Vercel bypass: ${getVercelBypassSecret() ? 'configured' : 'not configured'}`);
   console.log('');
 
@@ -231,6 +264,57 @@ async function run() {
   const quotes = await send('yes');
   assertIncludes(quotes.reply, 'option', 'quote options');
   assertState(quotes.state?.step === 'quotes', 'Confirming vehicle should keep user at quote selection.', quotes.state);
+
+  if (mode === 'core') {
+    const insurer = await send('Takaful');
+    assertIncludes(insurer.reply, 'Takaful', 'insurer selection');
+    assertState(Boolean(insurer.state?.selectedQuote), 'Insurer selection should set selectedQuote.', insurer.state);
+
+    const addOns = await send('skip add-ons');
+    assertState(
+      Array.isArray(addOns.state?.selectedAddOns) && addOns.state.selectedAddOns.length === 0,
+      'Skipping add-ons should keep selectedAddOns empty.',
+      addOns.state?.selectedAddOns
+    );
+    assertState(addOns.state?.step === 'roadtax', 'Skipping add-ons should advance to road tax.', addOns.state);
+
+    const roadTax = await send('yes digital road tax');
+    assertState(
+      roadTax.state?.selectedRoadTax?.name && /digital/i.test(roadTax.state.selectedRoadTax.name),
+      'Digital road tax selection should update selectedRoadTax.',
+      roadTax.state?.selectedRoadTax
+    );
+    assertState(roadTax.state?.step === 'personal_details', 'Road tax selection should advance to personal details.', roadTax.state);
+
+    const details = await send('email ali@example.com, phone 0123456789, address No 1 Jalan Test, 47000 Shah Alam Selangor');
+    assertIncludes(details.reply, 'Does everything look', 'personal details confirmation');
+    assertState(details.state?.step === 'otp', 'Complete personal details should move to OTP confirmation.', details.state);
+
+    const otpPrompt = await send('yes');
+    assertIncludes(otpPrompt.reply, 'OTP', 'OTP prompt');
+    assertState(otpPrompt.state?.step === 'otp', 'Confirming personal details should stay on OTP entry.', otpPrompt.state);
+
+    const payment = await send('1234');
+    assertIncludes(payment.reply, 'Pay securely', 'payment step');
+    assertState(payment.state?.step === 'payment', 'Valid OTP should move to payment.', payment.state);
+
+    const paymentHref = getPaymentHref(payment.reply);
+    assertState(Boolean(paymentHref), 'Payment reply should include a checkout link.', payment.reply);
+    const paymentId = getPaymentIdFromHref(paymentHref);
+    assertState(Boolean(paymentId), 'Payment checkout link should include a paymentId.', paymentHref);
+
+    const paymentStatus = await getPaymentStatus(baseUrl, paymentId);
+    assertState(paymentStatus?.found === true, 'Payment snapshot should exist server-side.', paymentStatus);
+    assertState(
+      paymentStatus?.payment?.paymentId === paymentId && Number(paymentStatus?.payment?.total || 0) > 0,
+      'Payment status should return the locked server-side snapshot.',
+      paymentStatus
+    );
+
+    console.log('');
+    console.log(`${CHECK} Core smoke test passed: ${results.length} turns verified; payment snapshot ${paymentId} found.`);
+    return;
+  }
 
   const recommendation = await send('Which insurer do you recommend?');
   assertIncludes(recommendation.reply, 'recommend', 'quote recommendation');
