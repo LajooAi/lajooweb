@@ -60,6 +60,14 @@ function assertIncludes(text, needle, label) {
   }
 }
 
+function assertMatches(text, pattern, label) {
+  if (!pattern.test(String(text || ''))) {
+    fail(`Expected reply to match ${pattern} for ${label}.`, {
+      reply: String(text || '').slice(0, 1200),
+    });
+  }
+}
+
 function assertState(condition, label, details = null) {
   if (!condition) fail(label, details);
 }
@@ -308,7 +316,10 @@ async function run() {
   }
 
   const recommendation = await send('Which insurer do you recommend?');
-  assertIncludes(recommendation.reply, 'recommend', 'quote recommendation');
+  assertMatches(recommendation.reply, /\*\*My pick:\*\*/i, 'quote recommendation');
+  assertMatches(recommendation.reply, /\*\*Why:\*\*/i, 'quote recommendation');
+  assertMatches(recommendation.reply, /\*\*Trade-off:\*\*/i, 'quote recommendation');
+  assertMatches(recommendation.reply, /\*\*Next:\*\*/i, 'quote recommendation');
   assertState(recommendation.state?.step === 'quotes', 'Recommendation question should not advance the flow.', recommendation.state);
 
   const insurer = await send('Takaful');
