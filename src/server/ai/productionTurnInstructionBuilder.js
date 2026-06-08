@@ -48,7 +48,7 @@ export function buildStepStyleInstruction(state) {
     return `STEP STYLE PROFILE
 Mode: Intake mode
 Style: concise, guided, one clear request at a time.
-Privacy rule: ask for vehicle plate first. Do not ask for owner ID, email, phone, or address until renewal data-use consent is accepted in state.
+Intake rule: ask for missing vehicle plate number and/or owner identification number. Do not show quotes until both are available.
 ${preferenceHints.join('\n')}`;
   }
 

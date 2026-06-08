@@ -242,21 +242,12 @@ async function run() {
 
   const start = await send('Renew car insurance');
   assertIncludes(start.reply, 'Vehicle', 'renewal start prompt');
-  assertIncludes(start.reply, 'I agree', 'renewal consent prompt');
+  assertIncludes(start.reply, 'Owner Identification Number', 'renewal owner ID prompt');
+  assertState(!/I agree/i.test(start.reply || ''), 'Renewal start should not show the old PDPA consent gate.', {
+    reply: String(start.reply || '').slice(0, 1200),
+  });
 
-  const consentGate = await send('JRT 9289 951018145405');
-  assertIncludes(consentGate.reply, 'I agree', 'pre-consent owner ID gate');
-  assertState(
-    !/found your vehicle/i.test(consentGate.reply || ''),
-    'Vehicle lookup must not complete before PDPA consent is recorded.',
-    { reply: String(consentGate.reply || '').slice(0, 1200) }
-  );
-
-  const consent = await send('I agree');
-  assertIncludes(consent.reply, 'consent recorded', 'PDPA consent acknowledgement');
-  assertIncludes(consent.reply, 'Owner Identification Number', 'post-consent owner ID prompt');
-
-  const vehicle = await send('951018145405');
+  const vehicle = await send('JRT 9289 951018145405');
   assertIncludes(vehicle.reply, 'Found your vehicle', 'vehicle lookup');
   assertIncludes(vehicle.reply, 'Perodua Myvi', 'vehicle lookup');
   assertState(vehicle.state?.vehicleInfo?.sampleId === 'CAR01', 'Vehicle lookup did not return Mockoon CAR01 sample.', vehicle.state?.vehicleInfo);

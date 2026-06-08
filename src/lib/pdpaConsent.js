@@ -22,7 +22,16 @@ export function detectPdpaConsentAcceptance(message, options = {}) {
     /\b(setuju|bersetuju|terima)\b/i.test(text);
 
   if (explicitAcceptance) return true;
-  if (options.requireExplicit) return false;
+  if (options.requireExplicit !== false) return false;
+
+  return /^(yes|yeah|yep|yup|ok|okay|sure|proceed|continue|go ahead|can|boleh)\b/i.test(text);
+}
+
+export function isPdpaConsentAmbiguousAcceptance(message) {
+  const text = normalizeText(message);
+  if (!text || detectPdpaConsentAcceptance(text, { requireExplicit: true }) || detectPdpaConsentRejection(text)) {
+    return false;
+  }
 
   return /^(yes|yeah|yep|yup|ok|okay|sure|proceed|continue|go ahead|can|boleh)\b/i.test(text);
 }
@@ -138,4 +147,10 @@ I won’t treat mock quotes or payment as final production confirmation. ${nextL
 
 export function buildPdpaConsentRejectedReply() {
   return `No problem. I can still answer general insurance questions, but I can’t verify your vehicle, prepare renewal quotes, collect contact details, or continue to payment without this consent.`;
+}
+
+export function buildPdpaConsentExplicitReply() {
+  return `For safety, I need clear consent before using owner ID or contact details.
+
+Please reply **I agree** to continue, or ask me why I need it.`;
 }

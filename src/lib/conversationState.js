@@ -274,7 +274,7 @@ export class ConversationState {
       }
 
       // Extract owner ID (NRIC or other accepted formats)
-      if (!state.nricNumber && extracted.ownerId && state.hasPdpaConsent()) {
+      if (!state.nricNumber && extracted.ownerId) {
         state.nricNumber = extracted.ownerId;
         state.ownerIdType = extracted.ownerIdType || null;
       }
@@ -654,7 +654,6 @@ export class ConversationState {
       const collected = ['email', 'phone', 'address'].filter(k => this.personalDetails[k]).length;
       parts.push(`Personal details collected: ${collected}/3`);
     }
-    parts.push(`PDPA renewal consent: ${this.hasPdpaConsent() ? 'accepted' : 'not accepted yet'}`);
     if (this.transaction?.proposalId) {
       parts.push(`Proposal: ${this.transaction.proposalId} (${this.transaction.proposalStatus || 'DRAFT'})`);
     }

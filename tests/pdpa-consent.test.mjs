@@ -6,9 +6,7 @@ import {
   USER_INTENTS,
 } from '../src/lib/conversationState.js';
 import {
-  buildPdpaConsentRequestReply,
   detectPdpaConsentAcceptance,
-  getPdpaConsentReason,
 } from '../src/lib/pdpaConsent.js';
 import { applyDeterministicFlowHandlers } from '../src/server/ai/flowHandlers.js';
 
@@ -42,6 +40,7 @@ function makeCallbacks(overrides = {}) {
 test('PDPA consent acceptance is explicit unless the consent prompt is pending', () => {
   assert.equal(detectPdpaConsentAcceptance('I agree'), true);
   assert.equal(detectPdpaConsentAcceptance('yes', { requireExplicit: true }), false);
+  assert.equal(detectPdpaConsentAcceptance('ok'), false);
   assert.equal(detectPdpaConsentAcceptance('yes', { requireExplicit: false }), true);
 });
 
@@ -56,17 +55,17 @@ test('conversation state stores PDPA consent and round-trips it', () => {
   assert.equal(hydrated.pdpaConsent.acceptedAt, 1234567890);
 });
 
-test('conversation history inference does not use owner ID before explicit consent', () => {
+test('conversation history inference uses owner ID from the first vehicle info message', () => {
   const state = ConversationState.fromMessages([
     { role: 'user', content: 'jrt 9289 951018145405' },
   ]);
 
   assert.equal(state.plateNumber, 'JRT9289');
-  assert.equal(state.nricNumber, null);
-  assert.equal(state.step, FLOW_STEPS.VEHICLE_LOOKUP);
+  assert.equal(state.nricNumber, '951018145405');
+  assert.equal(state.step, FLOW_STEPS.QUOTES);
 });
 
-test('conversation history inference uses owner ID after explicit consent', () => {
+test('conversation history still records explicit consent if user volunteers it', () => {
   const state = ConversationState.fromMessages([
     { role: 'user', content: 'I agree' },
     { role: 'user', content: 'jrt 9289 951018145405' },
@@ -78,25 +77,7 @@ test('conversation history inference uses owner ID after explicit consent', () =
   assert.equal(state.step, FLOW_STEPS.QUOTES);
 });
 
-test('PDPA gate asks for consent when owner ID is provided too early', () => {
-  const state = new ConversationState();
-  const reason = getPdpaConsentReason({
-    state,
-    intent: { intent: USER_INTENTS.PROVIDE_INFO },
-    vehicleExtract: { registrationNumber: 'JRT9289', ownerId: '951018145405' },
-    personalInfo: {},
-  });
-  const reply = buildPdpaConsentRequestReply({
-    state: { ...state, plateNumber: 'JRT9289' },
-    reason,
-  });
-
-  assert.equal(reason, 'owner_id_provided');
-  assert.match(reply, /I have your vehicle plate \*\*JRT9289\*\*/);
-  assert.match(reply, /Reply \*\*I agree\*\*/);
-});
-
-test('flow handler starts renewal intake with consent-safe copy', () => {
+test('flow handler starts renewal intake with old Step 1 vehicle info copy', () => {
   const state = new ConversationState();
   const result = applyDeterministicFlowHandlers({
     openAiMessages: [],
@@ -109,14 +90,14 @@ test('flow handler starts renewal intake with consent-safe copy', () => {
   });
 
   assert.match(result.forcedAssistantResponse, /vehicle plate number/i);
-  assert.match(result.forcedAssistantResponse, /Reply \*\*I agree\*\*/);
-  assert.doesNotMatch(result.forcedAssistantResponse, /1\.\s+\*\*Vehicle Plate Number[\s\S]*2\.\s+\*\*Owner Identification Number/);
+  assert.match(result.forcedAssistantResponse, /owner identification number/i);
+  assert.match(result.forcedAssistantResponse, /1\.\s+\*\*Vehicle Plate Number[\s\S]*2\.\s+\*\*Owner Identification Number/);
+  assert.doesNotMatch(result.forcedAssistantResponse, /Reply \*\*I agree\*\*/);
 });
 
-test('flow handler can ask for owner ID after consent is accepted', () => {
+test('flow handler asks for owner ID directly when only plate is known', () => {
   const state = new ConversationState();
   state.plateNumber = 'JRT9289';
-  state.acceptPdpaConsent({ acceptedAt: 123 });
   state.step = FLOW_STEPS.VEHICLE_LOOKUP;
 
   const openAiMessages = [];
@@ -132,4 +113,5 @@ test('flow handler can ask for owner ID after consent is accepted', () => {
 
   assert.equal(result.forcedAssistantResponse, null);
   assert.match(openAiMessages.map((message) => message.content).join('\n'), /Owner Identification Number/);
+  assert.doesNotMatch(openAiMessages.map((message) => message.content).join('\n'), /I agree/);
 });

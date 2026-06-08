@@ -173,6 +173,37 @@ function buildConfusedFallback(state) {
   return 'No worries. Tell me what you want to change or ask, and I will guide you one thing at a time.';
 }
 
+function isNeedsGuidanceTurn(latestMessage) {
+  const text = normalizeText(latestMessage);
+  return /\b(which|what)\s+(do|should)\s+i\s+(need|choose|take|pick)\b/i.test(text) ||
+    /\bwhich\s+one\s+(do|should)\s+i\s+(need|choose|take|pick)\b/i.test(text) ||
+    /\bwhat\s+would\s+you\s+(recommend|suggest)\b/i.test(text);
+}
+
+function buildNeedsGuidanceFallback(state) {
+  if (state?.step === FLOW_STEPS.ADDONS) {
+    return [
+      'For add-ons, do not buy everything. Choose based on your real risk.',
+      '**My practical pick:** add **Special Perils/Flood** if your area or parking place can flood. Add **Windscreen** if a glass replacement would be painful to pay yourself. Skip **E-hailing** unless this car is used for Grab or similar services.',
+      'If you want the simple safe choice, tell me **flood only**, **windscreen only**, **both**, or **skip add-ons**.',
+    ].join('\n\n');
+  }
+
+  if (state?.step === FLOW_STEPS.QUOTES) {
+    return 'For insurer choice, I can guide you in three simple ways: cheapest price, higher sum insured, or balanced recommendation. Which one matters most to you?';
+  }
+
+  if (state?.step === FLOW_STEPS.ROADTAX) {
+    return 'For road tax, choose **12-month digital road tax** if you want LAJOO to handle it together. Choose **no road tax** if you only want insurance renewal.';
+  }
+
+  if (state?.step === FLOW_STEPS.PERSONAL_DETAILS) {
+    return 'At this stage, I need your email, phone number, and address so LAJOO can continue to OTP verification and document delivery.';
+  }
+
+  return 'Tell me what you are deciding between, and I’ll narrow it down to the safest simple choice.';
+}
+
 export function buildAdvisoryFallbackResponse({
   error,
   state,
@@ -188,6 +219,10 @@ export function buildAdvisoryFallbackResponse({
 
   if (isQuoteRecommendationTurn({ state, decision, turnPlan, latestMessage, recommendation })) {
     return buildQuoteRecommendationFallback({ recommendation });
+  }
+
+  if (isNeedsGuidanceTurn(latestMessage)) {
+    return buildNeedsGuidanceFallback(state);
   }
 
   if (isConceptFallbackTurn({ intent, decision, latestMessage })) {

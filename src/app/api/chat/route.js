@@ -9,19 +9,6 @@
 
 import { NextResponse } from "next/server";
 import { ConversationState, detectUserIntent, USER_INTENTS, FLOW_STEPS } from "@/lib/conversationState";
-import {
-  PDPA_CONSENT_PENDING_TYPE,
-  buildPdpaConsentAcceptedReply,
-  buildPdpaConsentExplanationReply,
-  buildPdpaConsentRejectedReply,
-  buildPdpaConsentRequestReply,
-  createPdpaPendingAction,
-  detectPdpaConsentAcceptance,
-  detectPdpaConsentRejection,
-  getPdpaConsentReason,
-  isPdpaConsentExplanationRequest,
-} from "@/lib/pdpaConsent";
-import { recordPdpaConsentAuditEvent } from "@/lib/pdpaConsentAuditStore";
 import { getQuotes } from "@/lib/insuranceData";
 import {
   AVAILABLE_INSURERS,
@@ -1334,6 +1321,9 @@ function isStepIndicator(text) {
 }
 
 function formatStepLine(step, title) {
+  if (Number(step) === 1 && title === 'Vehicle Info') {
+    return `**Step 1 of 6 — Vehicle Info**`;
+  }
   return `**${title}**`;
 }
 
@@ -1611,21 +1601,14 @@ function getCurrentStepPlaybook(state, context = {}) {
   if (!state.hasCompleteVehicleIdentification()) {
     const missingIdentifiers = [];
     if (!state.plateNumber) missingIdentifiers.push('Vehicle Plate Number');
-    if (!state.nricNumber && state.hasPdpaConsent?.()) missingIdentifiers.push('Owner Identification Number');
-    const hasConsent = !!state.hasPdpaConsent?.();
+    if (!state.nricNumber) missingIdentifiers.push('Owner Identification Number');
     return {
       label: 'Vehicle info',
-      goal: hasConsent
-        ? 'Collect missing vehicle identifiers so quotes can be generated.'
-        : 'Collect the vehicle plate first, then get consent before owner ID or contact details.',
-      options: hasConsent
-        ? (missingIdentifiers.length > 0 ? missingIdentifiers.map(item => `Provide ${item}`) : ['Provide vehicle identifiers'])
-        : ['Provide Vehicle Plate Number', 'Agree to renewal data use before owner ID'],
-      nextAction: hasConsent
-        ? (missingIdentifiers.length === 1
+      goal: 'Collect missing vehicle identifiers so quotes can be generated.',
+      options: missingIdentifiers.length > 0 ? missingIdentifiers.map(item => `Provide ${item}`) : ['Provide vehicle identifiers'],
+      nextAction: missingIdentifiers.length === 1
         ? `Ask for ${missingIdentifiers[0]} only.`
-        : 'Ask for both vehicle plate number and owner identification number.')
-        : 'Ask for vehicle plate only, then ask for consent before owner ID.',
+        : 'Ask for both vehicle plate number and owner identification number.',
       sideQuestionPolicy: 'If user asks a general insurance question, answer briefly first, then return to the safest missing item.',
     };
   }
@@ -2079,10 +2062,6 @@ function shouldUseClarifyingTurn(intent, state) {
 
 function buildClarifyingQuestionInstruction(state) {
   if (!state.hasCompleteVehicleIdentification()) {
-    if (!state.hasPdpaConsent?.()) {
-      return `Low intent confidence detected. Ask ONE clarifying question only:
-"Would you like to start a renewal quote? If yes, please share your **vehicle plate** first. I’ll ask for consent before collecting owner ID or contact details."`;
-    }
     return `Low intent confidence detected. Ask ONE clarifying question only:
 "To proceed, could you share your **vehicle plate** and **owner identification number**?"`;
   }
@@ -2623,8 +2602,7 @@ ${ncdGuidanceLine}
 - One emoji per message max
 
 ## FLOW RULES
-- Flow order: Plate → PDPA consent → Owner ID → Confirm vehicle → Quotes → Select insurer → Add-ons → Road tax → Details → OTP → Payment
-- Before collecting or using owner ID, email, phone, or address, consent must be accepted in state. If not accepted, ask for consent first and do not use sensitive data.
+- Flow order: Vehicle Plate + Owner ID → Confirm vehicle → Quotes → Select insurer → Add-ons → Road tax → Details → OTP → Payment
 - Never skip steps or show quotes without vehicle info
 - Collect ALL 3 details (email, phone, address) before OTP
 - If indirect answer ("I don't drive much"), acknowledge + recommend + confirm before proceeding
@@ -2881,54 +2859,8 @@ export async function POST(request) {
     let paymentLinkFallback = null;
     let lowConfidenceNeedsClarification = false;
     let forcedAssistantResponse = null;
-    let pdpaConsentAuditEvent = null;
     const vehicleExtract = extractVehicleInfo(latestMessage);
-    const personalInfoForConsent = extractPersonalInfo(sanitizePersonalDetailExtractionInput(latestMessage));
-
-    if (!state.hasPdpaConsent?.()) {
-      const pdpaPending = state.pendingAction?.type === PDPA_CONSENT_PENDING_TYPE;
-      const pdpaReason = getPdpaConsentReason({
-        state,
-        intent,
-        vehicleExtract,
-        personalInfo: personalInfoForConsent,
-      });
-
-      if (detectPdpaConsentAcceptance(latestMessage, { requireExplicit: !pdpaPending })) {
-        const consentReason = state.pendingAction?.reason || pdpaReason || 'explicit_acceptance';
-        const acceptedAt = Date.now();
-        state.acceptPdpaConsent({ acceptedAt });
-        pdpaConsentAuditEvent = {
-          sessionId,
-          action: 'accepted',
-          consentVersion: state.pdpaConsent?.version,
-          acceptedAt,
-          source: 'chat',
-          reason: consentReason,
-          acceptanceMessage: latestMessage,
-        };
-        state.setPendingAction(null);
-        forcedAssistantResponse = buildPdpaConsentAcceptedReply(state);
-      } else if ((pdpaPending || pdpaReason) && detectPdpaConsentRejection(latestMessage)) {
-        state.setPendingAction(createPdpaPendingAction(pdpaReason || state.pendingAction?.reason || 'sensitive_data'));
-        forcedAssistantResponse = buildPdpaConsentRejectedReply();
-      } else if ((pdpaPending || pdpaReason) && isPdpaConsentExplanationRequest(latestMessage)) {
-        state.setPendingAction(createPdpaPendingAction(pdpaReason || state.pendingAction?.reason || 'sensitive_data'));
-        forcedAssistantResponse = buildPdpaConsentExplanationReply(state);
-      } else if (pdpaReason || (pdpaPending && intent.intent !== USER_INTENTS.ASK_QUESTION)) {
-        const replyState = {
-          ...state,
-          plateNumber: state.plateNumber || vehicleExtract.registrationNumber || null,
-        };
-        state.setPendingAction(createPdpaPendingAction(pdpaReason || state.pendingAction?.reason || 'sensitive_data'));
-        forcedAssistantResponse = buildPdpaConsentRequestReply({
-          state: replyState,
-          reason: pdpaReason || state.pendingAction?.reason,
-        });
-      }
-    }
-
-    const canUseSensitiveDataThisTurn = !!state.hasPdpaConsent?.();
+    const canUseSensitiveDataThisTurn = true;
 
     console.log('Session ID:', sessionId);
     console.log('State source:', serverState ? 'server session' : (clientState ? 'legacy client fallback' : 'inferred from messages'));
@@ -3010,14 +2942,6 @@ export async function POST(request) {
         const roadTax = roadTaxMap[selectedOption];
         if (roadTax) state.selectRoadTax(roadTax);
       }
-    }
-
-    if (!state.hasPdpaConsent?.() && state.step === FLOW_STEPS.PERSONAL_DETAILS && !forcedAssistantResponse) {
-      state.setPendingAction(createPdpaPendingAction('personal_details'));
-      forcedAssistantResponse = buildPdpaConsentRequestReply({
-        state,
-        reason: 'personal_details',
-      });
     }
 
     if (intent.intent === USER_INTENTS.VERIFY_OTP && intent.data?.valid) {
@@ -3384,7 +3308,6 @@ Please re-enter your **vehicle plate** and **owner identification number** to co
     const shouldForceDetailsStepStructure =
       state.step === FLOW_STEPS.PERSONAL_DETAILS &&
       intent.intent === USER_INTENTS.SELECT_ROADTAX &&
-      state.hasPdpaConsent?.() &&
       !!summaryBoxCanonical;
 
     // Deterministic transaction turns should not depend on OpenAI availability.
@@ -3624,14 +3547,6 @@ This summary box must appear in EVERY response from now on until payment is comp
       lastIntent: intent,
       metadata: sessionMetadata,
     });
-    if (pdpaConsentAuditEvent) {
-      try {
-        await recordPdpaConsentAuditEvent(pdpaConsentAuditEvent);
-      } catch (auditError) {
-        console.warn('[pdpa-consent-audit] Unable to record consent audit event.', auditError?.message || auditError);
-      }
-    }
-
     // ========================================================================
     // 5. STREAM RESPONSE
     // ========================================================================

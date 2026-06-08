@@ -122,6 +122,45 @@ test('advisory fallback explains windscreen and resumes add-on decision', () => 
   assert.doesNotMatch(reply, /Step \d of 6/i);
 });
 
+test('advisory fallback answers add-on needs guidance during OpenAI capacity errors', () => {
+  const state = makeQuoteState({
+    step: FLOW_STEPS.ADDONS,
+    selectedQuote: {
+      insurer: 'Takaful Ikhlas Insurance',
+      priceAfter: 796,
+      priceBefore: 995,
+      ncdPercent: 20,
+      sumInsured: 34000,
+      coverType: 'Comprehensive',
+    },
+    selectedAddOns: [],
+    addOnsConfirmed: false,
+  });
+
+  const reply = buildAdvisoryFallbackResponse({
+    error: makeRetryableRateLimitError(),
+    state,
+    intent: { intent: USER_INTENTS.ASK_QUESTION },
+    decision: {
+      mode: CONVERSATION_MODES.INSURANCE_QUESTION,
+      action: CONVERSATION_ACTIONS.ANSWER_THEN_RESUME,
+    },
+    turnPlan: {
+      responsePattern: TURN_RESPONSE_PATTERNS.ANSWER_THEN_RESUME,
+      questionGuidance: TURN_QUESTION_GUIDANCE.ADDON_GENERAL,
+    },
+    latestMessage: 'Which do I need?',
+    productionTurnInstructions: {},
+  });
+
+  assert.match(reply, /do not buy everything/i);
+  assert.match(reply, /Special Perils\/Flood/i);
+  assert.match(reply, /Windscreen/i);
+  assert.match(reply, /flood only|both|skip add-ons/i);
+  assert.doesNotMatch(reply, /receiving many AI requests/i);
+  assert.doesNotMatch(reply, /Step \d of 6/i);
+});
+
 test('advisory fallback does not hide non-retryable OpenAI errors', () => {
   const state = makeQuoteState();
   const error = new Error('OPENAI_API_KEY is invalid.');
