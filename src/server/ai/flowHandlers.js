@@ -355,10 +355,8 @@ Do NOT alter the summary. MUST include all 3 items to collect.`);
     if (!canonicalDetails.phone) missing.push('Phone number');
     if (!canonicalDetails.address) missing.push('Address');
 
-    pushSystem(openAiMessages, missing.length === 0
-      ? `All 3 required details are collected. Ask the user to confirm before sending OTP. Your response MUST follow this format:
-
-Thanks — here are the details I captured:
+    nextForcedAssistantResponse = missing.length === 0
+      ? `Thanks — here are the details I captured:
 
 - **Email:** ${canonicalDetails.email || '(provided)'}
 - **Phone:** ${canonicalDetails.phone || '(provided)'}
@@ -366,34 +364,28 @@ Thanks — here are the details I captured:
 
 Does everything look **correct** ?
 If yes, I will send the OTP now. If not, tell me what to change.
+`
+      : `Thanks — I’ve captured what you shared.
 
-Do NOT send OTP yet. Wait for user confirmation first.`
-      : `User is submitting personal details.
-Currently still missing: ${missing.join(', ')}.
-Acknowledge what was received, then ask ONLY for missing item(s) in this exact bullet format:
+I still need:
 ${buildPersonalDetailExampleList(missing)}
-${typoSignals.length > 0 ? `If relevant, briefly mention likely format issue(s): ${typoSignals.join(' ')}` : ''}
-Do NOT proceed to OTP until all 3 are collected.`);
+${typoSignals.length > 0 ? `\n${typoSignals.join(' ')}` : ''}`;
   }
 
   if (intent.intent === USER_INTENTS.CONFIRM && state.step === FLOW_STEPS.OTP) {
-    pushSystem(openAiMessages, `User confirmed their personal details are correct. Now ask for OTP. Your response MUST be:
-
-"${OTP_PROMPT_COPY}"`);
+    nextForcedAssistantResponse = OTP_PROMPT_COPY;
   }
 
   if (intent.intent === USER_INTENTS.VERIFY_OTP) {
     if (state.isQuoteExpired()) {
       const summaryBox = buildSummaryBox(state);
-      pushSystem(openAiMessages, `⚠️ Quote expired. Respond with:
-
-"Your quote has expired. Let me refresh it for you...
+      nextForcedAssistantResponse = `Your quote has expired. Let me refresh it for you...
 
 ✅ **Quote refreshed!** Same prices apply.
 
 ${summaryBox}
 
-${OTP_PROMPT_COPY}"`);
+${OTP_PROMPT_COPY}`;
       state.refreshQuoteTimestamps();
     } else {
       const paymentLink = buildPaymentLink(state);
@@ -401,13 +393,9 @@ ${OTP_PROMPT_COPY}"`);
       nextShouldInjectPaymentLinkFallback = true;
       const summaryBox = buildSummaryBox(state);
       const paymentStepBlock = buildPaymentStepBlock(summaryBox, paymentLink);
-      pushSystem(openAiMessages, `OTP verified! Your response MUST include:
+      nextForcedAssistantResponse = `✅ All set!
 
-✅ All set!
-
-${paymentStepBlock}
-
-Do NOT alter the payment link URL or amounts.`);
+${paymentStepBlock}`;
     }
   }
 
@@ -417,15 +405,13 @@ Do NOT alter the payment link URL or amounts.`);
       const paymentLink = buildPaymentLink(state);
       nextPaymentLinkFallback = paymentLink;
       nextShouldInjectPaymentLinkFallback = true;
-      pushSystem(openAiMessages, `⚠️ Quote expired. Respond with:
-
-"Your quote has expired. Let me refresh it for you...
+      nextForcedAssistantResponse = `Your quote has expired. Let me refresh it for you...
 
 ✅ **Quote refreshed!** Same prices still apply.
 
 ${summaryBox}
 
-${paymentLink}"`);
+${paymentLink}`;
       state.refreshQuoteTimestamps();
     } else {
       const paymentLink = buildPaymentLink(state);
@@ -433,11 +419,7 @@ ${paymentLink}"`);
       nextShouldInjectPaymentLinkFallback = true;
       const summaryBox = buildSummaryBox(state);
       const paymentStepBlock = buildPaymentStepBlock(summaryBox, paymentLink);
-      pushSystem(openAiMessages, `User is ready to pay. Your response MUST include:
-
-${paymentStepBlock}
-
-Do NOT alter the payment link URL or amounts.`);
+      nextForcedAssistantResponse = paymentStepBlock;
     }
   }
 

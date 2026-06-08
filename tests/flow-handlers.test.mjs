@@ -113,10 +113,76 @@ test('flow handler prepares payment link fallback after valid OTP', () => {
     latestMessage: '1234',
     callbacks: makeCallbacks(),
   });
-  const joined = openAiMessages.map((message) => message.content).join('\n');
 
   assert.equal(result.paymentLinkFallback, '/my/payment/test');
   assert.equal(result.shouldInjectPaymentLinkFallback, true);
-  assert.match(joined, /PAYMENT_STEP_BLOCK/);
-  assert.match(joined, /Do NOT alter the payment link URL or amounts/i);
+  assert.match(result.forcedAssistantResponse, /PAYMENT_STEP_BLOCK/);
+  assert.match(result.forcedAssistantResponse, /\/my\/payment\/test/);
+  assert.equal(openAiMessages.length, 0);
+});
+
+test('flow handler captures personal details without model dependency', () => {
+  const state = new ConversationState();
+  Object.assign(state, {
+    step: FLOW_STEPS.OTP,
+    plateNumber: 'JRT9289',
+    nricNumber: '951018145405',
+    selectedQuote: {
+      insurer: 'Takaful Ikhlas Insurance',
+      priceAfter: 796,
+    },
+    selectedRoadTax: { name: '12 months digital road tax', price: 90 },
+    personalDetails: {
+      email: 'ali@example.com',
+      phone: '0123456789',
+      address: 'No 1 Jalan Test, 47000 Shah Alam',
+    },
+  });
+  const openAiMessages = [];
+
+  const result = applyDeterministicFlowHandlers({
+    openAiMessages,
+    state,
+    intent: { intent: USER_INTENTS.SUBMIT_DETAILS, data: {}, confidence: 1 },
+    turnPlan: {},
+    messages: [
+      {
+        role: 'user',
+        content: 'name Ali Tan, email ali@example.com, phone 0123456789, address No 1 Jalan Test, 47000 Shah Alam Selangor',
+      },
+    ],
+    latestMessage: 'name Ali Tan, email ali@example.com, phone 0123456789, address No 1 Jalan Test, 47000 Shah Alam Selangor',
+    callbacks: makeCallbacks(),
+  });
+
+  assert.match(result.forcedAssistantResponse, /ali@example\.com/);
+  assert.match(result.forcedAssistantResponse, /0123456789/);
+  assert.match(result.forcedAssistantResponse, /Does everything look \*\*correct\*\*/);
+  assert.equal(openAiMessages.length, 0);
+});
+
+test('flow handler asks for OTP without model dependency after detail confirmation', () => {
+  const state = new ConversationState();
+  Object.assign(state, {
+    step: FLOW_STEPS.OTP,
+    personalDetails: {
+      email: 'ali@example.com',
+      phone: '0123456789',
+      address: 'No 1 Jalan Test, 47000 Shah Alam',
+    },
+  });
+  const openAiMessages = [];
+
+  const result = applyDeterministicFlowHandlers({
+    openAiMessages,
+    state,
+    intent: { intent: USER_INTENTS.CONFIRM, data: {}, confidence: 1 },
+    turnPlan: {},
+    messages: [{ role: 'user', content: 'yes' }],
+    latestMessage: 'yes',
+    callbacks: makeCallbacks(),
+  });
+
+  assert.equal(result.forcedAssistantResponse, 'OTP_PROMPT');
+  assert.equal(openAiMessages.length, 0);
 });
