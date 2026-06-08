@@ -487,6 +487,7 @@ const getSelectedAddOnIds = (messages = [], assistantIndex = -1, addOnsCard = nu
   const normalizedReply = normalizeAddOnReply(rawReply);
   if (!normalizedReply) return null;
   if (/\bskip(?: add ons?)?\b/.test(normalizedReply)) return [];
+  if (isAddOnQuestionReply(rawReply, normalizedReply)) return null;
 
   const replyWithoutMoney = rawReply.replace(/\brm\s*\d[\d,]*(?:\.\d+)?\b/gi, " ");
   const selectedNumbers = new Set(
@@ -504,6 +505,24 @@ const getSelectedAddOnIds = (messages = [], assistantIndex = -1, addOnsCard = nu
       );
     })
     .map((option) => option.id);
+};
+
+const isAddOnQuestionReply = (rawReply = "", normalizedReply = "") => {
+  const raw = String(rawReply || "");
+  const normalized = normalizedReply || normalizeAddOnReply(raw);
+  if (!normalized) return false;
+
+  const startsAsQuestion = /^(what|why|how|when|where|which|do i|should i|can you explain|explain|tell me|does|will|is it|are there)\b/.test(normalized);
+  const asksAdvice = /\b(recommend|recommendation|advice|advise|which one|best option|worth it)\b/.test(normalized);
+  const asksMeaning = /\b(what is|what does|meaning|mean|cover|coverage|covered|benefit|need it)\b/.test(normalized);
+  const explicitSelectionQuestion = /^(can you|could you|please)\s+(add|select|include|put|choose)\b/.test(normalized);
+  const explicitSelection = /\b(add|select|choose|tick|confirm|include|want|go with|put|use|proceed|yes|ok|okay|only|please add)\b/.test(normalized);
+
+  if (startsAsQuestion && !explicitSelectionQuestion) return true;
+  if (asksAdvice) return true;
+  if (raw.includes("?") && asksMeaning && !explicitSelection) return true;
+
+  return false;
 };
 
 function AddOnInfoButton({ label, number, info, activeInfoId, setActiveInfoId, id }) {
