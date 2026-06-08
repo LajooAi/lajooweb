@@ -260,8 +260,12 @@ test('quote recommendation instruction gives a parsable direct recommendation', 
     message: 'recommend one for me',
   });
 
-  assert.match(instruction, /I recommend Takaful Ikhlas Insurance/i);
+  assert.match(instruction, /\*\*My pick:\*\* \*\*Takaful Ikhlas Insurance\*\*/i);
+  assert.match(instruction, /\*\*Why:\*\*/i);
+  assert.match(instruction, /\*\*Trade-off:\*\*/i);
+  assert.match(instruction, /\*\*Next:\*\*/i);
   assert.match(instruction, /Approved fact-backed reasons/i);
   assert.match(instruction, /Do not expand them into extra benefits/i);
   assert.match(instruction, /Do not show the full quote list again/i);
+  assert.doesNotMatch(instruction, /so mention/i);
 });

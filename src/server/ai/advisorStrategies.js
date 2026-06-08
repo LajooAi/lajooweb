@@ -16,6 +16,8 @@ const STRATEGIES = {
     rules: [
       'Compare tradeoffs using current quote data: premium, sum insured, selected add-ons, and verified facts only.',
       'If enough quote data exists and the user asks for advice, give one clear recommendation.',
+      'For insurer recommendation or comparison moments, use this visible structure: **My pick:**, **Why:**, **Trade-off:**, **Next:**.',
+      'Bold insurer names, final premiums, and important decision words inside that structure.',
       'If the user sounds undecided, ask one smart priority question: price, claims comfort, or higher coverage.',
       'Do not invent insurer service, claims, betterment, towing, or product facts.',
     ],

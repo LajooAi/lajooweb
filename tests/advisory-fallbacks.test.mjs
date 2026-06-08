@@ -78,11 +78,56 @@ test('advisory fallback gives quote recommendation when OpenAI is rate-limited',
     },
   });
 
-  assert.match(reply, /^I recommend \*\*/);
-  assert.match(reply, /Why:/);
-  assert.match(reply, /Tradeoff:/);
+  assert.match(reply, /^\*\*My pick:\*\*/);
+  assert.match(reply, /\*\*Why:\*\*/);
+  assert.match(reply, /\*\*Trade-off:\*\*/);
+  assert.match(reply, /\*\*Next:\*\*/);
   assert.match(reply, /Want to go with/i);
+  assert.doesNotMatch(reply, /so mention/i);
+  assert.doesNotMatch(reply, /receiving many AI requests/i);
   assert.doesNotMatch(reply, /Step \d of 6/i);
+});
+
+test('advisory fallback answers quote alternatives when user asks about others', () => {
+  const state = makeQuoteState({
+    userPreferences: { budgetFocused: true },
+  });
+  const latestMessage = 'what about others';
+  const quoteRecommendation = buildQuoteRecommendation({
+    quotes: getQuotes(),
+    state,
+    userPreferences: state.userPreferences,
+    message: 'which insurer do you recommend?',
+  });
+
+  const reply = buildAdvisoryFallbackResponse({
+    error: makeRetryableRateLimitError(),
+    state,
+    intent: { intent: USER_INTENTS.ASK_QUESTION },
+    decision: {
+      mode: CONVERSATION_MODES.QUOTE_COMPARISON,
+      action: CONVERSATION_ACTIONS.ANSWER_THEN_RESUME,
+    },
+    turnPlan: {
+      responsePattern: TURN_RESPONSE_PATTERNS.ANSWER_THEN_RESUME,
+      questionGuidance: TURN_QUESTION_GUIDANCE.QUOTE_RECOMMENDATION,
+    },
+    latestMessage,
+    productionTurnInstructions: {
+      quoteRecommendation,
+    },
+  });
+
+  assert.match(reply, /other options/i);
+  assert.match(reply, /Takaful Ikhlas Insurance/i);
+  assert.match(reply, /Tokio Marine Insurance|Etiqa Insurance|Allianz Insurance/i);
+  assert.match(reply, /\*\*Trade-off:\*\*/);
+  assert.match(reply, /\*\*Next:\*\*/);
+  assert.match(reply, /cheapest|higher sum insured|balanced recommendation/i);
+  assert.doesNotMatch(reply, /receiving many AI requests/i);
+  assert.doesNotMatch(reply, /so mention/i);
+  assert.doesNotMatch(reply, /^Why:/im);
+  assert.doesNotMatch(reply, /^Tradeoff:/im);
 });
 
 test('advisory fallback explains windscreen and resumes add-on decision', () => {

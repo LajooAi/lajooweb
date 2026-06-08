@@ -85,19 +85,23 @@ model PolicyDocument {
 }
 
 model KnowledgeChunk {
-  id               String         @id @default(cuid())
-  insurerId        String
-  insurer          Insurer        @relation(fields: [insurerId], references: [id], onDelete: Cascade)
-  policyDocumentId String
-  policyDocument   PolicyDocument @relation(fields: [policyDocumentId], references: [id], onDelete: Cascade)
-  pageNumber       Int?
-  chunkOrder       Int
-  chunkText        String
-  tokenCount       Int?
-  createdAt        DateTime       @default(now())
+  id                 String                 @id @default(cuid())
+  insurerId          String
+  insurer            Insurer                @relation(fields: [insurerId], references: [id], onDelete: Cascade)
+  policyDocumentId   String
+  policyDocument     PolicyDocument         @relation(fields: [policyDocumentId], references: [id], onDelete: Cascade)
+  pageNumber         Int?
+  chunkOrder         Int
+  chunkText          String
+  tokenCount         Int?
+  embedding          Unsupported("vector")?
+  embeddingModel     String?
+  embeddingUpdatedAt DateTime?
+  createdAt          DateTime               @default(now())
 
   @@index([insurerId, policyDocumentId])
   @@index([policyDocumentId, chunkOrder])
+  @@index([embeddingModel])
 }
 
 model InsurerFact {

@@ -4,6 +4,10 @@ import {
   getInsurerKeysFromText,
   getInsurerByKey,
 } from "./insurerCatalog.js";
+import {
+  mergeSemanticAndKeywordResults,
+  searchKnowledgeChunksSemantic,
+} from "../server/knowledge/semanticSearch.js";
 
 const QUERY_STOP_WORDS = new Set([
   "a",
@@ -168,6 +172,7 @@ export async function searchInsurerKnowledgeFromDb(query, options = {}) {
   const scoredTerms = expandDomainTerms(query, scopedTerms).slice(0, 16);
   const maxChunks = Number(options.maxChunks || 10);
   const maxChunkCandidates = Number(options.maxChunkCandidates || Math.max(maxChunks * 20, 260));
+  const limit = Number(options.limit || 6);
 
   const termClausesFor = (field) => scoredTerms.map((term) => ({
     [field]: { contains: term, mode: "insensitive" },
@@ -178,6 +183,12 @@ export async function searchInsurerKnowledgeFromDb(query, options = {}) {
     : {};
 
   try {
+    const semanticResults = await searchKnowledgeChunksSemantic(query, {
+      ...options,
+      limit,
+      insurerCodes: insurerHints,
+    });
+
     const chunkRows = await prisma.knowledgeChunk.findMany({
       where: {
         ...insurerScope,
@@ -225,9 +236,11 @@ export async function searchInsurerKnowledgeFromDb(query, options = {}) {
       })
       .filter((item) => item.score > 0);
 
-    return chunkResults
+    const keywordResults = chunkResults
       .sort((a, b) => b.score - a.score)
-      .slice(0, Number(options.limit || 6));
+      .slice(0, limit);
+
+    return mergeSemanticAndKeywordResults(semanticResults, keywordResults, limit);
   } catch (error) {
     console.warn("[insurer-knowledge-db] policy chunk search failed.", error?.message || error);
     return [];

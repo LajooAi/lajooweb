@@ -47,6 +47,34 @@ function getRecommendedQuote(recommendation) {
   };
 }
 
+function cleanSentence(text) {
+  const cleaned = String(text || '')
+    .replace(/,\s*so mention\b.*$/i, '')
+    .replace(/\s*so mention\b.*$/i, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  if (!cleaned) return '';
+  return /[.!?]$/.test(cleaned) ? cleaned : `${cleaned}.`;
+}
+
+function getQuoteSummary(quote) {
+  if (!quote || typeof quote !== 'object') return null;
+
+  const insurerName = quote.insurerName || quote.insurer?.displayName || quote.insurer || null;
+  if (!insurerName) return null;
+
+  return {
+    insurerName,
+    finalPremiumLabel: formatRm(quote.finalPremium ?? quote.priceAfter ?? quote.pricing?.finalPremium),
+    sumInsuredLabel: formatRm(quote.sumInsured ?? quote.insuredAmount),
+  };
+}
+
+function shortInsurerName(insurerName) {
+  return String(insurerName || '').replace(/\s+(Insurance|Insurans|Takaful)(\s+Bhd|\s+Berhad)?$/i, '').trim() || insurerName;
+}
+
 function isQuoteRecommendationTurn({ state, decision, turnPlan, latestMessage, recommendation }) {
   if (state?.step !== FLOW_STEPS.QUOTES) return false;
   if (!getRecommendedQuote(recommendation)) return false;
@@ -59,12 +87,20 @@ function isQuoteRecommendationTurn({ state, decision, turnPlan, latestMessage, r
   );
 }
 
+function isOtherQuoteOptionsTurn({ state, latestMessage, recommendation }) {
+  if (state?.step !== FLOW_STEPS.QUOTES) return false;
+  if (!getRecommendedQuote(recommendation)) return false;
+
+  const text = normalizeText(latestMessage);
+  return /\b(other|others|alternative|alternatives|compare|comparison|options|all of them|what about)\b/i.test(text);
+}
+
 function buildQuoteRecommendationFallback({ recommendation }) {
   const quote = getRecommendedQuote(recommendation);
   if (!quote) return null;
 
   const reasons = Array.isArray(recommendation?.reasons)
-    ? recommendation.reasons.filter(Boolean).slice(0, 2)
+    ? recommendation.reasons.map(cleanSentence).filter(Boolean).slice(0, 2)
     : [];
   const alternatives = Array.isArray(recommendation?.alternatives)
     ? recommendation.alternatives.filter(Boolean).slice(0, 2)
@@ -79,26 +115,82 @@ function buildQuoteRecommendationFallback({ recommendation }) {
     details.push(`${quote.sumInsuredLabel} sum insured`);
   }
 
-  const lines = [
-    `I recommend **${quote.insurerName}** for this renewal.`,
-  ];
-
   const reasonText = reasons.length > 0
-    ? reasons.join('; ')
+    ? reasons.map((reason) => reason.replace(/[.!?]$/g, '')).join('; ')
     : 'it gives the best balance from the current quote set';
-  lines.push(`Why: ${[reasonText, ...details].filter(Boolean).join(', ')}.`);
+  const detailText = details.length > 0
+    ? ` It also gives ${details.join(', ')}.`
+    : '';
+  const pickLine = `**My pick:** **${quote.insurerName}**${quote.finalPremiumLabel ? ` — **${quote.finalPremiumLabel}**` : ''}`;
+  const whyLine = `**Why:** ${reasonText}.${detailText}`;
 
+  let tradeoffLine = null;
   if (recommendation?.tradeoff) {
-    lines.push(`Tradeoff: ${recommendation.tradeoff}`);
+    tradeoffLine = `**Trade-off:** ${cleanSentence(recommendation.tradeoff)}`;
   } else if (alternatives.length > 0) {
     const alternative = alternatives[0];
     const altPremium = formatRm(alternative.finalPremium ?? alternative.priceAfter ?? alternative.pricing?.finalPremium);
     if (alternative.insurerName && altPremium) {
-      lines.push(`Tradeoff: ${alternative.insurerName} is the closest alternative at ${altPremium}.`);
+      tradeoffLine = `**Trade-off:** The closest alternative is **${alternative.insurerName}** at **${altPremium}**.`;
     }
   }
 
-  lines.push(`Want to go with **${quote.insurerName}**?`);
+  const nextLine = `**Next:** Do you want to go with **${shortInsurerName(quote.insurerName)}**, choose the cheapest option, or compare all insurers?`;
+  return [pickLine, whyLine, tradeoffLine, nextLine].filter(Boolean).join('\n\n');
+}
+
+function buildOtherQuoteOptionsFallback({ recommendation }) {
+  const recommended = getRecommendedQuote(recommendation);
+  if (!recommended) return null;
+
+  const scoredQuotes = Array.isArray(recommendation?.scoredQuotes)
+    ? recommendation.scoredQuotes
+    : [];
+  const alternatives = Array.isArray(recommendation?.alternatives)
+    ? recommendation.alternatives
+    : [];
+
+  const optionPool = scoredQuotes.length > 0
+    ? scoredQuotes
+    : [recommendation.recommendedQuote, ...alternatives].filter(Boolean);
+
+  const options = optionPool
+    .map(getQuoteSummary)
+    .filter(Boolean)
+    .slice(0, 5);
+
+  if (options.length === 0) return buildQuoteRecommendationFallback({ recommendation });
+
+  const cheapest = [...options].sort((a, b) => {
+    const aValue = Number(String(a.finalPremiumLabel || '').replace(/[^\d.]/g, ''));
+    const bValue = Number(String(b.finalPremiumLabel || '').replace(/[^\d.]/g, ''));
+    return aValue - bValue;
+  })[0];
+  const highestCover = [...options].sort((a, b) => {
+    const aValue = Number(String(a.sumInsuredLabel || '').replace(/[^\d.]/g, ''));
+    const bValue = Number(String(b.sumInsuredLabel || '').replace(/[^\d.]/g, ''));
+    return bValue - aValue;
+  })[0];
+
+  const lines = [
+    'Here’s the simple way to look at the other options:',
+    ...options.map((option) => {
+      const parts = [
+        `**${option.insurerName}**`,
+        option.finalPremiumLabel,
+        option.sumInsuredLabel ? `${option.sumInsuredLabel} sum insured` : null,
+      ].filter(Boolean);
+      return `- ${parts.join(' — ')}`;
+    }),
+  ];
+
+  if (cheapest?.insurerName && highestCover?.insurerName) {
+    lines.push(
+      `**Trade-off:** If you want lowest price, look at **${cheapest.insurerName}**. If you want higher sum insured, look at **${highestCover.insurerName}**. My balanced pick is still **${recommended.insurerName}**.`
+    );
+  }
+
+  lines.push('**Next:** Do you want the **cheapest option**, the **higher sum insured**, or **my balanced recommendation**?');
   return lines.filter(Boolean).join('\n\n');
 }
 
@@ -204,6 +296,30 @@ function buildNeedsGuidanceFallback(state) {
   return 'Tell me what you are deciding between, and I’ll narrow it down to the safest simple choice.';
 }
 
+function buildGenericRenewalFallback(state) {
+  if (state?.step === FLOW_STEPS.QUOTES) {
+    return 'I can still guide you using the current quote list. Do you want the cheapest option, the highest sum insured, or my balanced recommendation?';
+  }
+
+  if (state?.step === FLOW_STEPS.ADDONS) {
+    return 'I can still guide you from here. For add-ons, choose windscreen, Special Perils/Flood, both, or skip add-ons.';
+  }
+
+  if (state?.step === FLOW_STEPS.ROADTAX) {
+    return 'I can still continue from here. For road tax, choose 12-month digital road tax or no road tax.';
+  }
+
+  if (state?.step === FLOW_STEPS.PERSONAL_DETAILS) {
+    return 'I can still continue from here. Please send your email, phone number, and address in one message.';
+  }
+
+  if (state?.step === FLOW_STEPS.PAYMENT || state?.step === FLOW_STEPS.OTP) {
+    return 'I can still help you adjust the renewal. Tell me if you want to change insurer, add-ons, road tax, or continue payment.';
+  }
+
+  return 'I can still help with the renewal. Tell me what you want to compare, change, or continue.';
+}
+
 export function buildAdvisoryFallbackResponse({
   error,
   state,
@@ -216,6 +332,10 @@ export function buildAdvisoryFallbackResponse({
   if (!isRetryableOpenAiCapacityError(error)) return null;
 
   const recommendation = productionTurnInstructions?.quoteRecommendation;
+
+  if (isOtherQuoteOptionsTurn({ state, latestMessage, recommendation })) {
+    return buildOtherQuoteOptionsFallback({ recommendation });
+  }
 
   if (isQuoteRecommendationTurn({ state, decision, turnPlan, latestMessage, recommendation })) {
     return buildQuoteRecommendationFallback({ recommendation });
@@ -234,7 +354,7 @@ export function buildAdvisoryFallbackResponse({
     return buildConfusedFallback(state);
   }
 
-  return null;
+  return buildGenericRenewalFallback(state);
 }
 
 export default buildAdvisoryFallbackResponse;

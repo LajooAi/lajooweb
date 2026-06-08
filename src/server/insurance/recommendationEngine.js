@@ -389,9 +389,9 @@ function buildReasonBundle(quote, scores, weights, allQuotes, factSignals = {}) 
   const highestCover = sortedByCoverage[0];
   let tradeoff = 'It is a balanced pick, but the user should still confirm if price, claims comfort, or higher sum insured matters most.';
   if (quote.insurerId !== cheapest?.insurerId) {
-    tradeoff = `${cheapest.insurerName} is cheaper at ${formatRm(cheapest.finalPremium)}, so mention the price tradeoff.`;
+    tradeoff = `${cheapest.insurerName} is cheaper at ${formatRm(cheapest.finalPremium)}.`;
   } else if (quote.insurerId !== highestCover?.insurerId) {
-    tradeoff = `${highestCover.insurerName} has higher sum insured at ${formatRm(highestCover.sumInsured)}, so mention the coverage tradeoff.`;
+    tradeoff = `${highestCover.insurerName} has higher sum insured at ${formatRm(highestCover.sumInsured)}.`;
   }
 
   return { reasons, tradeoff };
@@ -520,13 +520,22 @@ ${riskNotes ? `- Caution notes: ${riskNotes}` : ''}
 ${alternatives.length > 0 ? `- Nearby alternatives: ${alternatives.join(' | ')}` : ''}
 
 Response rules:
-- Say "I recommend ${quote.insurerName}" so the system can remember the recommendation.
-- Give one clear reason and one tradeoff.
+- Use this exact visible structure for quote recommendation/comparison replies:
+  **My pick:** **${quote.insurerName}** — **${formatRm(quote.finalPremium)}**
+
+  **Why:** One clear reason using the quote price, sum insured, or approved fact-backed reason.
+
+  **Trade-off:** One honest tradeoff versus the cheapest, highest-sum-insured, or closest alternative.
+
+  **Next:** One clear choice question, such as "Do you want ${quote.insurerName}, the cheapest option, or a full comparison?"
+- Bold insurer names, final premiums, sum insured amounts, and important decision words.
+- Keep this structure only for quote recommendation/comparison moments. Do not force it onto normal insurance explanations.
+- Include the exact insurer name "${quote.insurerName}" in the My pick line so the system can remember the recommendation.
 - Use approved fact-backed reasons only as written above. Do not expand them into extra benefits, limits, or eligibility promises.
 - Brand-program reasons are eligibility context only. Do not make them the main reason unless the live quote/product confirms that exact programme; phrase them as "may be relevant if eligible".
 - Do not show the full quote list again unless the user asks.
 - Do not invent insurer policy facts. Current quote features are helpful context, not final policy promises.
-- End with: "Want to go with this?" or one equally clear close question.`;
+- End with exactly one Next question.`;
 }
 
 export default buildQuoteRecommendation;

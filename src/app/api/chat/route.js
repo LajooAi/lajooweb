@@ -2392,7 +2392,7 @@ function createOpenAiApiError(response, errorText) {
     Number(response?.status || 0) === 429 ||
     /rate[_\s-]?limit|tokens per min|too many requests/i.test(text)
   ) {
-    const error = new Error('LAJOO is receiving many AI requests right now. Please wait a few seconds and try again.');
+    const error = new Error('OpenAI rate limit reached.');
     error.code = 'OPENAI_RATE_LIMIT';
     error.retryable = true;
     return error;
@@ -2413,7 +2413,7 @@ function buildSafeChatErrorPayload(error) {
       type: 'error',
       code: 'OPENAI_RATE_LIMIT',
       retryable: true,
-      message: 'LAJOO is receiving many AI requests right now. Please wait a few seconds and try again.',
+      message: 'I can still help with the renewal. Please ask one thing at a time, or tell me what you want to compare, change, or continue.',
     };
   }
 
