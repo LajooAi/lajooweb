@@ -71,6 +71,8 @@ export class ConversationState {
     this.personalDetails = null;
     this.pdpaConsent = buildPdpaConsentState();
     this.otpVerified = false;
+    this.otpSentAt = null;
+    this.otpResendCount = 0;
     this.paymentMethod = null;
     this.transaction = {
       quoteId: null,
@@ -91,6 +93,8 @@ export class ConversationState {
       claimsFocused: false,
       coverageFocused: false,
       concisePreferred: null, // true | false | null (unknown)
+      excludedInsurerKeys: [],
+      conventionalOnly: false,
       preferenceScores: {
         budgetFocused: 0,
         claimsFocused: 0,
@@ -200,6 +204,8 @@ export class ConversationState {
           }
     );
     state.otpVerified = !!json.otpVerified;
+    state.otpSentAt = Number(json.otpSentAt || 0) || null;
+    state.otpResendCount = Number(json.otpResendCount || 0);
     state.paymentMethod = json.paymentMethod || null;
     state.transaction = {
       quoteId: json?.transaction?.quoteId || null,
@@ -221,6 +227,10 @@ export class ConversationState {
       concisePreferred: typeof json?.userPreferences?.concisePreferred === 'boolean'
         ? json.userPreferences.concisePreferred
         : null,
+      excludedInsurerKeys: Array.isArray(json?.userPreferences?.excludedInsurerKeys)
+        ? json.userPreferences.excludedInsurerKeys.filter(isKnownInsurerKey)
+        : [],
+      conventionalOnly: !!json?.userPreferences?.conventionalOnly,
       preferenceScores: {
         budgetFocused: Number(json?.userPreferences?.preferenceScores?.budgetFocused || 0),
         claimsFocused: Number(json?.userPreferences?.preferenceScores?.claimsFocused || 0),
@@ -434,6 +444,79 @@ export class ConversationState {
     return this;
   }
 
+  clearDownstreamFromRoadTax() {
+    this.personalDetails = null;
+    this.otpVerified = false;
+    this.resetOtpDelivery();
+    this.paymentMethod = null;
+    this.transaction = {
+      quoteId: this.transaction?.quoteId || null,
+      reprice: null,
+      proposalId: null,
+      proposalStatus: null,
+      paymentIntentId: null,
+      paymentSnapshotId: null,
+      paymentStatus: null,
+      policyNumber: null,
+      policyStatus: null,
+      lastError: null,
+    };
+    this.pendingAction = null;
+    this.step = this.selectedRoadTax ? FLOW_STEPS.PERSONAL_DETAILS : FLOW_STEPS.ROADTAX;
+    return this;
+  }
+
+  changeRoadTax(roadTax) {
+    this.selectedRoadTax = roadTax;
+    this.clearDownstreamFromRoadTax();
+    this.step = FLOW_STEPS.PERSONAL_DETAILS;
+    return this;
+  }
+
+  resetVehicleIdentity({ plateNumber = undefined, ownerId = undefined, ownerIdType = undefined } = {}) {
+    if (plateNumber !== undefined) {
+      this.plateNumber = plateNumber || null;
+    }
+    if (ownerId !== undefined) {
+      this.nricNumber = ownerId || null;
+      this.ownerIdType = ownerId ? (ownerIdType || (/^\d{12}$/.test(String(ownerId)) ? 'nric' : 'other_id')) : null;
+    }
+
+    this.vehicleInfo = null;
+    this.selectedQuote = null;
+    this.lastRecommendedInsurer = null;
+    this.quoteGeneratedAt = null;
+    this.quoteValidUntil = null;
+    this.selectedAddOns = [];
+    this.addOnsConfirmed = false;
+    this.selectedRoadTax = null;
+    this.personalDetails = null;
+    this.otpVerified = false;
+    this.resetOtpDelivery();
+    this.paymentMethod = null;
+    this.transaction = {
+      quoteId: null,
+      reprice: null,
+      proposalId: null,
+      proposalStatus: null,
+      paymentIntentId: null,
+      paymentSnapshotId: null,
+      paymentStatus: null,
+      policyNumber: null,
+      policyStatus: null,
+      lastError: null,
+    };
+    this.pendingAction = null;
+    this.step = this._determineStep();
+    return this;
+  }
+
+  resetRenewal() {
+    const fresh = new ConversationState();
+    Object.assign(this, fresh);
+    return this;
+  }
+
   /**
    * Reset state to quotes step - used when user wants to change insurer mid-flow
    * Keeps vehicle info but clears all selections
@@ -454,6 +537,7 @@ export class ConversationState {
     this.selectedRoadTax = null;
     this.personalDetails = null;
     this.otpVerified = false;
+    this.resetOtpDelivery();
     this.paymentMethod = null;
     this.transaction = {
       quoteId: null,
@@ -484,6 +568,7 @@ export class ConversationState {
     this.selectedRoadTax = null;
     this.personalDetails = null;
     this.otpVerified = false;
+    this.resetOtpDelivery();
     this.paymentMethod = null;
     this.transaction = {
       quoteId: this.transaction?.quoteId || null,
@@ -502,10 +587,39 @@ export class ConversationState {
     return this;
   }
 
+  /**
+   * Refresh downstream payment/proposal state after an add-on change, while
+   * preserving answers that are still valid. This is used for late-stage
+   * corrections such as "add option 10" after road tax or details were already
+   * captured.
+   */
+  refreshAfterAddOnChange() {
+    this.addOnsConfirmed = true;
+    this.otpVerified = false;
+    this.resetOtpDelivery();
+    this.paymentMethod = null;
+    this.transaction = {
+      quoteId: this.transaction?.quoteId || null,
+      reprice: null,
+      proposalId: null,
+      proposalStatus: null,
+      paymentIntentId: null,
+      paymentSnapshotId: null,
+      paymentStatus: null,
+      policyNumber: null,
+      policyStatus: null,
+      lastError: null,
+    };
+    this.pendingAction = null;
+    this.step = this._determineStep();
+    return this;
+  }
+
   setPersonalDetails(details) {
     this.personalDetails = details;
     this.step = FLOW_STEPS.OTP;
     this.pendingAction = null;
+    this.resetOtpDelivery();
     return this;
   }
 
@@ -521,6 +635,26 @@ export class ConversationState {
     this.step = FLOW_STEPS.SUCCESS;
     this.pendingAction = null;
     return this;
+  }
+
+  resetOtpDelivery() {
+    this.otpSentAt = null;
+    this.otpResendCount = 0;
+    return this;
+  }
+
+  markOtpSent({ sentAt = Date.now(), resent = false } = {}) {
+    this.otpSentAt = Number(sentAt || Date.now());
+    if (resent) {
+      this.otpResendCount = Number(this.otpResendCount || 0) + 1;
+    }
+    return this;
+  }
+
+  getOtpResendWaitMs({ now = Date.now(), cooldownMs = 30_000 } = {}) {
+    if (!this.otpSentAt) return 0;
+    const elapsedMs = Math.max(0, Number(now || Date.now()) - Number(this.otpSentAt || 0));
+    return Math.max(0, Number(cooldownMs || 0) - elapsedMs);
   }
 
   setPendingAction(action) {
@@ -567,6 +701,8 @@ export class ConversationState {
         address: !!this.personalDetails.address,
       } : null,
       otpVerified: this.otpVerified,
+      otpSentAt: this.otpSentAt || null,
+      otpResendCount: Number(this.otpResendCount || 0),
       paymentMethod: this.paymentMethod,
       transaction: this.transaction ? {
         quoteId: this.transaction.quoteId || null,
@@ -948,6 +1084,155 @@ function isSimpleNegative(text) {
   return rest.every((w) => filler.has(w));
 }
 
+const LATE_CORRECTION_STEPS = new Set([
+  FLOW_STEPS.QUOTES,
+  FLOW_STEPS.ADDONS,
+  FLOW_STEPS.ROADTAX,
+  FLOW_STEPS.PERSONAL_DETAILS,
+  FLOW_STEPS.OTP,
+  FLOW_STEPS.PAYMENT,
+  FLOW_STEPS.SUCCESS,
+]);
+
+function isLateFlowStep(state) {
+  return !!state && (
+    LATE_CORRECTION_STEPS.has(state.step) ||
+    !!state.selectedQuote ||
+    !!state.selectedRoadTax ||
+    !!state.paymentMethod
+  );
+}
+
+function detectVehicleCorrectionIntent(msg, currentState) {
+  if (!isLateFlowStep(currentState)) return null;
+
+  const text = String(msg || '');
+  const mentionsVehicleTarget =
+    /\b(vehicle|car|plate|registration|reg\s*no|owner\s*(?:id|ic)|owner identification|nric|ic)\b/i.test(text);
+  const correctionCue =
+    /\b(change|update|correct|replace|edit|wrong|not my car|wrong car|different car|wait wrong|new plate|plate should|owner id should|ic should)\b/i.test(text);
+  if (!mentionsVehicleTarget && !correctionCue) return null;
+
+  const extracted = extractVehicleInfo(text);
+  const ownerCue = /\b(owner\s*(?:id|ic)|owner identification|nric|ic)\b/i.test(text);
+  const plateCue = /\b(plate|registration|reg\s*no|vehicle|car)\b/i.test(text);
+
+  if (!extracted.registrationNumber && !extracted.ownerId && !/wrong car|not my car|wrong vehicle/i.test(text)) {
+    return null;
+  }
+
+  const data = {};
+  if (extracted.registrationNumber && (plateCue || !ownerCue)) {
+    data.plateNumber = extracted.registrationNumber;
+  }
+  if (extracted.ownerId && (ownerCue || !plateCue)) {
+    data.ownerId = extracted.ownerId;
+    data.ownerIdType = extracted.ownerIdType || null;
+  }
+
+  return {
+    intent: USER_INTENTS.CHANGE_VEHICLE,
+    confidence: data.plateNumber || data.ownerId ? 0.95 : 0.86,
+    data,
+  };
+}
+
+function detectRoadTaxChangeIntent(msg, currentState) {
+  const text = String(msg || '');
+  const compact = text.replace(/[^a-z0-9]/gi, '').toLowerCase();
+  const hasRoadTaxContext =
+    /\broad\s*tax|roadtax|e-?lkm|myjpj\b/i.test(text) ||
+    /roadtax|oradtax|raodtax|rodtax|roatax|radtax/i.test(compact);
+  if (!hasRoadTaxContext) return null;
+
+  const hasRoadTaxState =
+    currentState?.selectedRoadTax ||
+    [FLOW_STEPS.PERSONAL_DETAILS, FLOW_STEPS.OTP, FLOW_STEPS.PAYMENT, FLOW_STEPS.SUCCESS].includes(currentState?.step);
+  if (!hasRoadTaxState) return null;
+
+  if (/\b(where|how|can|could|what|why|is|are|will)\b/i.test(text) && !/\b(already|done|settled|skip|no|remove|cancel|change|switch)\b/i.test(text)) {
+    return null;
+  }
+
+  const wantsNoRoadTax =
+    /\b(no|skip|remove|cancel|drop|without)\b.{0,35}\broad\s*tax|road\s*tax\b.{0,35}\b(no|skip|remove|cancel|drop|without)\b/i.test(text) ||
+    /\b(already|done|settled|renewed)\b.{0,40}\broad\s*tax|road\s*tax\b.{0,40}\b(already|done|settled|renewed)\b/i.test(text) ||
+    /\b(just insurance|insurance only)\b/i.test(text) ||
+    /(?:noroadtax|skiproadtax|removeroadtax|cancelroadtax|noradtax|skiproadtex)/i.test(compact);
+
+  if (wantsNoRoadTax) {
+    return {
+      intent: USER_INTENTS.CHANGE_ROADTAX,
+      confidence: 0.94,
+      data: { option: 'none' },
+    };
+  }
+
+  const wantsDigitalRoadTax =
+    /\b(change|switch|add|include|renew|take|want)\b.{0,35}\b(digital|road\s*tax|roadtax|myjpj)\b/i.test(text) ||
+    /\b(digital|myjpj)\b.{0,35}\b(change|switch|add|include|renew|take|want)\b/i.test(text);
+
+  if (wantsDigitalRoadTax) {
+    return {
+      intent: USER_INTENTS.CHANGE_ROADTAX,
+      confidence: 0.9,
+      data: { option: '12month-digital' },
+    };
+  }
+
+  return null;
+}
+
+function detectPersonalDetailCorrectionIntent(msg, currentState) {
+  if (![FLOW_STEPS.PERSONAL_DETAILS, FLOW_STEPS.OTP, FLOW_STEPS.PAYMENT, FLOW_STEPS.SUCCESS].includes(currentState?.step)) {
+    return null;
+  }
+
+  const text = String(msg || '').trim();
+  const correctionMatch = text.match(/\b(?:change|update|correct|replace|edit)\s+(email|e-mail|phone|mobile|contact|address|addr)\s*(?:to|as|:)?\s+(.+)$/i);
+  if (!correctionMatch) return null;
+
+  const requestedField = correctionMatch[1].toLowerCase();
+  const rawValue = correctionMatch[2].trim();
+  const extracted = extractPersonalInfo(rawValue);
+  const field = /email|e-mail/.test(requestedField)
+    ? 'email'
+    : /phone|mobile|contact/.test(requestedField)
+      ? 'phone'
+      : 'address';
+  let value = extracted[field] || null;
+  let valid = true;
+
+  if (field === 'email') {
+    const looksLikeEmailAttempt = /@|\bat\b|\bdot\b|\.[a-z]{2,}/i.test(rawValue);
+    if (!value && looksLikeEmailAttempt) valid = false;
+  } else if (field === 'phone') {
+    const digitCount = rawValue.replace(/\D/g, '').length;
+    if (!value && digitCount >= 7) valid = false;
+  } else if (field === 'address') {
+    value = rawValue.length >= 8 ? rawValue : null;
+    if (!value) valid = false;
+  }
+
+  return {
+    intent: USER_INTENTS.CHANGE_PERSONAL_DETAILS,
+    confidence: 0.94,
+    data: { field, value, rawValue, valid },
+  };
+}
+
+function detectResetRenewalIntent(msg, currentState) {
+  if (!isLateFlowStep(currentState)) return null;
+  if (/\b(cancel everything|start again|start over|restart|reset renewal|fresh start|clear everything|start from scratch)\b/i.test(String(msg || ''))) {
+    return {
+      intent: USER_INTENTS.RESET_RENEWAL,
+      confidence: 0.94,
+      data: { reason: 'explicit_start_over' },
+    };
+  }
+  return null;
+}
+
 // ============================================================================
 // INTENT DETECTION - What does the user want to do?
 // ============================================================================
@@ -961,11 +1246,16 @@ export const USER_INTENTS = {
   CHANGE_QUOTE: 'change_quote',           // User wants to change to a different insurer
   CONFIRM_CHANGE_QUOTE: 'confirm_change', // User confirms they want to restart with new insurer
   CHANGE_ADDONS: 'change_addons',         // User wants to revisit add-ons from a later step
+  CHANGE_VEHICLE: 'change_vehicle',       // User corrects plate / owner ID after moving forward
+  CHANGE_ROADTAX: 'change_roadtax',       // User corrects road tax after moving forward
+  CHANGE_PERSONAL_DETAILS: 'change_personal_details',
+  RESET_RENEWAL: 'reset_renewal',
   SELECT_ADDON: 'select_addon',
   SELECT_ROADTAX: 'select_roadtax',
   ASK_QUESTION: 'ask_question',
   SUBMIT_DETAILS: 'submit_details',
   VERIFY_OTP: 'verify_otp',
+  RESEND_OTP: 'resend_otp',
   SELECT_PAYMENT: 'select_payment',
   UNCLEAR_OR_PLAYFUL: 'unclear_or_playful',
   OTHER: 'other',
@@ -982,10 +1272,26 @@ export function detectUserIntent(message, currentState) {
 
   // Pending insurer-switch confirmation: only interpret short confirmations in this mode.
   if (currentState.pendingAction?.type === 'confirm_quote_change') {
-    if (isSimpleAffirmative(msg) || /^(change it)$/i.test(msg)) {
+    const pendingNewInsurer = currentState.pendingAction?.newInsurer || '';
+    const pendingCurrentInsurer = currentState.pendingAction?.currentInsurer || '';
+    const mentionedInsurers = getInsurerKeysFromText(msg);
+    const mentionsPendingNewInsurer = pendingNewInsurer && mentionedInsurers.includes(pendingNewInsurer);
+    const mentionsPendingCurrentInsurer = pendingCurrentInsurer && mentionedInsurers.includes(pendingCurrentInsurer);
+    const confirmsPendingSwitch =
+      isSimpleAffirmative(msg) ||
+      /^(change it)$/i.test(msg) ||
+      (/\b(confirm|switch|change|go ahead|proceed)\b/i.test(msg) && (
+        mentionsPendingNewInsurer ||
+        /\bswitch\b/i.test(msg)
+      ));
+    const cancelsPendingSwitch =
+      /^(no|nope|cancel|don'?t|do not|never mind|nevermind|continue|keep current|stay)$/i.test(msg) ||
+      (/\bkeep\b/i.test(msg) && (mentionsPendingCurrentInsurer || /\bcurrent\b/i.test(msg)));
+
+    if (confirmsPendingSwitch) {
       return { intent: USER_INTENTS.CONFIRM_CHANGE_QUOTE, confidence: 0.95 };
     }
-    if (/^(no|nope|cancel|don'?t|do not|never mind|nevermind|continue|keep current|stay)$/i.test(msg)) {
+    if (cancelsPendingSwitch) {
       return { intent: USER_INTENTS.OTHER, confidence: 0.9, data: { cancelPendingAction: true } };
     }
   }
@@ -1011,6 +1317,18 @@ export function detectUserIntent(message, currentState) {
     return { intent: USER_INTENTS.UNCLEAR_OR_PLAYFUL, confidence: 0.9 };
   }
 
+  const resetIntent = detectResetRenewalIntent(msg, currentState);
+  if (resetIntent) return resetIntent;
+
+  const vehicleCorrectionIntent = detectVehicleCorrectionIntent(msg, currentState);
+  if (vehicleCorrectionIntent) return vehicleCorrectionIntent;
+
+  const roadTaxChangeIntent = detectRoadTaxChangeIntent(msg, currentState);
+  if (roadTaxChangeIntent) return roadTaxChangeIntent;
+
+  const personalDetailCorrectionIntent = detectPersonalDetailCorrectionIntent(msg, currentState);
+  if (personalDetailCorrectionIntent) return personalDetailCorrectionIntent;
+
   // CHANGE QUOTE DETECTION - HIGHEST PRIORITY when user has selected a quote
   // Must check BEFORE general question detection so "can i change to etiqa?" is detected correctly
   const hasSelectedQuote = currentState.selectedQuote !== null;
@@ -1019,7 +1337,12 @@ export function detectUserIntent(message, currentState) {
   if (hasSelectedQuote && isPastQuotesStep) {
     // Check if user is asking to change/switch to a different insurer
     // Require explicit change/selection verbs — NOT "want" alone (that's interest, not selection)
-    const wantsToChange = /change|switch|go with|choose|pick|select|can i change|can i switch/i.test(msg);
+    const hasExplicitChangeVerb = /\b(change|switch|go with|choose|pick|select)\b|\bcan i (?:change|switch)\b/i.test(msg);
+    const hasReturnToQuotesCue =
+      /\b(?:go back|back|return)\b.{0,40}\b(?:quote|quotes|option|options|insurer|insurers)\b/i.test(msg) ||
+      /\b(?:quote|quotes|option|options|insurer|insurers)\b.{0,40}\b(?:again|instead)\b/i.test(msg);
+    const hasReplacementCue = /\b(?:instead|rather|rather than|different insurer|another insurer|change my mind)\b/i.test(msg);
+    const wantsToChange = hasExplicitChangeVerb || hasReturnToQuotesCue || hasReplacementCue;
     const mentionsInsurer = getInsurerKeysFromText(msg).length > 0;
 
     if (wantsToChange && mentionsInsurer) {
@@ -1055,6 +1378,13 @@ export function detectUserIntent(message, currentState) {
     const isPureExplanationQuestion =
       /\b(what is|what's|explain|tell me|how does|do i need|should i|is it worth|which add-?ons?|recommend add-?ons?)\b/i.test(msg) &&
       !/\b(can i|can we|i want|i need|please|pls)\b.*\b(add|include|remove|change|edit|update|adjust)\b/i.test(msg);
+    const isFutureAddOnQuestion =
+      /\bcan\s+i\b.{0,35}\b(still|later|after|before payment|before paying)\b.{0,35}\b(add|include|change)\b/i.test(msg) ||
+      /\bcan\s+i\b.{0,35}\b(add|include|change)\b.{0,35}\b(still|later|after|before payment|before paying)\b/i.test(msg);
+
+    if (isFutureAddOnQuestion) {
+      return { intent: USER_INTENTS.ASK_QUESTION, confidence: 0.9 };
+    }
 
     if (mentionsAddOnTopic && hasEditVerb && !isPureExplanationQuestion) {
       return {
@@ -1065,21 +1395,43 @@ export function detectUserIntent(message, currentState) {
     }
   }
 
-  // OTP verification (any 4 digits - for testing, accept any 4-digit code token such as "1470" or "hmm 1470 please")
-  // In production, this should verify against the actual OTP sent
   if (currentState.step === FLOW_STEPS.OTP) {
+    const otpDeliveryIssue =
+      /\b(?:did\s*not|didn'?t|haven'?t|have\s*not|not|never)\s+(?:receive|get|got|arrive|come)\b.{0,30}\b(?:otp|code|sms|email)?\b/i.test(msg) ||
+      /\b(?:otp|code|sms|email)\b.{0,35}\b(?:did\s*not|didn'?t|haven'?t|have\s*not|not|never)\s+(?:receive|get|got|arrive|come)\b/i.test(msg) ||
+      /\b(?:no|missing)\s+(?:otp|code|sms|email)\b/i.test(msg) ||
+      /\b(?:resend|send\s+again|send\s+another|try\s+again)\b.{0,30}\b(?:otp|code|sms|email)?\b/i.test(msg) ||
+      /\b(?:otp|code)\b.{0,30}\b(?:resend|again)\b/i.test(msg);
+
+    if (otpDeliveryIssue) {
+      return { intent: USER_INTENTS.RESEND_OTP, confidence: 0.95 };
+    }
+
+    // Staging mock OTP verification. Production should verify against the actual OTP sent.
     const otpMatch = msg.match(/\b(\d{4})\b/);
     if (otpMatch) {
       const otp = otpMatch[1];
       console.log('[Intent] OTP verification detected:', otp);
-      // For testing: accept any 4-digit code
-      // In production: verify against actual OTP
-      return { intent: USER_INTENTS.VERIFY_OTP, confidence: 1.0, data: { otp, valid: true } };
+      // Staging mock OTP is intentionally explicit; wrong codes must not advance payment.
+      return { intent: USER_INTENTS.VERIFY_OTP, confidence: 1.0, data: { otp, valid: otp === '1234' } };
     }
   }
 
   // Payment selection
   if (currentState.step === FLOW_STEPS.PAYMENT) {
+    // Compatibility guard: older sessions may have refreshed an expired quote and
+    // asked for OTP again while the state was already payment-ready.
+    const repeatedOtpMatch = msg.match(/^\s*(\d{4})\s*$/);
+    if (repeatedOtpMatch && currentState.otpVerified) {
+      return repeatedOtpMatch[1] === '1234'
+        ? {
+          intent: USER_INTENTS.SELECT_PAYMENT,
+          confidence: 0.9,
+          data: { method: 'any', reason: 'otp_already_verified' },
+        }
+        : { intent: USER_INTENTS.OTHER, confidence: 0.8, data: { reason: 'otp_already_verified' } };
+    }
+
     // Explicit negative/cancel response should stay as non-selection.
     if (/^(?:hmm+\s+)?(?:no|nope|not now|cancel|don'?t|do not)\b/i.test(msg)) {
       return { intent: USER_INTENTS.OTHER, confidence: 0.9 };
@@ -1238,6 +1590,25 @@ export function detectUserIntent(message, currentState) {
 
   // Add-on selection - AI handles this conversationally
   if (currentState.step === FLOW_STEPS.ADDONS) {
+    const startsLikeQuestion = /^(which|what|how|why|when|where|can|could|would|is|are|do|does|should)\b/i.test(msg);
+    const isDirectSkipOnly = /^(?:skip|skp|skpi|ksip|sikp)(?:\s+(?:please|pls|lah|la|ah|leh|boleh|can|thanks|tq))*$/i.test(msg.trim());
+    const isAddOnAdviceQuestion = !isDirectSkipOnly && (
+      (
+        startsLikeQuestion &&
+        /\b(add-?ons?|addons?|one|ones|items?|need|choose|take|pick|recommend|skip|important|essential|must|priority|prioritise|prioritize|required|compulsory|windscreen|flood|special perils|betterment|e-?hailing)\b/i.test(msg)
+      ) ||
+      /\b(?:which|what)\s+(?:add-?ons?|addons?|one|ones)?\s*(?:do|should|would|can)?\s*i\s*(?:need|choose|take|pick)\b/i.test(msg) ||
+      /\b(?:do|should)\s+i\s+need\b/i.test(msg) ||
+      /\b(?:what|which)\b.{0,70}\b(?:important|essential|must[-\s]?have|must\s+take|must\s+buy|must\s+add|priority|prioritise|prioritize|required|compulsory)\b/i.test(msg) ||
+      /\b(?:items?|add-?ons?|addons?|ones?)\b.{0,60}\b(?:important|essential|must[-\s]?have|must|priority|prioritise|prioritize|required|compulsory)\b/i.test(msg) ||
+      /\b(?:must|should)\s+i\s+(?:take|add|buy|choose|get)\b/i.test(msg) ||
+      /\bcan\s+i\s+skip\b|\bor\s+i\s+can\s+skip\b|\bcan\s+skip\b/i.test(msg)
+    );
+
+    if (isAddOnAdviceQuestion) {
+      return { intent: USER_INTENTS.ASK_QUESTION, confidence: 0.92 };
+    }
+
     const hasSkipToken =
       /\b(skip|skpi|ksip|sikp)\b/i.test(msg) ||
       /^skp$/i.test(msg.trim()) ||
@@ -1322,7 +1693,6 @@ export function detectUserIntent(message, currentState) {
 
     // Cross-topic insurance/policy questions can happen mid-step.
     // Answer first, then route back to add-ons (handled in route.js).
-    const startsLikeQuestion = /^(which|what|how|why|when|where|can|could|would|is|are|do|does|should)\b/i.test(msg);
     const hasInsuranceTopicCue = /\b(insurer|policy|coverage|cover|claims?|betterment|waiver|depreciation|premium|sum insured|ncd)\b/i.test(msg);
     const isCrossTopicInsuranceQuestion = (startsLikeQuestion && hasInsuranceTopicCue) || /\bclarify this\b/i.test(msg);
 
@@ -1393,6 +1763,17 @@ export function detectUserIntent(message, currentState) {
       /\b(digital|dgital|digitl|diigtal|idgital|digial|road\s*tax|roadtax)\b/i.test(msg);
     if (asksDigitalMeaning) {
       return { intent: USER_INTENTS.ASK_QUESTION, confidence: 0.9 };
+    }
+
+    const asksWhyRoadTaxOptionIsLimited =
+      hasGeneralQuestionSignal(msg) &&
+      (
+        /\bwhy\b.{0,50}\b(only|just)\b.{0,35}\b(digital|road\s*tax|roadtax|12\s*(?:month|months)|one option)\b/i.test(msg) ||
+        /\bwhy\b.{0,60}\b(no|not available|cannot|can't|cant|disabled)\b.{0,35}\b(physical|delivery|deliver|printed|sticker)\b/i.test(msg) ||
+        /\b(why|how come)\b.{0,50}\b(digital only|only digital)\b/i.test(msg)
+      );
+    if (asksWhyRoadTaxOptionIsLimited) {
+      return { intent: USER_INTENTS.ASK_QUESTION, confidence: 0.92 };
     }
 
     // Single-option flow: "ok/yes/proceed" means accept default 12-month digital.

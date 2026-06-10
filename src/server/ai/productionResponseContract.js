@@ -53,7 +53,7 @@ export function buildProductionResponseQualityInstruction({
     ? `- If the user asks to change insurer, add-ons, road tax, or personal details from a later checkpoint, acknowledge it and route them back cleanly before continuing. Explain what will reset only when it affects price, road tax, payment, or policy details.`
     : `- If the user asks to go backward or change a previous choice, acknowledge it and ask one clear confirmation before changing price-sensitive selections.`;
   const quoteRecommendationFormatRule = shouldUseQuoteRecommendationFormat(decision, turnPlan)
-    ? `\nQuote recommendation/comparison format:\n- For insurer advice, use this exact visible structure: **My pick:**, **Why:**, **Trade-off:**, **Next:**.\n- Bold insurer names, final premiums, sum insured amounts, and key decision words.\n- Keep the structure short: one pick, one reason, one trade-off, one next choice question.\n- Do not use this structure for normal concept explanations like NCD, betterment, flood, or windscreen unless the user is choosing between quote options.`
+    ? `\nQuote recommendation/comparison format:\n- For insurer advice, use this exact visible structure: **My pick:**, **Why:**, **Trade-off:**, **Next:**.\n- Bold insurer names, final premiums, sum insured amounts, and key decision words.\n- Keep the structure short: one pick, one reason, one trade-off, one next choice question.\n- The **Next:** question must name the recommended insurer and, when relevant, the cheapest alternative with premiums. Do not end with vague wording like "go with this" or "cheapest option" without insurer names.\n- Do not use this structure for normal concept explanations like NCD, betterment, flood, or windscreen unless the user is choosing between quote options.`
     : '';
 
   return `LAJOO PRODUCTION RESPONSE QUALITY CONTRACT
@@ -64,7 +64,7 @@ Internal response pattern: ${responsePattern}
 
 User-visible answer rules:
 - Answer the user's actual message first. Then resume the safest renewal decision.
-- Do not show "Step X of 6" wording. Use natural headings like "Choose insurer", "Add-ons", "Road tax", "Your details", or "Payment" only when a structured block needs a heading.
+- For main renewal transition blocks, use the progress header supplied by code: "Step X of 6 — Title". Keep normal side-question answers natural and do not repeat the header unnecessarily.
 - Ask at most one closing question, unless a deterministic form block from code already lists required fields.
 - Do not repeat canned phrases from recent turns. Vary wording while preserving exact prices and selected options.
 - Do not dump menus or quote cards unless the user asks to see options again, or code supplies a display-only card block.

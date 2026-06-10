@@ -39,6 +39,26 @@ test('quote-change confirmation should only happen when pending action exists', 
   assert.equal(cancelIntent.data.cancelPendingAction, true);
 });
 
+test('quote-change confirmation accepts explicit switch-card actions while pending', () => {
+  const state = {
+    step: FLOW_STEPS.ROADTAX,
+    selectedQuote: { insurer: 'Tokio Marine Insurance' },
+    addOnsConfirmed: true,
+    pendingAction: {
+      type: 'confirm_quote_change',
+      newInsurer: 'takaful',
+      currentInsurer: 'tokio',
+    },
+  };
+
+  const confirmIntent = detectUserIntent('confirm switch to Takaful Ikhlas Insurance', state);
+  const keepIntent = detectUserIntent('keep Tokio', state);
+
+  assert.equal(confirmIntent.intent, 'confirm_change');
+  assert.equal(keepIntent.intent, 'other');
+  assert.equal(keepIntent.data.cancelPendingAction, true);
+});
+
 test('road tax step should detect explicit insurer switch request', () => {
   const state = {
     step: FLOW_STEPS.ROADTAX,
@@ -54,6 +74,37 @@ test('road tax step should detect explicit insurer switch request', () => {
   assert.equal(intent.intent, 'change_quote');
   assert.equal(intent.data.newInsurer, 'etiqa');
   assert.equal(intent.data.currentInsurer, 'takaful');
+});
+
+test('payment step should detect go-back quote change with replacement cue', () => {
+  const state = {
+    step: FLOW_STEPS.PAYMENT,
+    selectedQuote: { insurer: 'Takaful Ikhlas Insurance' },
+    selectedAddOns: [],
+    addOnsConfirmed: true,
+    selectedRoadTax: { name: 'No Road Tax', price: 0 },
+    pendingAction: null,
+  };
+
+  const intent = detectUserIntent('go back to quotes, I want Allianz instead', state);
+
+  assert.equal(intent.intent, 'change_quote');
+  assert.equal(intent.data.newInsurer, 'allianz');
+  assert.equal(intent.data.currentInsurer, 'takaful');
+});
+
+test('later flow should not switch insurer for informational interest only', () => {
+  const state = {
+    step: FLOW_STEPS.ADDONS,
+    selectedQuote: { insurer: 'Takaful Ikhlas Insurance' },
+    selectedAddOns: [],
+    addOnsConfirmed: false,
+    pendingAction: null,
+  };
+
+  const intent = detectUserIntent('I want to know about Allianz first', state);
+
+  assert.notEqual(intent.intent, 'change_quote');
 });
 
 test('playful uncertainty at quotes should be recognized explicitly', () => {
@@ -182,6 +233,22 @@ test('quotes step should tolerate insurer typo on explicit selection', () => {
   assert.equal(intent.data.insurer, 'etiqa');
 });
 
+test('road tax question with ok prefix should not select digital road tax', () => {
+  const state = {
+    step: FLOW_STEPS.ROADTAX,
+    selectedQuote: { insurer: 'Tokio Marine Insurance' },
+    selectedRoadTax: null,
+    addOnsConfirmed: true,
+  };
+
+  const questionIntent = detectUserIntent('ok, why only digital ?', state);
+  const plainOkIntent = detectUserIntent('ok', state);
+
+  assert.equal(questionIntent.intent, 'ask_question');
+  assert.equal(plainOkIntent.intent, 'select_roadtax');
+  assert.equal(plainOkIntent.data.option, '12month-digital');
+});
+
 test('payment step should not treat "no" as payment selection', () => {
   const state = {
     step: FLOW_STEPS.PAYMENT,
@@ -190,6 +257,199 @@ test('payment step should not treat "no" as payment selection', () => {
   };
   const intent = detectUserIntent('no', state);
   assert.equal(intent.intent, 'other');
+});
+
+test('payment step treats repeated valid OTP as continue payment when OTP is already verified', () => {
+  const state = {
+    step: FLOW_STEPS.PAYMENT,
+    selectedQuote: { insurer: 'Tokio Marine Insurance' },
+    selectedRoadTax: { name: '12 months digital road tax', price: 90 },
+    otpVerified: true,
+  };
+
+  const correct = detectUserIntent('1234', state);
+  const wrong = detectUserIntent('8881', state);
+
+  assert.equal(correct.intent, 'select_payment');
+  assert.equal(correct.data.method, 'any');
+  assert.equal(correct.data.reason, 'otp_already_verified');
+  assert.equal(wrong.intent, 'other');
+});
+
+test('otp step rejects wrong staging mock OTP', () => {
+  const state = {
+    step: FLOW_STEPS.OTP,
+    selectedQuote: { insurer: 'Takaful Ikhlas' },
+    selectedRoadTax: { name: 'No Road Tax', price: 0 },
+  };
+
+  const wrong = detectUserIntent('9999', state);
+  const correct = detectUserIntent('1234', state);
+
+  assert.equal(wrong.intent, 'verify_otp');
+  assert.equal(wrong.data.valid, false);
+  assert.equal(correct.intent, 'verify_otp');
+  assert.equal(correct.data.valid, true);
+});
+
+test('otp step detects non-receipt and resend requests', () => {
+  const state = {
+    step: FLOW_STEPS.OTP,
+    selectedQuote: { insurer: 'Tokio Marine Insurance' },
+    selectedRoadTax: { name: '12 months digital road tax', price: 90 },
+    personalDetails: {
+      email: 'test@example.com',
+      phone: '0123456789',
+      address: 'No 1, Jalan Test',
+    },
+  };
+
+  assert.equal(detectUserIntent('did not receive', state).intent, 'resend_otp');
+  assert.equal(detectUserIntent('no otp came', state).intent, 'resend_otp');
+  assert.equal(detectUserIntent('please resend OTP', state).intent, 'resend_otp');
+});
+
+test('late flow detects vehicle plate and owner ID corrections', () => {
+  const state = {
+    step: FLOW_STEPS.PERSONAL_DETAILS,
+    plateNumber: 'JRT9289',
+    nricNumber: '951018145405',
+    selectedQuote: { insurer: 'Tokio Marine Insurance' },
+    selectedRoadTax: { name: '12 months digital road tax', price: 90 },
+  };
+
+  const plate = detectUserIntent('wait wrong car change plate WXY1234', state);
+  const owner = detectUserIntent('change owner id to 900101101234', state);
+
+  assert.equal(plate.intent, 'change_vehicle');
+  assert.equal(plate.data.plateNumber, 'WXY1234');
+  assert.equal(owner.intent, 'change_vehicle');
+  assert.equal(owner.data.ownerId, '900101101234');
+});
+
+test('late flow detects road tax corrections after moving forward', () => {
+  const state = {
+    step: FLOW_STEPS.PERSONAL_DETAILS,
+    selectedQuote: { insurer: 'Tokio Marine Insurance' },
+    selectedRoadTax: { name: '12 months digital road tax', price: 90 },
+  };
+
+  const explicit = detectUserIntent('change road tax to no road tax', state);
+  const correctedOk = detectUserIntent('no I mean skip road tax after ok', state);
+
+  assert.equal(explicit.intent, 'change_roadtax');
+  assert.equal(explicit.data.option, 'none');
+  assert.equal(correctedOk.intent, 'change_roadtax');
+  assert.equal(correctedOk.data.option, 'none');
+});
+
+test('late flow detects add-on number changes after moving forward', () => {
+  const state = {
+    step: FLOW_STEPS.OTP,
+    selectedQuote: { insurer: 'Tokio Marine Insurance' },
+    selectedAddOns: [{ id: 'flood', name: 'Inclusion of Special Perils', price: 150 }],
+    addOnsConfirmed: true,
+    selectedRoadTax: { name: '12 months digital road tax', price: 90 },
+    personalDetails: {
+      email: 'test@example.com',
+      phone: '0123456789',
+      address: 'No 1, Jalan Test, Selangor',
+    },
+  };
+
+  const intent = detectUserIntent('can you add add-on 10 for me', state);
+
+  assert.equal(intent.intent, 'change_addons');
+});
+
+test('late flow detects explicit named add-on change questions after payment', () => {
+  const state = {
+    step: FLOW_STEPS.PAYMENT,
+    selectedQuote: { insurer: 'Tokio Marine Insurance' },
+    selectedAddOns: [
+      { id: 'windscreen', name: 'Windscreen Coverage RM 3,000.00', price: 450, coverageAmount: 3000 },
+      { id: 'flood', name: 'Inclusion of Special Perils', price: 150 },
+      { id: 'betterment_waiver', name: 'Betterment waiver', price: 350 },
+    ],
+    addOnsConfirmed: true,
+    selectedRoadTax: { name: '12 months digital road tax', price: 90 },
+    personalDetails: {
+      email: 'test@example.com',
+      phone: '0123456789',
+      address: 'No 1, Jalan Test, Selangor',
+    },
+    otpVerified: true,
+  };
+
+  const intent = detectUserIntent('can add all driver add-on ?', state);
+
+  assert.equal(intent.intent, 'change_addons');
+});
+
+test('add-on refresh preserves valid progress and invalidates stale payment state', () => {
+  const state = new ConversationState();
+  Object.assign(state, {
+    step: FLOW_STEPS.PAYMENT,
+    selectedQuote: { insurer: 'Tokio Marine Insurance', priceAfter: 800 },
+    selectedAddOns: [
+      { id: 'flood', name: 'Inclusion of Special Perils', price: 150 },
+      { id: 'body_painting', name: 'Full vehicle body painting', price: 180 },
+    ],
+    addOnsConfirmed: true,
+    selectedRoadTax: { name: '12 months digital road tax', price: 90 },
+    personalDetails: {
+      email: 'test@example.com',
+      phone: '0123456789',
+      address: 'No 1, Jalan Test, Selangor',
+    },
+    otpVerified: true,
+    paymentMethod: 'fpx',
+    transaction: {
+      quoteId: 'quote_123',
+      reprice: { total: 1220 },
+      proposalId: 'proposal_123',
+      proposalStatus: 'CREATED',
+      paymentIntentId: 'pay_123',
+      paymentSnapshotId: 'snap_123',
+      paymentStatus: 'PENDING',
+      policyNumber: null,
+      policyStatus: null,
+      lastError: null,
+    },
+  });
+
+  state.refreshAfterAddOnChange();
+
+  assert.equal(state.step, FLOW_STEPS.OTP);
+  assert.equal(state.addOnsConfirmed, true);
+  assert.equal(state.selectedRoadTax.name, '12 months digital road tax');
+  assert.equal(state.personalDetails.email, 'test@example.com');
+  assert.equal(state.otpVerified, false);
+  assert.equal(state.paymentMethod, null);
+  assert.equal(state.transaction.quoteId, 'quote_123');
+  assert.equal(state.transaction.reprice, null);
+  assert.equal(state.transaction.proposalId, null);
+  assert.equal(state.transaction.paymentIntentId, null);
+  assert.equal(state.transaction.paymentSnapshotId, null);
+  assert.equal(state.transaction.paymentStatus, null);
+});
+
+test('otp step detects personal detail corrections and invalid email', () => {
+  const state = {
+    step: FLOW_STEPS.OTP,
+    selectedQuote: { insurer: 'Tokio Marine Insurance' },
+    selectedRoadTax: { name: 'No Road Tax', price: 0 },
+  };
+
+  const phone = detectUserIntent('change phone to 0198887777', state);
+  const email = detectUserIntent('change email to wrong@@mail', state);
+
+  assert.equal(phone.intent, 'change_personal_details');
+  assert.equal(phone.data.field, 'phone');
+  assert.equal(phone.data.value, '0198887777');
+  assert.equal(email.intent, 'change_personal_details');
+  assert.equal(email.data.field, 'email');
+  assert.equal(email.data.valid, false);
 });
 
 test('quotes step should treat "which is better" as ask_question', () => {
@@ -302,6 +562,43 @@ test('addons step should treat skip variants as select_addon', () => {
   const intentTransposeTypo = detectUserIntent('skpi', state);
   assert.equal(intentTransposeTypo.intent, 'select_addon');
   assert.deepEqual(intentTransposeTypo.data.addOns, []);
+});
+
+test('addons step should treat advice plus skip wording as a question', () => {
+  const state = {
+    step: FLOW_STEPS.ADDONS,
+    selectedQuote: { insurer: 'Tokio Marine Insurance' },
+    addOnsConfirmed: false,
+  };
+
+  const exactIssue = detectUserIntent('which do i need ? or i can skip', state);
+  assert.equal(exactIssue.intent, 'ask_question');
+
+  const importantQuestion = detectUserIntent('what is important?', state);
+  assert.equal(importantQuestion.intent, 'ask_question');
+
+  const mustTakeQuestion = detectUserIntent('what are the items that i must take?', state);
+  assert.equal(mustTakeQuestion.intent, 'ask_question');
+
+  const skipQuestion = detectUserIntent('can i skip add-ons?', state);
+  assert.equal(skipQuestion.intent, 'ask_question');
+
+  const directSkip = detectUserIntent('skip please', state);
+  assert.equal(directSkip.intent, 'select_addon');
+  assert.deepEqual(directSkip.data.addOns, []);
+});
+
+test('later add-on timing questions should not mutate add-ons', () => {
+  const state = {
+    step: FLOW_STEPS.ROADTAX,
+    selectedQuote: { insurer: 'Tokio Marine Insurance' },
+    selectedAddOns: [],
+    addOnsConfirmed: true,
+  };
+
+  const intent = detectUserIntent('can I still add flood later?', state);
+
+  assert.equal(intent.intent, 'ask_question');
 });
 
 test('addons step should treat explicit betterment waiver request as selection', () => {

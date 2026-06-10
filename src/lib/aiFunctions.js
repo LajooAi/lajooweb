@@ -310,13 +310,13 @@ WITHOUT the marker, the UI cards WON'T appear and users can't select anything!
 
 **EXAMPLE - Presenting quotes (MUST include marker):**
 "Here are your insurance options:
-- **Takaful Ikhlas Insurance**: RM 796 - Cheapest, Shariah-compliant
-- **Tokio Marine Insurance**: RM 800 - Competitive premium
-- **Etiqa**: RM 872 - Balanced, free towing
-- **Allianz**: RM 920 - Premium coverage
-- **Lonpac Insurance**: RM 960 - Higher sum insured
-- **MSIG Insurance**: RM 1,000 - International insurer network
-- **Generali Insurance**: RM 1,080 - Highest sum insured
+- **Takaful Ikhlas Insurance**: RM 796.00 - Cheapest, Shariah-compliant
+- **Tokio Marine Insurance**: RM 800.00 - Competitive premium
+- **Etiqa**: RM 872.00 - Balanced, free towing
+- **Allianz**: RM 920.00 - Premium coverage
+- **Lonpac Insurance**: RM 960.00 - Higher sum insured
+- **MSIG Insurance**: RM 1,000.00 - International insurer network
+- **Generali Insurance**: RM 1,080.00 - Highest sum insured
 
 Which would you like?
 
@@ -324,13 +324,13 @@ Which would you like?
 
 ## ⚠️ USE ONLY THIS EXACT DATA - NO OTHER INSURERS OR PRICES!
 **AVAILABLE QUOTES (exact prices after 20% NCD):**
-- **Takaful Ikhlas Insurance**: RM 796 (after 20% NCD), Sum Insured RM 34,000 - CHEAPEST, Shariah-compliant
-- **Tokio Marine Insurance**: RM 800 (after 20% NCD), Sum Insured RM 35,000 - Competitive premium
-- **Etiqa Insurance**: RM 872 (after 20% NCD), Sum Insured RM 35,000 - Free towing 200km
-- **Allianz Insurance**: RM 920 (after 20% NCD), Sum Insured RM 36,000 - Premium coverage
-- **Lonpac Insurance**: RM 960 (after 20% NCD), Sum Insured RM 37,000 - Higher sum insured
-- **MSIG Insurance**: RM 1,000 (after 20% NCD), Sum Insured RM 37,000 - International insurer network
-- **Generali Insurance**: RM 1,080 (after 20% NCD), Sum Insured RM 40,000 - Highest sum insured
+- **Takaful Ikhlas Insurance**: RM 796.00 (after 20% NCD), Sum Insured RM 34,000.00 - CHEAPEST, Shariah-compliant
+- **Tokio Marine Insurance**: RM 800.00 (after 20% NCD), Sum Insured RM 35,000.00 - Competitive premium
+- **Etiqa Insurance**: RM 872.00 (after 20% NCD), Sum Insured RM 35,000.00 - Free towing 200km
+- **Allianz Insurance**: RM 920.00 (after 20% NCD), Sum Insured RM 36,000.00 - Premium coverage
+- **Lonpac Insurance**: RM 960.00 (after 20% NCD), Sum Insured RM 37,000.00 - Higher sum insured
+- **MSIG Insurance**: RM 1,000.00 (after 20% NCD), Sum Insured RM 37,000.00 - International insurer network
+- **Generali Insurance**: RM 1,080.00 (after 20% NCD), Sum Insured RM 40,000.00 - Highest sum insured
 
 **NEVER mention Zurich, AXA, or any other insurer outside the available quote list above!**
 **NEVER make up different prices - use the EXACT prices above!**

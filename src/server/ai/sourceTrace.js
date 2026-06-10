@@ -112,6 +112,55 @@ function mergeSources(sources = []) {
   return [...map.values()].slice(0, MAX_TRACE_SOURCES);
 }
 
+function compactRecommendationExplainability(explainability = null) {
+  if (!explainability) return null;
+  const quoteSnapshot = compactArray(explainability.quoteSnapshot, 10).map((quote) => ({
+    insurerName: quote.insurerName || null,
+    insurerKey: quote.insurerKey || null,
+    finalPremium: Number(quote.finalPremium || 0),
+    sumInsured: Number(quote.sumInsured || 0),
+    priceRank: quote.priceRank || null,
+    coverageRank: quote.coverageRank || null,
+    valueRank: quote.valueRank || null,
+    totalScore: Number(quote.totalScore || 0),
+  }));
+
+  return {
+    scoreVersion: explainability.scoreVersion || null,
+    confidenceLabel: explainability.confidenceLabel || null,
+    isCloseCall: Boolean(explainability.isCloseCall),
+    scoreGap: explainability.scoreGap ?? null,
+    recommendedInsurer: explainability.recommendedInsurer || null,
+    runnerUpInsurer: explainability.runnerUpInsurer || null,
+    reasonCodes: compactArray(explainability.reasonCodes, 12),
+    reasonDetails: compactArray(explainability.reasonDetails, 8).map((reason) => ({
+      code: reason.code || null,
+      label: cleanText(reason.label, 120) || null,
+      detail: cleanText(reason.detail, 240) || null,
+      evidence: reason.evidence || {},
+    })),
+    preferenceSignals: compactArray(explainability.preferenceSignals, 10).map((signal) => ({
+      code: signal.code || null,
+      label: cleanText(signal.label, 160) || null,
+      source: signal.source || null,
+    })),
+    recommendationTags: compactArray(explainability.recommendationTags, 16),
+    primaryReasons: compactArray(explainability.primaryReasons, 8).map((reason) => cleanText(reason, 220)),
+    tradeoff: cleanText(explainability.tradeoff, 260) || null,
+    winningScores: explainability.winningScores || {},
+    weights: explainability.weights || {},
+    closeCall: explainability.closeCall || {},
+    quoteSnapshot,
+    governance: {
+      basis: explainability.governance?.basis || null,
+      paidPlacementApplied: Boolean(explainability.governance?.paidPlacementApplied),
+      commissionWeightApplied: Boolean(explainability.governance?.commissionWeightApplied),
+      commercialOverrideApplied: Boolean(explainability.governance?.commercialOverrideApplied),
+      disclosure: cleanText(explainability.governance?.disclosure, 240) || null,
+    },
+  };
+}
+
 export function buildKnowledgeSourceTrace({
   sessionId = null,
   latestMessage = '',
@@ -131,15 +180,23 @@ export function buildKnowledgeSourceTrace({
       .map((fact) => normalizeFactSource(fact, 'turn_instruction')),
   ]);
 
-  if (sources.length === 0) return null;
-
-  const createdAt = now instanceof Date ? now.toISOString() : new Date(now).toISOString();
   const recommendation = quoteRecommendation?.recommendedQuote ? {
     insurerName: quoteRecommendation.recommendedQuote.insurerName || null,
     insurerKey: quoteRecommendation.recommendedQuote.insurerKey || null,
+    confidence: Number(quoteRecommendation.confidence || 0),
+    confidenceLabel: quoteRecommendation.confidenceLabel || null,
+    isCloseCall: Boolean(quoteRecommendation.isCloseCall),
+    scoreVersion: quoteRecommendation.scoreVersion || quoteRecommendation.explainability?.scoreVersion || null,
+    reasonCodes: compactArray(quoteRecommendation.reasonCodes, 12),
     factReasons: compactArray(quoteRecommendation.factReasons, 8).map((reason) => cleanText(reason, 220)),
     riskNotes: compactArray(quoteRecommendation.riskNotes, 8).map((note) => cleanText(note, 220)),
+    tradeoff: cleanText(quoteRecommendation.tradeoff, 260) || null,
+    explainability: compactRecommendationExplainability(quoteRecommendation.explainability),
   } : null;
+
+  if (sources.length === 0 && !recommendation) return null;
+
+  const createdAt = now instanceof Date ? now.toISOString() : new Date(now).toISOString();
 
   const base = {
     version: 1,
@@ -162,6 +219,11 @@ export function buildKnowledgeSourceTrace({
       sessionId,
       questionPreview: base.questionPreview,
       sourceKeys: sources.map(sourceKey),
+      recommendation: recommendation ? {
+        insurerKey: recommendation.insurerKey,
+        scoreVersion: recommendation.scoreVersion,
+        reasonCodes: recommendation.reasonCodes,
+      } : null,
     })}`,
     ...base,
   };
@@ -229,6 +291,14 @@ export function logKnowledgeSourceTrace(trace = null) {
       sourceLabel: source.sourceLabel,
       validityStatus: source.validityStatus,
     })),
+    recommendation: compactTrace.recommendation ? {
+      insurerName: compactTrace.recommendation.insurerName,
+      insurerKey: compactTrace.recommendation.insurerKey,
+      confidenceLabel: compactTrace.recommendation.confidenceLabel,
+      isCloseCall: compactTrace.recommendation.isCloseCall,
+      scoreVersion: compactTrace.recommendation.scoreVersion,
+      reasonCodes: compactTrace.recommendation.reasonCodes,
+    } : null,
   }));
 }
 

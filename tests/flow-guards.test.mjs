@@ -19,6 +19,20 @@ test('should only parse a single explicit recommendation', () => {
   );
 
   assert.equal(
+    parseRecommendedInsurerFromAssistantMessage(
+      '**My pick:** **Tokio Marine Insurance** — **RM 800**\n\n**Why:** Balanced value.\n\n**Trade-off:** Takaful is cheaper.'
+    ),
+    'tokio'
+  );
+
+  assert.equal(
+    parseRecommendedInsurerFromAssistantMessage(
+      'Just to confirm - do you want to proceed with **Tokio Marine Insurance**, or would you like me to explain the other insurers first?'
+    ),
+    'tokio'
+  );
+
+  assert.equal(
     parseRecommendedInsurerFromAssistantMessage('Pick Takaful, Tokio Marine, Etiqa, Allianz, Lonpac, MSIG, Generali, or say recommend for me.'),
     null
   );
@@ -40,6 +54,13 @@ test('should only parse a single explicit recommendation', () => {
   assert.equal(
     parseRecommendedInsurerFromAssistantMessage("Best option here is Generali Insurance for maximum sum insured."),
     'generali'
+  );
+
+  assert.equal(
+    parseRecommendedInsurerFromAssistantMessage(
+      'Shall I select **Tokio Marine Insurance - RM 800.00** first, then we review the Betterment waiver option at add-ons?'
+    ),
+    'tokio'
   );
 });
 

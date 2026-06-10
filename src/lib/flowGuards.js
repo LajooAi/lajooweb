@@ -5,7 +5,7 @@
 import { getInsurerKeysFromText } from "./insurerCatalog.js";
 
 export function parseRecommendedInsurerFromAssistantMessage(lastAIMessage) {
-  const text = String(lastAIMessage || '');
+  const text = String(lastAIMessage || '').replace(/\*/g, '');
   const lower = text.toLowerCase();
   if (!lower) return null;
 
@@ -18,8 +18,10 @@ export function parseRecommendedInsurerFromAssistantMessage(lastAIMessage) {
 
   // First, try to parse an explicit recommendation clause even if other insurers are also mentioned.
   const recommendationPatterns = [
+    /(?:my pick(?:\s+is)?|my choice(?:\s+is)?)\s*:?\s+([^.!?\n—-]+)/i,
     /(?:i\s*(?:'d|would)\s*recommend|i\s*recommend|my recommendation(?:\s+is)?|i\s*(?:'d|would)\s*go with|i\s*go with|you should go with|best option(?:\s+is)?|best pick(?:\s+is)?|i(?:'m| am)\s+recommending)\s+([^.!?\n]+)/i,
     /(?:considering[^.!?\n]*,\s*i\s*(?:'d|would)\s*recommend)\s+([^.!?\n]+)/i,
+    /(?:shall\s+i|should\s+i|want\s+me\s+to|would\s+you\s+like\s+me\s+to|can\s+i)\s+(?:select|choose|lock(?:\s+in)?|go\s+with|proceed\s+with)\s+([^.!?\n]+)/i,
   ];
   for (const pattern of recommendationPatterns) {
     const match = text.match(pattern);
@@ -38,7 +40,7 @@ export function parseRecommendedInsurerFromAssistantMessage(lastAIMessage) {
 
   // Fallback: only accept if exactly one insurer is mentioned in the whole message + recommendation cue.
   const singleMention = mapInsurerFromChunk(text);
-  const hasRecommendationCue = /i recommend|i(?:'d| would)\s+recommend|my recommendation|i(?:'d| would) go with|best option|best pick|go with|suggest/i.test(lower);
+  const hasRecommendationCue = /i recommend|i(?:'d| would)\s+recommend|my recommendation|i(?:'d| would) go with|best option|best pick|go with|proceed with|continue with|lock in|suggest/i.test(lower);
   if (!singleMention || !hasRecommendationCue) return null;
 
   return singleMention;

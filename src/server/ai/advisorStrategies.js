@@ -151,7 +151,7 @@ function formatEngineContextHint(engineContext) {
 
   return `ENGINE-AWARE CONTEXT
 Selected quote: ${selectedQuote}
-Current total: ${engineContext.totals?.totalLabel || 'RM 0'}
+Current total: ${engineContext.totals?.totalLabel || 'RM 0.00'}
 Cheapest quote: ${cheapest || 'not available'}
 Highest sum insured quote: ${highestCover || 'not available'}
 Quote options:

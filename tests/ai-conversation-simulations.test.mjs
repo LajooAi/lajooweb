@@ -221,6 +221,41 @@ test('simulation: add-on side question answers first and resumes the add-on deci
   assert.equal(state.step, FLOW_STEPS.ADDONS);
 });
 
+test('simulation: add-on advice plus skip wording does not auto-skip', () => {
+  const state = makeVehicleReadyState({
+    step: FLOW_STEPS.ADDONS,
+    selectedQuote: {
+      insurer: 'Tokio Marine Insurance',
+      priceAfter: 800,
+      priceBefore: 1000,
+      ncdPercent: 20,
+      sumInsured: 35000,
+      coverType: 'Comprehensive',
+    },
+    selectedAddOns: [],
+    addOnsConfirmed: false,
+  });
+
+  const simulation = simulateConsultantTurn('which do i need ? or i can skip', state);
+  const instructionMessages = buildSimulationInstructionMessages(simulation)
+    .map((message) => message.content)
+    .join('\n');
+
+  assert.equal(simulation.intent.intent, USER_INTENTS.ASK_QUESTION);
+  assert.equal(simulation.decision.mode, CONVERSATION_MODES.INSURANCE_QUESTION);
+  assert.equal(simulation.decision.action, CONVERSATION_ACTIONS.ANSWER_THEN_RESUME);
+  assert.equal(simulation.turnPlan.responsePattern, TURN_RESPONSE_PATTERNS.ANSWER_THEN_RESUME);
+  assert.equal(simulation.turnPlan.questionGuidance, TURN_QUESTION_GUIDANCE.ADDON_RECOMMENDATION);
+  assert.equal(simulation.turnPlan.shouldShowAddOnSelector, false);
+  assert.equal(state.step, FLOW_STEPS.ADDONS);
+  assert.deepEqual(state.selectedAddOns, []);
+  assert.equal(state.addOnsConfirmed, false);
+  assert.match(instructionMessages, /Do NOT treat this as a skip selection/i);
+  assert.match(instructionMessages, /Betterment waiver/i);
+  assert.match(instructionMessages, /Betterment waiver\*{0,2}\s*\(RM 350(?:\.00)?\)/i);
+  assert.match(instructionMessages, /Special Perils/i);
+});
+
 test('simulation: insurer change request is detected as a change, not a normal question', () => {
   const state = makeVehicleReadyState({
     step: FLOW_STEPS.ADDONS,
@@ -369,5 +404,11 @@ test('simulation: side questions do not move the user forward until they actuall
   assert.equal(roadTaxQuestion.intent.intent, USER_INTENTS.ASK_QUESTION);
   assert.equal(roadTaxQuestion.decision.action, CONVERSATION_ACTIONS.ANSWER_THEN_RESUME);
   assert.equal(roadTaxQuestion.turnPlan.questionGuidance, TURN_QUESTION_GUIDANCE.ROADTAX_ALTERNATIVE);
+  const instruction = buildTurnQuestionInstruction(roadTaxQuestion.turnPlan, { state });
+  assert.match(instruction, /MyJPJ/i);
+  assert.match(instruction, /MyEG/i);
+  assert.match(instruction, /Pos Malaysia/i);
+  assert.match(instruction, /insurance must be active/i);
+  assert.match(instruction, /12-month digital road tax/i);
   assert.equal(state.step, FLOW_STEPS.ROADTAX);
 });

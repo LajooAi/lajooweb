@@ -126,7 +126,7 @@ Use this for the current turn:
 
 function formatRm(value) {
   const numeric = Number(value || 0);
-  if (!Number.isFinite(numeric)) return 'RM 0';
+  if (!Number.isFinite(numeric)) return 'RM 0.00';
   return `RM ${numeric.toLocaleString('en-MY', {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
@@ -163,6 +163,7 @@ How to use it:
 - If the user asks "which one", recommend one option confidently.
 - For insurer recommendation/comparison moments, use this visible structure: **My pick:**, **Why:**, **Trade-off:**, **Next:**.
 - Bold insurer names, final premiums, sum insured amounts, and key decision words.
+- In **Next:**, name the recommended insurer and the best concrete alternative with premiums when available. Avoid vague closes like "go with this" or "cheapest option" without an insurer name.
 - If the user asks a factual question, answer that first, then optionally bridge to this recommendation in one short sentence.
 - Treat brand-program reasons as eligibility context only unless the live quote/product confirms that exact programme.
 - Do not invent new insurer benefits from this context.`;

@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import {
   ConversationState,
   detectUserIntent,
@@ -24,6 +25,30 @@ import {
 import {
   buildProductionResponseQualityInstruction,
 } from '../src/server/ai/productionResponseContract.js';
+
+test('vehicle lookup fallback copy does not leak internal Mockoon setup guidance', () => {
+  const routeSource = readFileSync(new URL('../src/app/api/chat/route.js', import.meta.url), 'utf8');
+
+  assert.doesNotMatch(routeSource, /make sure your Mockoon insurer API is running/i);
+  assert.match(routeSource, /Please recheck the plate and owner ID, then try again shortly/i);
+});
+
+test('vehicle rejection reply is confident and gives manual verification path', () => {
+  const routeSource = readFileSync(new URL('../src/app/api/chat/route.js', import.meta.url), 'utf8');
+
+  assert.match(routeSource, /pulled from insurer\/ISM records/i);
+  assert.match(routeSource, /usually accurate/i);
+  assert.match(routeSource, /\[Contact Us\]\(\/my\/contact-us\)/i);
+  assert.match(routeSource, /manual verification/i);
+  assert.match(routeSource, /Would you like to proceed with these details, or send corrected plate\/owner ID\?/i);
+});
+
+test('add-ons text menu surfaces betterment waiver when close allows option 8', () => {
+  const routeSource = readFileSync(new URL('../src/app/api/chat/route.js', import.meta.url), 'utf8');
+
+  assert.match(routeSource, /8\.\s+\*\*Betterment waiver\*\*\s+—\s+RM/i);
+  assert.match(routeSource, /ADDONS_CLOSE_QUESTION/);
+});
 
 function makeSelectedRoadTaxState(overrides = {}) {
   const state = new ConversationState();
@@ -125,7 +150,7 @@ test('resetToAddOns preserves selected insurer but clears downstream price-sensi
   assert.equal(state.transaction.paymentStatus, null);
 });
 
-test('production response contract hides step wording and preserves consultant flexibility', () => {
+test('production response contract preserves structured progress and consultant flexibility', () => {
   const state = makeSelectedRoadTaxState();
   const { intent, decision, turnPlan } = planTurn('can I add windscreen also?', state);
   const instruction = buildProductionResponseQualityInstruction({
@@ -136,7 +161,8 @@ test('production response contract hides step wording and preserves consultant f
   });
 
   assert.match(instruction, /LAJOO PRODUCTION RESPONSE QUALITY CONTRACT/i);
-  assert.match(instruction, /Do not show "Step X of 6"/i);
+  assert.match(instruction, /Step X of 6/i);
+  assert.match(instruction, /main renewal transition blocks/i);
   assert.match(instruction, /Answer the user's actual message first/i);
   assert.match(instruction, /change insurer, add-ons, road tax, or personal details/i);
   assert.match(instruction, /Do not invent insurer facts/i);

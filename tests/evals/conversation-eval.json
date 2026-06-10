@@ -3,14 +3,14 @@
     "name": "Happy path basic conversion",
     "initialState": { "step": "start" },
     "turns": [
-      { "user": "JRT9289", "expectedIntent": "provide_info", "expectedStepAfter": "quotes" },
+      { "user": "JRT9289", "expectedIntent": "provide_info", "expectedStepAfter": "vehicle_lookup" },
       { "user": "951018145405", "expectedIntent": "provide_info", "expectedStepAfter": "quotes" },
       { "user": "go with takaful", "expectedIntent": "select_quote", "expectedStepAfter": "addons" },
       { "user": "skip", "expectedIntent": "select_addon", "expectedStepAfter": "roadtax" },
       { "user": "ok", "expectedIntent": "select_roadtax", "expectedStepAfter": "personal_details" },
       { "user": "my email is user@example.com", "expectedIntent": "submit_details", "expectedStepAfter": "personal_details" },
       { "user": "0123456789, jalan setia 1, shah alam", "expectedIntent": "submit_details", "expectedStepAfter": "otp" },
-      { "user": "1470", "expectedIntent": "verify_otp", "expectedStepAfter": "payment" }
+      { "user": "1234", "expectedIntent": "verify_otp", "expectedStepAfter": "payment" }
     ]
   },
   {
@@ -32,7 +32,7 @@
     },
     "turns": [
       { "user": "whereelse can i renew roadtax", "expectedIntent": "ask_question", "expectedStepAfter": "roadtax" },
-      { "user": "i want physical printed roadtax", "expectedIntent": "ask_question", "expectedStepAfter": "roadtax" },
+      { "user": "i want physical printed roadtax", "expectedIntent": "select_roadtax", "expectedStepAfter": "roadtax" },
       { "user": "12 months", "expectedIntent": "select_roadtax", "expectedStepAfter": "personal_details" }
     ]
   },
@@ -71,8 +71,8 @@
     },
     "turns": [
       { "user": "email me at me@demo.com", "expectedIntent": "submit_details", "expectedStepAfter": "personal_details" },
-      { "user": "jimlim.marketing 012 2277 809 17, jln u12/38f, seksyen", "expectedIntent": "submit_details", "expectedStepAfter": "personal_details" },
-      { "user": "my phone is 0171234567", "expectedIntent": "submit_details", "expectedStepAfter": "otp" },
+      { "user": "jimlim.marketing 012 2277 809 17, jln u12/38f, seksyen", "expectedIntent": "submit_details", "expectedStepAfter": "otp" },
+      { "user": "my phone is 0171234567", "expectedIntent": "other", "expectedStepAfter": "otp" },
       { "user": "0171234567, jalan harmoni 9, rawang", "expectedIntent": "other", "expectedStepAfter": "otp" },
       { "user": "1234", "expectedIntent": "verify_otp", "expectedStepAfter": "payment" }
     ]

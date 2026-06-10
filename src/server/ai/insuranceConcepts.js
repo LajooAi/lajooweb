@@ -10,7 +10,7 @@ const CONCEPTS = [
     id: 'windscreen',
     title: 'Windscreen cover',
     aliases: ['windscreen', 'window glass', 'glass cover', 'glass coverage'],
-    explanation: 'Windscreen cover is optional protection for the windscreen and vehicle glass. If the user buys it, a windscreen claim normally does not affect NCD, up to the selected coverage amount.',
+    explanation: 'Windscreen cover is optional protection for the windscreen and vehicle glass. If the user buys it, a windscreen claim normally does not affect NCD, up to the selected coverage amount. It is more worth considering for drivers who use highways or long-distance routes often, because road stones and debris can chip or crack glass.',
     advisory: 'Ask for the coverage amount when the user wants windscreen cover because the premium depends on the chosen insured amount.',
   },
   {

@@ -70,6 +70,20 @@ export function getQuotesFromState(state) {
   return supplementQuotesWithCatalog(getQuotes(), state);
 }
 
+export function ensureVehicleDisplayQuoteOptions(quoteOptions = [], vehicle = {}) {
+  const providedQuotes = Array.isArray(quoteOptions) ? quoteOptions.filter(Boolean) : [];
+  const hasUsableSumInsured = providedQuotes.some((quote) =>
+    Number(quote?.sumInsured || quote?.coverage?.sum_insured || 0) > 0
+  );
+
+  if (hasUsableSumInsured) return providedQuotes;
+
+  return getQuotes({
+    ncdPercent: Number(vehicle?.ncdPercent || 20),
+    engineCC: Number(vehicle?.engineCC || 1496),
+  });
+}
+
 export function calculateSummaryAmounts(state) {
   const insurance = Number(state?.selectedQuote?.priceAfter || 0);
   const addOns = (state?.selectedAddOns || []).reduce((sum, item) => sum + Number(item?.price || 0), 0);

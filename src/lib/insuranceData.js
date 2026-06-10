@@ -76,17 +76,17 @@ export function getQuotes({ vehicleValue = 51000, ncdPercent = 20, engineCC = 14
       tag: 'PREMIUM',
     },
     lonpac: {
-      benefit: 'Strong value for RM 37,000 sum insured',
-      recommendation: 'Best for drivers who want higher sum insured while keeping premium below RM 1,000',
+      benefit: 'Strong value for RM 37,000.00 sum insured',
+      recommendation: 'Best for drivers who want higher sum insured while keeping premium below RM 1,000.00',
       tag: 'HIGHER COVER',
     },
     msig: {
       benefit: 'Higher sum insured option',
-      recommendation: 'Best for drivers who want RM 37,000 coverage from an international insurer',
+      recommendation: 'Best for drivers who want RM 37,000.00 coverage from an international insurer',
       tag: 'HIGHER COVER',
     },
     generali: {
-      benefit: 'Highest sum insured (RM 40,000)',
+      benefit: 'Highest sum insured (RM 40,000.00)',
       recommendation: 'Best for drivers who prioritize maximum sum insured',
       tag: 'MAX COVER',
     },

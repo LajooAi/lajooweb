@@ -4463,3 +4463,190 @@
   padding-top: 67px;
   padding-bottom: 67px;
 }
+
+/* Desktop-only hero illustration scale. Mobile stays on the fixed hand-tuned sizes above. */
+@media (min-width: 1024px) {
+  .about-hero {
+    --about-section-scale: 1.12;
+  }
+
+  .hero-top {
+    --about-hero-content-scale: 1.12;
+    --about-hero-demo-width: min(calc(395px * var(--about-hero-content-scale)), calc(100vw - 96px));
+    padding-bottom: clamp(50px, 5.2vw, 86px);
+  }
+
+  .about-chat-demo {
+    width: var(--about-hero-demo-width);
+    margin-top: calc(42px * var(--about-hero-content-scale));
+  }
+
+  .about-chat-demo :where(.about-chat-bubble, .about-chat-bubble *, .about-chat-analyzing, .about-chat-analyzing *) {
+    font-size: calc(17px * var(--about-hero-content-scale));
+  }
+
+  .about-chat-bubble {
+    border-radius: calc(17px * var(--about-hero-content-scale));
+    box-shadow: 0 calc(2px * var(--about-hero-content-scale)) calc(5px * var(--about-hero-content-scale)) rgba(0, 0, 0, 0.23);
+  }
+
+  .about-chat-bubble--input {
+    width: min(calc(298px * var(--about-hero-content-scale)), 100%);
+    height: calc(38px * var(--about-hero-content-scale));
+    min-height: calc(38px * var(--about-hero-content-scale));
+    padding: 0 calc(18px * var(--about-hero-content-scale));
+  }
+
+  .about-chat-bubble--plate {
+    width: calc(178px * var(--about-hero-content-scale));
+    min-height: calc(54px * var(--about-hero-content-scale));
+    margin-top: calc(20px * var(--about-hero-content-scale));
+    padding: calc(8px * var(--about-hero-content-scale)) calc(14px * var(--about-hero-content-scale)) calc(9px * var(--about-hero-content-scale));
+  }
+
+  .about-chat-id-number,
+  .about-chat-bubble--plate a,
+  .about-chat-bubble--plate a[href^="tel"],
+  .about-chat-bubble--plate a[x-apple-data-detectors] {
+    font-size: calc(17px * var(--about-hero-content-scale)) !important;
+  }
+
+  .about-chat-bubble--vehicle {
+    width: min(calc(298px * var(--about-hero-content-scale)), 100%);
+    min-height: calc(74px * var(--about-hero-content-scale));
+    margin-top: calc(23px * var(--about-hero-content-scale));
+    padding: calc(9px * var(--about-hero-content-scale)) calc(20px * var(--about-hero-content-scale)) calc(10px * var(--about-hero-content-scale));
+  }
+
+  .about-chat-bubble--quote {
+    width: min(calc(298px * var(--about-hero-content-scale)), 100%);
+    min-height: calc(59px * var(--about-hero-content-scale));
+    margin-top: calc(17px * var(--about-hero-content-scale));
+    grid-template-columns: calc(52px * var(--about-hero-content-scale)) max-content;
+    gap: calc(10px * var(--about-hero-content-scale));
+    padding: calc(6px * var(--about-hero-content-scale)) calc(8px * var(--about-hero-content-scale));
+  }
+
+  .about-chat-bubble--quote img {
+    max-height: calc(43px * var(--about-hero-content-scale));
+  }
+
+  .about-chat-bubble--etiqa img {
+    max-height: calc(29px * var(--about-hero-content-scale));
+  }
+
+  .about-chat-bubble--allianz img {
+    max-height: calc(24px * var(--about-hero-content-scale));
+  }
+
+  .about-chat-bubble--allianz {
+    width: min(calc(298px * var(--about-hero-content-scale)), 100%);
+    grid-template-columns: calc(52px * var(--about-hero-content-scale)) max-content;
+  }
+
+  .about-chat-bubble--quote > span {
+    gap: calc(2px * var(--about-hero-content-scale));
+  }
+
+  .about-chat-bubble--quote strong {
+    font-size: calc(17px * var(--about-hero-content-scale));
+  }
+
+  .about-chat-bubble--question {
+    width: calc(178px * var(--about-hero-content-scale));
+    height: calc(38px * var(--about-hero-content-scale));
+    min-height: calc(38px * var(--about-hero-content-scale));
+    margin-top: calc(18px * var(--about-hero-content-scale));
+    padding: 0 calc(13px * var(--about-hero-content-scale));
+    border-radius: calc(18px * var(--about-hero-content-scale));
+  }
+
+  .about-chat-analyzing {
+    gap: calc(8px * var(--about-hero-content-scale));
+    margin-top: calc(26px * var(--about-hero-content-scale));
+    font-size: calc(20px * var(--about-hero-content-scale));
+  }
+
+  .about-chat-demo .about-chat-analyzing,
+  .about-chat-demo .about-chat-analyzing * {
+    font-size: calc(20px * var(--about-hero-content-scale));
+  }
+
+  .about-chat-analyzing span:first-child {
+    width: calc(18px * var(--about-hero-content-scale));
+    height: calc(18px * var(--about-hero-content-scale));
+  }
+
+  .about-hero-promises {
+    width: var(--about-hero-demo-width);
+    margin-top: calc(84px * var(--about-hero-content-scale));
+  }
+
+  .about-hero-promises p {
+    margin-bottom: calc(47.6px * var(--about-hero-content-scale));
+    font-size: calc(37px * var(--about-hero-content-scale));
+  }
+
+  .about-hero-cta {
+    margin-top: calc(54px * var(--about-hero-content-scale));
+  }
+
+  .about-hero-cta .cta-primary {
+    min-width: calc(208px * var(--about-hero-content-scale));
+    height: calc(61px * var(--about-hero-content-scale));
+    gap: calc(10px * var(--about-hero-content-scale));
+    padding: 0 calc(24px * var(--about-hero-content-scale));
+    font-size: calc(22px * var(--about-hero-content-scale));
+    box-shadow: 0 calc(2px * var(--about-hero-content-scale)) calc(5px * var(--about-hero-content-scale)) rgba(0, 0, 0, 0.28);
+  }
+
+  .payment-options-section {
+    width: min(100%, calc(389px * var(--about-section-scale)));
+  }
+
+  .payment-options-ask-card {
+    grid-template-columns: 28px minmax(0, 1fr);
+    gap: 8px;
+    padding-right: 14px;
+    padding-left: 14px;
+  }
+
+  .payment-options-ask-card .understand-unsure-card__icon {
+    width: 28px;
+    height: 28px;
+  }
+
+  .understand-road-stripes {
+    width: 100%;
+  }
+
+  .services-offer,
+  .trusted-insurers-inner,
+  .understand-inner,
+  .payment-options-inner,
+  .reviews-block__inner,
+  .ai-simple-inner,
+  .renew-cta-inner {
+    zoom: var(--about-section-scale);
+  }
+}
+
+@media (min-width: 1280px) {
+  .about-hero {
+    --about-section-scale: 1.2;
+  }
+
+  .hero-top {
+    --about-hero-content-scale: 1.2;
+  }
+}
+
+@media (min-width: 1536px) {
+  .about-hero {
+    --about-section-scale: 1.28;
+  }
+
+  .hero-top {
+    --about-hero-content-scale: 1.28;
+  }
+}

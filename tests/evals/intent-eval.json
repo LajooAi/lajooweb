@@ -290,7 +290,8 @@
     "step": "roadtax",
     "selectedQuote": true,
     "addOnsConfirmed": true,
-    "expectedIntent": "ask_question"
+    "expectedIntent": "select_roadtax",
+    "expectedDataContains": { "option": "12month-physical" }
   },
   {
     "name": "Roadtax none",
@@ -374,11 +375,12 @@
     "expectedIntent": "ask_question"
   },
   {
-    "name": "Personal details should not treat plate as vehicle info",
+    "name": "Personal details detects late plate correction",
     "message": "my plate is wxy1234",
     "step": "personal_details",
     "selectedQuote": true,
-    "expectedIntent": "other"
+    "expectedIntent": "change_vehicle",
+    "expectedDataContains": { "plateNumber": "WXY1234" }
   },
   {
     "name": "OTP 4-digit verify",
@@ -386,7 +388,7 @@
     "step": "otp",
     "selectedQuote": true,
     "expectedIntent": "verify_otp",
-    "expectedDataContains": { "valid": true }
+    "expectedDataContains": { "valid": false }
   },
   {
     "name": "OTP question",

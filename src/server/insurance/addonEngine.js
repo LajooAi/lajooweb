@@ -98,6 +98,32 @@ export function calculateWindscreenPremium(coverageAmount) {
   return roundCurrency(Number(coverageAmount || 0) * WINDSCREEN_PREMIUM_RATE);
 }
 
+function parseWrittenCoverageAmount(text) {
+  const raw = String(text || '').toLowerCase().replace(/[-]+/g, ' ');
+  const digitThousand = raw.match(/\b(\d{1,3})\s*(?:k|thousand)\b/i);
+  if (digitThousand) return Number(digitThousand[1]) * 1000;
+
+  const numberWords = {
+    one: 1,
+    two: 2,
+    three: 3,
+    four: 4,
+    five: 5,
+    six: 6,
+    seven: 7,
+    eight: 8,
+    nine: 9,
+    ten: 10,
+  };
+  for (const [word, value] of Object.entries(numberWords)) {
+    if (new RegExp(`\\b${word}\\s+thousand\\b`, 'i').test(raw)) {
+      return value * 1000;
+    }
+  }
+
+  return null;
+}
+
 export function extractWindscreenCoverageAmount(text, { allowBareAmount = false } = {}) {
   const raw = String(text || '');
   const candidates = [];
@@ -119,6 +145,11 @@ export function extractWindscreenCoverageAmount(text, { allowBareAmount = false 
     for (const match of raw.matchAll(pattern)) {
       addCandidate(match[1]);
     }
+  }
+
+  const writtenAmount = parseWrittenCoverageAmount(raw);
+  if (writtenAmount && (allowBareAmount || /windscreen|coverage|cover|rm/i.test(raw))) {
+    addCandidate(writtenAmount);
   }
 
   if (allowBareAmount) {
@@ -162,14 +193,178 @@ export function buildAddOnsFromSelection(addOnIds = [], options = {}) {
     .filter(Boolean);
 }
 
+const ADD_ON_TEXT_ALIASES = {
+  windscreen: ['windscreen', 'wind screen', 'glass'],
+  flood: ['flood', 'special perils', 'perils', 'natural disaster', 'natural disasters', 'landslide', 'landslip', 'storm'],
+  ehailing: ['e-hailing', 'ehailing', 'e hailing', 'grab', 'ride sharing', 'rideshare', 'ride share'],
+  all_drivers: ['all drivers', 'all driver'],
+  legal_liability_passengers: ['legal liability to passengers', 'legal liability passenger', 'llp'],
+  lltp_negligence: ['lltp', 'negligence'],
+  strike_riot: ['strike riot', 'riot', 'civil commotion'],
+  betterment_waiver: ['betterment waiver', 'betterment', 'zero betterment'],
+  ncd_relief: ['ncd relief', 'current year ncd'],
+  body_painting: ['body painting', 'paint'],
+  personal_accident: ['personal accident'],
+};
+
+const ADD_ON_NUMBER_TO_ID = Object.fromEntries(
+  ADD_ON_CATALOG.map((addOn) => [String(addOn.number), addOn.id])
+);
+
+function escapeRegex(value) {
+  return String(value || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+function uniqueCatalogOrder(ids = []) {
+  const wanted = new Set(ids.filter(Boolean));
+  return ADD_ON_CATALOG.map((addOn) => addOn.id).filter((id) => wanted.has(id));
+}
+
+function addOnAliasPattern(id) {
+  const aliases = ADD_ON_TEXT_ALIASES[id] || [];
+  const parts = aliases.map(escapeRegex);
+  return `(?:${parts.join('|')})`;
+}
+
+function addOnIdFromTextValue(value) {
+  const raw = String(value || '').toLowerCase().trim();
+  if (!raw) return null;
+  if (ADD_ON_BY_ID[raw]) return raw;
+  for (const [id, aliases] of Object.entries(ADD_ON_TEXT_ALIASES)) {
+    if (aliases.some((alias) => raw.includes(alias))) return id;
+  }
+  return null;
+}
+
+function addOnIdsMentionedInText(text) {
+  const raw = String(text || '').toLowerCase();
+  const ids = [];
+
+  for (const id of Object.keys(ADD_ON_TEXT_ALIASES)) {
+    if (new RegExp(`\\b${addOnAliasPattern(id)}\\b`, 'i').test(raw)) {
+      ids.push(id);
+    }
+  }
+
+  for (const match of raw.matchAll(/(?<![\d,])(?:option\s*)?([1-9]|1[01])(?![\d,])/g)) {
+    const id = ADD_ON_NUMBER_TO_ID[match[1]];
+    if (id) ids.push(id);
+  }
+
+  return uniqueCatalogOrder(ids);
+}
+
+function addOnIdsWithContext(text, contextPattern, options = {}) {
+  const raw = String(text || '').toLowerCase();
+  const ids = [];
+  const { before = true, after = true } = options;
+
+  for (const id of Object.keys(ADD_ON_TEXT_ALIASES)) {
+    const alias = addOnAliasPattern(id);
+    const contextBefore = new RegExp(`\\b(?:${contextPattern})\\b[^,.;\\n]{0,36}\\b${alias}\\b`, 'i');
+    const contextAfter = new RegExp(`\\b${alias}\\b[^,.;\\n]{0,36}\\b(?:${contextPattern})\\b`, 'i');
+    if ((before && contextBefore.test(raw)) || (after && contextAfter.test(raw))) {
+      ids.push(id);
+    }
+  }
+
+  if (before) {
+    const numberBefore = new RegExp(`\\b(?:${contextPattern})\\b[^,.;\\n]{0,18}(?<![\\d,])(?:option\\s*)?([1-9]|1[01])(?![\\d,])`, 'gi');
+    for (const match of raw.matchAll(numberBefore)) {
+      const id = ADD_ON_NUMBER_TO_ID[match[1]];
+      if (id) ids.push(id);
+    }
+  }
+
+  if (after) {
+    const numberAfter = new RegExp(`(?<![\\d,])(?:option\\s*)?([1-9]|1[01])(?![\\d,])[^,.;\\n]{0,18}\\b(?:${contextPattern})\\b`, 'gi');
+    for (const match of raw.matchAll(numberAfter)) {
+      const id = ADD_ON_NUMBER_TO_ID[match[1]];
+      if (id) ids.push(id);
+    }
+  }
+
+  return uniqueCatalogOrder(ids);
+}
+
+function addOnIdsWithOnlyCue(text) {
+  const raw = String(text || '').toLowerCase();
+  const ids = [];
+
+  for (const id of Object.keys(ADD_ON_TEXT_ALIASES)) {
+    const alias = addOnAliasPattern(id);
+    const onlyBefore = new RegExp(`\\b(?:only|just)\\s+(?:the\\s+)?${alias}\\b`, 'i');
+    const onlyAfter = new RegExp(`\\b${alias}\\b\\s+(?:only|just)\\b`, 'i');
+    if (onlyBefore.test(raw) || onlyAfter.test(raw)) ids.push(id);
+  }
+
+  return uniqueCatalogOrder(ids);
+}
+
 export function addOnIdsFromState(state) {
   return (state?.selectedAddOns || [])
-    .map((item) => String(item?.id || item?.name || '').toLowerCase())
-    .map((name) => {
-      if (name.includes('windscreen')) return 'windscreen';
-      if (name.includes('flood') || name.includes('special perils')) return 'flood';
-      if (name.includes('e-hailing') || name.includes('ehailing')) return 'ehailing';
-      return null;
-    })
+    .map((item) => addOnIdFromTextValue(item?.id || item?.name))
     .filter(Boolean);
+}
+
+export function resolveAddOnChangeFromText(text, state = {}) {
+  const raw = String(text || '').toLowerCase();
+  const existingIds = addOnIdsFromState(state);
+  const mentionedIds = addOnIdsMentionedInText(raw);
+  const removeAll =
+    /\b(?:remove|delete|clear|drop|skip)\b[\s\S]{0,24}\b(?:all|everything|add-?ons?|addons?)\b/i.test(raw) ||
+    /\b(?:no add-?ons?|no addons|without add-?ons?|without addons)\b/i.test(raw);
+
+  if (removeAll) {
+    return {
+      addOnIds: [],
+      addOns: [],
+      coverageAmount: null,
+      requiresWindscreenCoverage: false,
+    };
+  }
+
+  if (mentionedIds.length === 0) return null;
+
+  const removeIds = addOnIdsWithContext(raw, 'remove|delete|drop|take out|exclude|without|no');
+  const keepIds = uniqueCatalogOrder([
+    ...addOnIdsWithContext(raw, 'keep|retain', { before: true, after: false }),
+    ...addOnIdsWithOnlyCue(raw),
+  ]);
+  const addIds = addOnIdsWithContext(raw, 'add|include|want|need|take|get|choose|select|with');
+  const hasOnlyCue = /\b(?:only|just)\b/i.test(raw);
+  const hasEditCue = /\b(?:remove|delete|drop|take out|exclude|without|add|include|keep|retain|only|just|change|switch|update)\b/i.test(raw);
+
+  let nextIds = null;
+  if (keepIds.length > 0 && (hasOnlyCue || removeIds.length > 0 || /\b(?:keep|retain)\b/i.test(raw))) {
+    nextIds = keepIds;
+  } else if (hasOnlyCue) {
+    nextIds = uniqueCatalogOrder(mentionedIds.filter((id) => !removeIds.includes(id)));
+  } else if (removeIds.length > 0 || addIds.length > 0) {
+    const next = new Set(existingIds);
+    for (const id of removeIds) next.delete(id);
+    for (const id of addIds) next.add(id);
+    nextIds = uniqueCatalogOrder([...next]);
+  } else if (hasEditCue && existingIds.length === 0) {
+    nextIds = mentionedIds;
+  }
+
+  if (!nextIds) return null;
+
+  const existingWindscreen = (state?.selectedAddOns || []).find((addOn) => {
+    const id = addOnIdFromTextValue(addOn?.id || addOn?.name);
+    return id === 'windscreen';
+  });
+  const coverageAmount =
+    extractWindscreenCoverageAmount(raw, { allowBareAmount: nextIds.includes('windscreen') }) ||
+    existingWindscreen?.coverageAmount ||
+    null;
+  const requiresWindscreenCoverage = nextIds.includes('windscreen') && !coverageAmount;
+
+  return {
+    addOnIds: nextIds,
+    addOns: requiresWindscreenCoverage ? [] : buildAddOnsFromSelection(nextIds, { coverageAmount }),
+    coverageAmount,
+    requiresWindscreenCoverage,
+  };
 }

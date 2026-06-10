@@ -31,14 +31,14 @@ export function buildAdvisorResponsePolicyInstruction(decision, state) {
   const modeLabel = MODE_LABELS[decision.mode] || decision.mode;
   const actionLabel = ACTION_LABELS[decision.action] || decision.action;
   const stepLanguageRule = decision.shouldAvoidStepLanguage
-    ? '- Do NOT expose "Step X of 6" wording in this reply. Use natural consultant wording instead.'
-    : '- If a progress header is required by another contract, keep it brief and do not over-explain the step.';
+    ? '- Do not add a progress header to ordinary side-question replies. If a deterministic renewal transition block supplies "Step X of 6", preserve it.'
+    : '- Preserve the brief "Step X of 6" progress header when the renewal flow advances.';
   const resumeRule = decision.shouldResumeFlow
     ? '- Use the answer-then-resume pattern: answer the user first, then bridge back to the current renewal decision.'
     : '- Do not add unnecessary recap text. Move directly to the useful answer or next safe action.';
   const followUpRule = decision.shouldAskOneFollowUp
-    ? '- End with exactly one practical follow-up question.'
-    : '- Ask at most one question, only if needed to continue safely.';
+    ? '- End with exactly one practical next-step question tied to the current renewal decision.'
+    : '- End with a clear next step when the user needs to decide; ask at most one question and only if needed to continue safely.';
 
   return `LAJOO CONSULTANT ORCHESTRATION
 Conversation mode: ${decision.mode} (${modeLabel})

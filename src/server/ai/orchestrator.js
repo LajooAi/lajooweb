@@ -1,5 +1,6 @@
 import { FLOW_STEPS, USER_INTENTS } from '../../lib/conversationState.js';
 import { getInsurerKeysFromText } from '../../lib/insurerCatalog.js';
+import { ADVISOR_INTENTS } from './advisorIntent.js';
 import {
   calculateSummaryAmounts,
   getQuotesFromState,
@@ -62,7 +63,7 @@ function hasQuestionShape(text) {
 }
 
 function looksLikeQuoteComparison(text) {
-  return /\b(compare|comparison|vs\.?|versus|difference|different|better|best|which one|which is better|why (?:not|choose)|between|recommend|recommendation|cheaper|cheapest|coverage|sum insured|claims?|claim support)\b/i.test(text) ||
+  return /\b(compare|comparison|vs\.?|versus|difference|different|better|best|which one|which is better|why (?:not|choose)|between|recommend|recommendation|advice|advise|cheaper|cheapest|coverage|sum insured|claims?|claim support)\b/i.test(text) ||
     getInsurerKeysFromText(text).length > 0;
 }
 
@@ -111,8 +112,48 @@ function shouldAskFollowUp(mode, state, intent) {
   return false;
 }
 
-function resolveMode({ message, intent, state }) {
+function resolveAdvisorMode(advisorIntent, state) {
+  const key = advisorIntent?.intent || ADVISOR_INTENTS.NONE;
+  if (!key || key === ADVISOR_INTENTS.NONE) return null;
+
+  if (key === ADVISOR_INTENTS.CONFUSED_USER) {
+    return CONVERSATION_MODES.CONFUSED;
+  }
+
+  if ([
+    ADVISOR_INTENTS.COMMERCIAL_BIAS_CHALLENGE,
+    ADVISOR_INTENTS.REJECT_RECOMMENDATION,
+    ADVISOR_INTENTS.QUOTE_FILTER_PREFERENCE,
+    ADVISOR_INTENTS.QUOTE_OBJECTION,
+    ADVISOR_INTENTS.QUOTE_PRICE_EXPLANATION,
+    ADVISOR_INTENTS.DELEGATE_DECISION,
+  ].includes(key)) {
+    return CONVERSATION_MODES.QUOTE_COMPARISON;
+  }
+
+  if ([
+    ADVISOR_INTENTS.PRIVACY_CONCERN,
+    ADVISOR_INTENTS.HUMAN_HANDOFF,
+    ADVISOR_INTENTS.ADDON_EXPLANATION,
+    ADVISOR_INTENTS.COVERAGE_RISK_ADVICE,
+    ADVISOR_INTENTS.PAYMENT_CONCERN,
+    ADVISOR_INTENTS.ROADTAX_ALREADY_RENEWED,
+    ADVISOR_INTENTS.ROADTAX_LEGALITY,
+  ].includes(key)) {
+    return DECISION_STEPS.has(state?.step)
+      ? CONVERSATION_MODES.INSURANCE_QUESTION
+      : CONVERSATION_MODES.FLOW_ANSWER;
+  }
+
+  return null;
+}
+
+function resolveMode({ message, intent, state, advisorIntent = null }) {
   const text = normalizeText(message);
+  const advisorMode = resolveAdvisorMode(advisorIntent, state);
+  if (advisorMode) {
+    return advisorMode;
+  }
 
   if (isSmallTalkAtStart(intent, state)) {
     return CONVERSATION_MODES.SMALL_TALK;
@@ -158,9 +199,9 @@ function resolveMode({ message, intent, state }) {
 
 function formatMoney(value) {
   const numeric = Number(value || 0);
-  if (!Number.isFinite(numeric)) return 'RM 0';
+  if (!Number.isFinite(numeric)) return 'RM 0.00';
   return `RM ${numeric.toLocaleString('en-MY', {
-    minimumFractionDigits: Number.isInteger(numeric) ? 0 : 2,
+    minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   })}`;
 }
@@ -222,7 +263,7 @@ function summarizeAddOns(state) {
         : null,
       recommended: !!addOn.recommended,
     })),
-    windscreenFormula: 'Windscreen premium = selected coverage amount x 15%. Example: RM 2,000 coverage costs RM 300.',
+    windscreenFormula: 'Windscreen premium = selected coverage amount x 15%. Example: RM 2,000.00 coverage costs RM 300.00.',
   };
 }
 
@@ -239,7 +280,7 @@ function summarizeRoadTax(state) {
     digitalOption: {
       name: '12 months digital road tax',
       price: 90,
-      priceLabel: 'RM 90',
+      priceLabel: formatMoney(90),
     },
     printedOrDeliveredAvailable: physicalAvailable,
     printedRule: 'Printed road tax is only for Foreign ID or Company vehicles from 1 Feb 2026.',
@@ -325,8 +366,8 @@ function resolveAction(mode, intent, state) {
   return CONVERSATION_ACTIONS.ASK_FOLLOW_UP;
 }
 
-export function buildConversationDecision({ message, intent, state, messages = [], stepBeforeMutation = null } = {}) {
-  const mode = resolveMode({ message, intent, state });
+export function buildConversationDecision({ message, intent, state, messages = [], stepBeforeMutation = null, advisorIntent = null } = {}) {
+  const mode = resolveMode({ message, intent, state, advisorIntent });
   const action = resolveAction(mode, intent, state);
   const engineContext = buildEngineContext(state);
   const shouldAdvanceFlow = action === CONVERSATION_ACTIONS.ADVANCE_FLOW;
@@ -351,6 +392,10 @@ export function buildConversationDecision({ message, intent, state, messages = [
     previousStep: stepBeforeMutation || null,
     intent: intent?.intent || null,
     confidence: Number(intent?.confidence || 0),
+    advisorIntent: advisorIntent?.intent || ADVISOR_INTENTS.NONE,
+    advisorTopic: advisorIntent?.topic || null,
+    advisorIntentConfidence: Number(advisorIntent?.confidence || 0),
+    advisorIntentContext: advisorIntent || null,
     shouldAdvanceFlow,
     shouldAnswerFirst,
     shouldResumeFlow,

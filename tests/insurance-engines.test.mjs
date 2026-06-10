@@ -7,6 +7,7 @@ import {
   buildAddOnsFromSelection,
   calculateWindscreenPremium,
   extractWindscreenCoverageAmount,
+  resolveAddOnChangeFromText,
 } from '../src/server/insurance/addonEngine.js';
 import {
   canUseDeliveredRoadTax,
@@ -16,6 +17,7 @@ import {
 import {
   calculateCurrentGrandTotal,
   calculateSummaryAmounts,
+  ensureVehicleDisplayQuoteOptions,
   getQuotesFromState,
   mapGatewayQuotesToInternal,
   quoteIdForCurrentSelection,
@@ -31,6 +33,8 @@ test('addon engine calculates windscreen premium from coverage amount', () => {
 
 test('addon engine extracts windscreen coverage from natural text', () => {
   assert.equal(extractWindscreenCoverageAmount('Add windscreen RM 2,000 please'), 2000);
+  assert.equal(extractWindscreenCoverageAmount('add windscreen rm two thousand'), 2000);
+  assert.equal(extractWindscreenCoverageAmount('2 thousand', { allowBareAmount: true }), 2000);
   assert.equal(extractWindscreenCoverageAmount('2000', { allowBareAmount: true }), 2000);
   assert.equal(extractWindscreenCoverageAmount('I want flood only'), null);
 });
@@ -44,6 +48,37 @@ test('addon engine builds selected add-ons and gateway add-on ids', () => {
   assert.equal(addOns[1].price, 150);
   assert.deepEqual(addOnIdsFromState({ selectedAddOns: addOns }), ['windscreen', 'flood']);
   assert.ok(ADD_ON_CATALOG.length >= 11);
+});
+
+test('addon engine resolves explicit later-step add-on corrections', () => {
+  const state = {
+    selectedAddOns: buildAddOnsFromSelection(['windscreen', 'flood'], { coverageAmount: 1000 }),
+  };
+
+  const change = resolveAddOnChangeFromText('remove windscreen, keep flood only', state);
+
+  assert.deepEqual(change.addOnIds, ['flood']);
+  assert.deepEqual(change.addOns.map((item) => item.id), ['flood']);
+  assert.equal(change.requiresWindscreenCoverage, false);
+});
+
+test('addon engine keeps money amounts separate from option numbers', () => {
+  const state = { selectedAddOns: [] };
+  const change = resolveAddOnChangeFromText('add windscreen RM 2,000 please', state);
+
+  assert.deepEqual(change.addOnIds, ['windscreen']);
+  assert.equal(change.coverageAmount, 2000);
+  assert.equal(change.addOns[0].price, 300);
+});
+
+test('addon engine asks for windscreen coverage when adding it later without amount', () => {
+  const state = {
+    selectedAddOns: buildAddOnsFromSelection(['flood']),
+  };
+  const change = resolveAddOnChangeFromText('add windscreen also', state);
+
+  assert.deepEqual(change.addOnIds, ['windscreen', 'flood']);
+  assert.equal(change.requiresWindscreenCoverage, true);
 });
 
 test('road tax engine normalizes display names and API options', () => {
@@ -76,6 +111,27 @@ test('quote engine supplements gateway quotes with catalog fallback quotes', () 
   assert.ok(quotes.length >= 7);
   assert.ok(quotes.some((quote) => quote.id === 'QT-SAMPLE-ETI-001'));
   assert.ok(quotes.some((quote) => quote.insurer.displayName === 'Takaful Ikhlas Insurance'));
+});
+
+test('vehicle display quote options fall back to catalog sums for market value range', () => {
+  const quotes = ensureVehicleDisplayQuoteOptions([], {
+    engineCC: 1496,
+    ncdPercent: 20,
+  });
+  const sums = quotes.map((quote) => Number(quote.sumInsured || 0)).filter((value) => value > 0);
+
+  assert.ok(quotes.length >= 7);
+  assert.equal(Math.min(...sums), 34000);
+  assert.equal(Math.max(...sums), 40000);
+});
+
+test('vehicle display quote options preserve usable gateway sums', () => {
+  const gatewayQuotes = [
+    { insurer: { displayName: 'Example A' }, sumInsured: 42000 },
+    { insurer: { displayName: 'Example B' }, sumInsured: 44000 },
+  ];
+
+  assert.deepEqual(ensureVehicleDisplayQuoteOptions(gatewayQuotes), gatewayQuotes);
 });
 
 test('quote engine selects insurer and preserves gateway-style quote id', () => {

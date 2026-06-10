@@ -20,11 +20,24 @@ const BRAND_TAGS = new Set([
   'subaru',
   'jetour',
 ]);
+export const RECOMMENDATION_SCORE_VERSION = 'quote_recommendation_v2';
+const CLOSE_SCORE_GAP_THRESHOLD = 0.35;
+const CLOSE_PRICE_DELTA_RM = 10;
+const CLOSE_PRICE_DELTA_RATIO = 0.015;
 
 function formatRm(value) {
   const num = Number(value || 0);
-  if (!Number.isFinite(num)) return 'RM 0';
-  return `RM ${num.toLocaleString()}`;
+  if (!Number.isFinite(num)) return 'RM 0.00';
+  return `RM ${num.toLocaleString('en-MY', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })}`;
+}
+
+function roundScore(value, digits = 4) {
+  const num = Number(value);
+  if (!Number.isFinite(num)) return 0;
+  return Number(num.toFixed(digits));
 }
 
 function normalizeText(text) {
@@ -93,6 +106,54 @@ function collectRecommendationTags(message, preferences = {}, state = {}) {
   }
 
   return [...tags];
+}
+
+function collectPreferenceSignals(message, preferences = {}, state = {}, recommendationTags = []) {
+  const text = normalizeText(message);
+  const signals = [];
+
+  const push = (code, label, source = 'message') => {
+    if (signals.some((signal) => signal.code === code)) return;
+    signals.push({ code, label, source });
+  };
+
+  if (preferences.budgetFocused) push('memory_budget_focused', 'User has shown price sensitivity before', 'conversation_memory');
+  if (preferences.claimsFocused) push('memory_claims_focused', 'User has shown claims/support concern before', 'conversation_memory');
+  if (preferences.coverageFocused) push('memory_coverage_focused', 'User has shown higher coverage preference before', 'conversation_memory');
+  if (preferences.concisePreferred === true) push('memory_prefers_concise', 'User prefers concise answers', 'conversation_memory');
+
+  if (/\b(cheap|cheapest|budget|save|saving|lowest|affordable|value for money)\b/.test(text)) {
+    push('message_budget_focused', 'User asked for budget or lowest price');
+  }
+  if (/\b(max|maximum|higher|highest|coverage|cover|sum insured|protection)\b/.test(text)) {
+    push('message_coverage_focused', 'User asked for higher coverage or sum insured');
+  }
+  if (/\b(claim|claims|support|service|towing|roadside|workshop|fast payout)\b/.test(text)) {
+    push('message_claims_focused', 'User asked about claims or support');
+  }
+  if (/\b(shariah|syariah|islamic|takaful|halal)\b/.test(text)) {
+    push('message_shariah_focused', 'User asked for takaful or Shariah preference');
+  }
+
+  const tagSet = new Set(recommendationTags);
+  if (tagSet.has('older_car') || tagSet.has('betterment')) {
+    push('context_older_car_or_betterment', 'Vehicle/user context suggests older-car or betterment concern', 'vehicle_or_question_context');
+  }
+  if (tagSet.has('flood') || tagSet.has('special_perils')) {
+    push('context_flood_or_special_perils', 'Location or question suggests flood/special-perils relevance', 'vehicle_or_question_context');
+  }
+  if (tagSet.has('ev') || tagSet.has('tesla') || tagSet.has('charger')) {
+    push('context_ev', 'Question suggests EV/Tesla/charger relevance', 'question_context');
+  }
+  if ([...tagSet].some((tag) => BRAND_TAGS.has(tag))) {
+    push('context_vehicle_brand', 'Vehicle brand/model context is relevant', 'vehicle_context');
+  }
+
+  if (signals.length === 0) {
+    push('general_best_request', 'No explicit priority detected, so use balanced recommendation', 'default');
+  }
+
+  return signals;
 }
 
 function normalizeQuote(quote) {
@@ -389,12 +450,218 @@ function buildReasonBundle(quote, scores, weights, allQuotes, factSignals = {}) 
   const highestCover = sortedByCoverage[0];
   let tradeoff = 'It is a balanced pick, but the user should still confirm if price, claims comfort, or higher sum insured matters most.';
   if (quote.insurerId !== cheapest?.insurerId) {
-    tradeoff = `${cheapest.insurerName} is cheaper at ${formatRm(cheapest.finalPremium)}.`;
+    const priceDelta = quote.finalPremium - cheapest.finalPremium;
+    const sumDelta = quote.sumInsured - cheapest.sumInsured;
+    const closePrice = priceDelta > 0 && (
+      priceDelta <= CLOSE_PRICE_DELTA_RM ||
+      priceDelta / Math.max(1, cheapest.finalPremium) <= CLOSE_PRICE_DELTA_RATIO
+    );
+    const extraCover = sumDelta > 0 ? ` while this gives ${formatRm(sumDelta)} higher sum insured` : '';
+    tradeoff = closePrice
+      ? `${cheapest.insurerName} is only ${formatRm(priceDelta)} cheaper${extraCover}, so this is a close call if lowest price matters.`
+      : `${cheapest.insurerName} is cheaper at ${formatRm(cheapest.finalPremium)}.`;
   } else if (quote.insurerId !== highestCover?.insurerId) {
     tradeoff = `${highestCover.insurerName} has higher sum insured at ${formatRm(highestCover.sumInsured)}.`;
   }
 
   return { reasons, tradeoff };
+}
+
+function rankMap(quotes, selector, direction = 'desc') {
+  return Object.fromEntries(
+    quotes
+      .slice()
+      .sort((a, b) => {
+        const diff = Number(selector(direction === 'asc' ? a : b)) - Number(selector(direction === 'asc' ? b : a));
+        if (diff !== 0) return diff;
+        return a.insurerName.localeCompare(b.insurerName);
+      })
+      .map((quote, index) => [quote.insurerId, index + 1])
+  );
+}
+
+function buildReasonDetails({
+  winner,
+  runnerUp,
+  cheapest,
+  highestCover,
+  highestValue,
+  scores,
+  weights,
+  factSignals,
+  preferenceSignals,
+}) {
+  const reasonDetails = [];
+  const push = (code, label, detail, evidence = {}) => {
+    if (reasonDetails.some((reason) => reason.code === code)) return;
+    reasonDetails.push({ code, label, detail, evidence });
+  };
+
+  if (winner.insurerId === cheapest?.insurerId) {
+    push('lowest_premium', 'Lowest premium', `${winner.insurerName} has the lowest premium at ${formatRm(winner.finalPremium)}.`, {
+      finalPremium: winner.finalPremium,
+    });
+  }
+
+  if (winner.insurerId === highestCover?.insurerId) {
+    push('highest_sum_insured', 'Highest sum insured', `${winner.insurerName} has the highest sum insured at ${formatRm(winner.sumInsured)}.`, {
+      sumInsured: winner.sumInsured,
+    });
+  }
+
+  if (winner.insurerId === highestValue?.insurerId) {
+    push('value_score_leader', 'Best value score', `${winner.insurerName} gives the strongest sum-insured-per-ringgit value in this quote set.`, {
+      valueScore: roundScore(scores.value),
+    });
+  }
+
+  if (winner.insurerId !== cheapest?.insurerId && cheapest) {
+    const premiumDelta = winner.finalPremium - cheapest.finalPremium;
+    const sumInsuredDelta = winner.sumInsured - cheapest.sumInsured;
+    if (premiumDelta > 0 && premiumDelta <= CLOSE_PRICE_DELTA_RM && sumInsuredDelta > 0) {
+      push(
+        'near_cheapest_with_higher_sum_insured',
+        'Near-cheapest with more cover',
+        `${winner.insurerName} is ${formatRm(premiumDelta)} above the cheapest quote and gives ${formatRm(sumInsuredDelta)} higher sum insured.`,
+        { premiumDelta, sumInsuredDelta, cheapestInsurer: cheapest.insurerName }
+      );
+    }
+  }
+
+  if (weights.claims > 1.2 && scores.claims >= 0.28) {
+    push('claims_signal_match', 'Claims/service signal match', `${winner.insurerName} has current quote features aligned to claims or service comfort.`, {
+      claimsScore: roundScore(scores.claims),
+    });
+  }
+
+  if (weights.shariah > 0 && (winner.insurerType === 'takaful' || /takaful|ikhlas/i.test(winner.insurerName))) {
+    push('shariah_preference_match', 'Takaful preference match', `${winner.insurerName} matches the takaful/Shariah preference.`, {
+      shariahScore: roundScore(scores.shariah),
+    });
+  }
+
+  for (const reason of factSignals.reasons || []) {
+    push('approved_fact_match', 'Approved fact match', reason, {
+      factsScore: roundScore(scores.facts),
+    });
+  }
+
+  if (preferenceSignals.some((signal) => signal.code === 'general_best_request')) {
+    push('balanced_default', 'Balanced default', 'No explicit priority was detected, so LAJOO balanced premium, sum insured, value, and verified facts.', {
+      totalScore: roundScore(scores.total),
+    });
+  }
+
+  if (runnerUp) {
+    push('runner_up_checked', 'Runner-up checked', `${runnerUp.quote.insurerName} was the nearest scored alternative.`, {
+      runnerUpInsurer: runnerUp.quote.insurerName,
+      scoreGap: roundScore(scores.total - runnerUp.scores.total),
+    });
+  }
+
+  return reasonDetails.slice(0, 8);
+}
+
+function buildQuoteSnapshot(scored, normalizedQuotes) {
+  const priceRanks = rankMap(normalizedQuotes, (quote) => quote.finalPremium, 'asc');
+  const coverageRanks = rankMap(normalizedQuotes, (quote) => quote.sumInsured, 'desc');
+  const valueRanks = rankMap(normalizedQuotes, (quote) => quote.finalPremium > 0 ? quote.sumInsured / quote.finalPremium : 0, 'desc');
+
+  return scored.map((entry) => ({
+    insurerName: entry.quote.insurerName,
+    insurerKey: entry.quote.insurerKey,
+    finalPremium: entry.quote.finalPremium,
+    sumInsured: entry.quote.sumInsured,
+    priceRank: priceRanks[entry.quote.insurerId] || null,
+    coverageRank: coverageRanks[entry.quote.insurerId] || null,
+    valueRank: valueRanks[entry.quote.insurerId] || null,
+    totalScore: roundScore(entry.scores.total),
+  }));
+}
+
+function buildRecommendationExplainability({
+  scored,
+  normalizedQuotes,
+  weights,
+  preferences,
+  preferenceSignals,
+  recommendationTags,
+  reasons,
+  tradeoff,
+}) {
+  const winner = scored[0];
+  const runnerUp = scored[1] || null;
+  const sortedByPrice = [...normalizedQuotes].sort((a, b) => a.finalPremium - b.finalPremium);
+  const sortedByCoverage = [...normalizedQuotes].sort((a, b) => b.sumInsured - a.sumInsured);
+  const sortedByValue = [...normalizedQuotes].sort((a, b) =>
+    (b.finalPremium > 0 ? b.sumInsured / b.finalPremium : 0) -
+    (a.finalPremium > 0 ? a.sumInsured / a.finalPremium : 0)
+  );
+  const cheapest = sortedByPrice[0] || null;
+  const highestCover = sortedByCoverage[0] || null;
+  const highestValue = sortedByValue[0] || null;
+  const scoreGap = runnerUp ? winner.scores.total - runnerUp.scores.total : null;
+  const premiumDeltaToCheapest = cheapest ? winner.quote.finalPremium - cheapest.finalPremium : null;
+  const sumInsuredDeltaToCheapest = cheapest ? winner.quote.sumInsured - cheapest.sumInsured : null;
+  const priceCloseToCheapest = cheapest && winner.quote.insurerId !== cheapest.insurerId && premiumDeltaToCheapest > 0 && (
+    premiumDeltaToCheapest <= CLOSE_PRICE_DELTA_RM ||
+    premiumDeltaToCheapest / Math.max(1, cheapest.finalPremium) <= CLOSE_PRICE_DELTA_RATIO
+  );
+  const isCloseCall = Boolean(
+    (scoreGap !== null && scoreGap <= CLOSE_SCORE_GAP_THRESHOLD) ||
+    (priceCloseToCheapest && sumInsuredDeltaToCheapest >= 0)
+  );
+  const confidenceLabel = isCloseCall
+    ? 'medium_close_call'
+    : (winner.scores.facts > 0.6 || (scoreGap !== null && scoreGap > 0.65) ? 'high' : 'medium');
+  const reasonDetails = buildReasonDetails({
+    winner: winner.quote,
+    runnerUp,
+    cheapest,
+    highestCover,
+    highestValue,
+    scores: winner.scores,
+    weights,
+    factSignals: winner.factSignals,
+    preferenceSignals,
+  });
+
+  return {
+    scoreVersion: RECOMMENDATION_SCORE_VERSION,
+    confidenceLabel,
+    isCloseCall,
+    scoreGap: scoreGap === null ? null : roundScore(scoreGap),
+    recommendedInsurer: winner.quote.insurerName,
+    runnerUpInsurer: runnerUp?.quote?.insurerName || null,
+    reasonCodes: reasonDetails.map((reason) => reason.code),
+    reasonDetails,
+    preferenceSignals,
+    recommendationTags,
+    primaryReasons: reasons,
+    tradeoff,
+    weights: Object.fromEntries(Object.entries(weights).map(([key, value]) => [key, roundScore(value)])),
+    winningScores: Object.fromEntries(Object.entries(winner.scores).map(([key, value]) => [key, roundScore(value)])),
+    closeCall: {
+      nearestAlternative: runnerUp?.quote?.insurerName || null,
+      cheapestAlternative: cheapest?.insurerName || null,
+      premiumDeltaToCheapest,
+      sumInsuredDeltaToCheapest,
+    },
+    quoteSnapshot: buildQuoteSnapshot(scored, normalizedQuotes),
+    governance: {
+      basis: 'user_fit_live_quote_verified_facts',
+      paidPlacementApplied: false,
+      commissionWeightApplied: false,
+      commercialOverrideApplied: false,
+      disclosure: 'Recommendation is based on quote economics, user/context fit, and approved facts available to LAJOO.',
+    },
+    preferenceState: {
+      budgetFocused: Boolean(preferences.budgetFocused),
+      claimsFocused: Boolean(preferences.claimsFocused),
+      coverageFocused: Boolean(preferences.coverageFocused),
+      concisePreferred: preferences.concisePreferred === true ? true : (preferences.concisePreferred === false ? false : null),
+    },
+  };
 }
 
 export function buildQuoteRecommendation({
@@ -421,6 +688,7 @@ export function buildQuoteRecommendation({
   const preferences = userPreferences || state?.userPreferences || {};
   const weights = buildPreferenceWeights(message, preferences);
   const recommendationTags = collectRecommendationTags(message, preferences, state);
+  const preferenceSignals = collectPreferenceSignals(message, preferences, state, recommendationTags);
   const prices = normalizedQuotes.map((quote) => quote.finalPremium);
   const sums = normalizedQuotes.map((quote) => quote.sumInsured);
   const minPrice = Math.min(...prices);
@@ -457,6 +725,22 @@ export function buildQuoteRecommendation({
 
   const winner = scored[0];
   const { reasons, tradeoff } = buildReasonBundle(winner.quote, winner.scores, weights, normalizedQuotes, winner.factSignals);
+  const explainability = buildRecommendationExplainability({
+    scored,
+    normalizedQuotes,
+    weights,
+    preferences,
+    preferenceSignals,
+    recommendationTags,
+    reasons,
+    tradeoff,
+  });
+  const cheapestQuote = normalizedQuotes
+    .slice()
+    .sort((a, b) => a.finalPremium - b.finalPremium)[0] || null;
+  const cheapestQuestionChoice = cheapestQuote && cheapestQuote.insurerKey !== winner.quote.insurerKey
+    ? `, choose the cheapest option ${cheapestQuote.insurerName} - ${formatRm(cheapestQuote.finalPremium)}`
+    : '';
 
   return {
     recommendedQuote: winner.quote,
@@ -475,11 +759,19 @@ export function buildQuoteRecommendation({
     factReasons: winner.factSignals.reasons,
     riskNotes: winner.factSignals.riskNotes,
     recommendationTags,
+    preferenceSignals,
     tradeoff,
-    confidence: normalizedQuotes.length >= 2 ? (winner.scores.facts > 0.6 ? 0.84 : 0.78) : 0.62,
+    explainability,
+    confidenceLabel: explainability.confidenceLabel,
+    isCloseCall: explainability.isCloseCall,
+    scoreVersion: explainability.scoreVersion,
+    reasonCodes: explainability.reasonCodes,
+    confidence: normalizedQuotes.length >= 2
+      ? (explainability.isCloseCall ? 0.72 : (winner.scores.facts > 0.6 ? 0.84 : 0.78))
+      : 0.62,
     priceLabel: formatRm(winner.quote.finalPremium),
     sumInsuredLabel: formatRm(winner.quote.sumInsured),
-    question: 'Want to go with this, or do you want to compare another insurer?',
+    question: `Want to go with ${winner.quote.insurerName} - ${formatRm(winner.quote.finalPremium)}${cheapestQuestionChoice}, or explore other insurers?`,
   };
 }
 
@@ -497,6 +789,15 @@ export function buildQuoteRecommendationInstruction(decision, context = {}) {
   const alternatives = Array.isArray(recommendation.alternatives)
     ? recommendation.alternatives.slice(0, 2).map((alt) => `${alt.insurerName} (${formatRm(alt.finalPremium)}, sum insured ${formatRm(alt.sumInsured)})`)
     : [];
+  const cheapestQuote = Array.isArray(recommendation.scoredQuotes)
+    ? recommendation.scoredQuotes
+      .filter((scoredQuote) => Number(scoredQuote?.finalPremium) > 0)
+      .slice()
+      .sort((a, b) => Number(a.finalPremium) - Number(b.finalPremium))[0]
+    : null;
+  const cheapestQuestionChoice = cheapestQuote?.insurerName && cheapestQuote.insurerName !== quote.insurerName
+    ? `, choose the cheapest option ${cheapestQuote.insurerName} - ${formatRm(cheapestQuote.finalPremium)}`
+    : '';
   const factReasons = Array.isArray(recommendation.factReasons) && recommendation.factReasons.length > 0
     ? recommendation.factReasons.join('; ')
     : null;
@@ -506,6 +807,12 @@ export function buildQuoteRecommendationInstruction(decision, context = {}) {
   const tags = Array.isArray(recommendation.recommendationTags) && recommendation.recommendationTags.length > 0
     ? recommendation.recommendationTags.join(', ')
     : null;
+  const reasonCodes = Array.isArray(recommendation.reasonCodes) && recommendation.reasonCodes.length > 0
+    ? recommendation.reasonCodes.join(', ')
+    : null;
+  const closeCallLine = recommendation.isCloseCall
+    ? `- Close-call guidance: This recommendation is a close call. State the winner confidently, but mention the nearest/cheapest alternative clearly instead of overselling certainty.`
+    : `- Confidence: ${recommendation.confidenceLabel || 'medium'} under ${recommendation.scoreVersion || RECOMMENDATION_SCORE_VERSION}.`;
 
   return `QUOTE RECOMMENDATION ENGINE
 If the user asks LAJOO to recommend, use this structured recommendation:
@@ -513,10 +820,13 @@ If the user asks LAJOO to recommend, use this structured recommendation:
 - Premium: ${formatRm(quote.finalPremium)}
 - Sum insured: ${formatRm(quote.sumInsured)}
 - Detected user need tags: ${tags || 'general quote recommendation'}
+- Recommendation score version: ${recommendation.scoreVersion || RECOMMENDATION_SCORE_VERSION}
+- Reason codes: ${reasonCodes || 'balanced_default'}
 - Reasons: ${recommendation.reasons.join('; ')}
 ${factReasons ? `- Approved fact-backed reasons: ${factReasons}` : '- Approved fact-backed reasons: none specific for this user need; rely on current quote price/sum insured and avoid policy claims.'}
 ${riskNotes ? `- Caution notes: ${riskNotes}` : ''}
 - Honest tradeoff: ${recommendation.tradeoff}
+${closeCallLine}
 ${alternatives.length > 0 ? `- Nearby alternatives: ${alternatives.join(' | ')}` : ''}
 
 Response rules:
@@ -527,7 +837,7 @@ Response rules:
 
   **Trade-off:** One honest tradeoff versus the cheapest, highest-sum-insured, or closest alternative.
 
-  **Next:** One clear choice question, such as "Do you want ${quote.insurerName}, the cheapest option, or a full comparison?"
+  **Next:** One clear choice question that names the options with premiums, such as "Want to go with ${quote.insurerName} - ${formatRm(quote.finalPremium)}${cheapestQuestionChoice}, or explore others?"
 - Bold insurer names, final premiums, sum insured amounts, and important decision words.
 - Keep this structure only for quote recommendation/comparison moments. Do not force it onto normal insurance explanations.
 - Include the exact insurer name "${quote.insurerName}" in the My pick line so the system can remember the recommendation.
@@ -535,6 +845,7 @@ Response rules:
 - Brand-program reasons are eligibility context only. Do not make them the main reason unless the live quote/product confirms that exact programme; phrase them as "may be relevant if eligible".
 - Do not show the full quote list again unless the user asks.
 - Do not invent insurer policy facts. Current quote features are helpful context, not final policy promises.
+- Do not end with vague wording like "go with this" or "cheapest option" without insurer names and premiums.
 - End with exactly one Next question.`;
 }
 

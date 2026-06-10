@@ -180,10 +180,27 @@ test('planner owns quote recommendation guidance', () => {
 
   const turnPlan = planTurn('which insurer do you recommend?', state);
   const instruction = buildTurnQuestionInstruction(turnPlan, { state });
+  const adviceTurnPlan = planTurn('what is your advice?', state);
 
   assert.equal(turnPlan.questionGuidance, TURN_QUESTION_GUIDANCE.QUOTE_RECOMMENDATION);
+  assert.equal(adviceTurnPlan.questionGuidance, TURN_QUESTION_GUIDANCE.QUOTE_RECOMMENDATION);
   assert.match(instruction, /Pick ONE insurer confidently/i);
   assert.match(instruction, /Current lowest quote/i);
+});
+
+test('planner quote general close does not loop back to side-by-side prompt', () => {
+  const state = {
+    step: FLOW_STEPS.QUOTES,
+    selectedQuote: null,
+    vehicleInfo: { sampleId: 'JRT9289' },
+  };
+
+  const turnPlan = planTurn('what is the difference between these?', state);
+  const instruction = buildTurnQuestionInstruction(turnPlan, { state });
+
+  assert.equal(turnPlan.questionGuidance, TURN_QUESTION_GUIDANCE.QUOTE_GENERAL);
+  assert.match(instruction, /choose an insurer/i);
+  assert.doesNotMatch(instruction, /quick side-by-side/i);
 });
 
 test('planner owns add-on recommendation guidance', () => {
@@ -204,8 +221,18 @@ test('planner owns add-on recommendation guidance', () => {
   assert.equal(turnPlan.questionGuidance, TURN_QUESTION_GUIDANCE.ADDON_RECOMMENDATION);
   assert.match(instruction, /Windscreen/i);
   assert.match(instruction, /Special Perils/i);
+  assert.match(instruction, /Betterment waiver/i);
+  assert.match(instruction, /Betterment waiver\*{0,2}\s*\(RM 350(?:\.00)?\)/i);
   assert.match(instruction, /E-hailing/i);
-  assert.match(instruction, /Keep the 1\/2\/3 numbering/i);
+  assert.match(instruction, /Do NOT treat this as a skip selection/i);
+  assert.match(instruction, /Keep the option numbers visible: 1, 2, 8, and 3/i);
+
+  const importantTurnPlan = planTurn('what is important?', state);
+  const importantInstruction = buildTurnQuestionInstruction(importantTurnPlan, { state });
+
+  assert.equal(importantTurnPlan.questionGuidance, TURN_QUESTION_GUIDANCE.ADDON_RECOMMENDATION);
+  assert.match(importantInstruction, /Give a practical recommendation/i);
+  assert.match(importantInstruction, /End with one confident close question/i);
 });
 
 test('planner owns road tax alternative guidance', () => {
@@ -224,6 +251,11 @@ test('planner owns road tax alternative guidance', () => {
   const instruction = buildTurnQuestionInstruction(turnPlan, { state });
 
   assert.equal(turnPlan.questionGuidance, TURN_QUESTION_GUIDANCE.ROADTAX_ALTERNATIVE);
-  assert.match(instruction, /JPJ office, MyEG, or Pos Malaysia/i);
+  assert.match(instruction, /JPJ counters\/UTC/i);
+  assert.match(instruction, /MyJPJ/i);
+  assert.match(instruction, /mySIKAP/i);
+  assert.match(instruction, /MyEG/i);
+  assert.match(instruction, /Pos Malaysia/i);
+  assert.match(instruction, /insurance must be active/i);
   assert.match(instruction, /12-month digital road tax/i);
 });

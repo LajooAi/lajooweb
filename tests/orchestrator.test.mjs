@@ -15,6 +15,7 @@ import {
 import {
   buildQuoteRecommendation,
   buildQuoteRecommendationInstruction,
+  RECOMMENDATION_SCORE_VERSION,
 } from '../src/server/insurance/recommendationEngine.js';
 import { getQuotes } from '../src/lib/insuranceData.js';
 
@@ -128,7 +129,7 @@ test('orchestrator includes engine context for quote choices', () => {
   assert.equal(decision.mode, CONVERSATION_MODES.QUOTE_COMPARISON);
   assert.ok(decision.engineContext.quoteOptions.length >= 7);
   assert.equal(decision.engineContext.cheapestQuote.insurer, 'Takaful Ikhlas Insurance');
-  assert.equal(decision.engineContext.cheapestQuote.priceLabel, 'RM 796');
+  assert.equal(decision.engineContext.cheapestQuote.priceLabel, 'RM 796.00');
   assert.match(decision.engineContext.nextActionHints.join(' '), /Compare current insurers/i);
 });
 
@@ -151,7 +152,7 @@ test('advisor strategy includes engine-aware quote, add-on, road-tax, and total 
   const instruction = buildAdvisorStrategyInstruction(decision, state);
 
   assert.match(instruction, /ENGINE-AWARE CONTEXT/i);
-  assert.match(instruction, /Selected quote: Takaful Ikhlas Insurance \(RM 796, sum insured RM 34,000\)/i);
+  assert.match(instruction, /Selected quote: Takaful Ikhlas Insurance \(RM 796.00, sum insured RM 34,000.00\)/i);
   assert.match(instruction, /Current total: RM 869\.68/i);
   assert.match(instruction, /Add-ons: not selected yet/i);
   assert.match(instruction, /Road tax physical\/delivery eligibility: not eligible/i);
@@ -205,6 +206,29 @@ test('recommendation engine picks cheapest quote for budget-focused user', () =>
 
   assert.equal(recommendation.recommendedQuote.insurerKey, 'takaful');
   assert.match(recommendation.reasons.join(' '), /lowest premium/i);
+  assert.equal(recommendation.scoreVersion, RECOMMENDATION_SCORE_VERSION);
+  assert.ok(recommendation.reasonCodes.includes('lowest_premium'));
+  assert.equal(recommendation.explainability.governance.paidPlacementApplied, false);
+  assert.equal(recommendation.explainability.governance.commercialOverrideApplied, false);
+});
+
+test('recommendation engine produces explainable close-call trace for generic best request', () => {
+  const recommendation = buildQuoteRecommendation({
+    quotes: getQuotes(),
+    message: 'which is the best?',
+  });
+
+  assert.equal(recommendation.recommendedQuote.insurerKey, 'tokio');
+  assert.equal(recommendation.scoreVersion, RECOMMENDATION_SCORE_VERSION);
+  assert.equal(recommendation.isCloseCall, true);
+  assert.equal(recommendation.confidenceLabel, 'medium_close_call');
+  assert.ok(recommendation.reasonCodes.includes('value_score_leader'));
+  assert.ok(recommendation.reasonCodes.includes('near_cheapest_with_higher_sum_insured'));
+  assert.ok(recommendation.reasonCodes.includes('balanced_default'));
+  assert.match(recommendation.tradeoff, /close call/i);
+  assert.ok(recommendation.explainability.preferenceSignals.some((signal) => signal.code === 'general_best_request'));
+  assert.ok(recommendation.explainability.quoteSnapshot.length >= 7);
+  assert.equal(recommendation.explainability.governance.commissionWeightApplied, false);
 });
 
 test('recommendation engine uses approved betterment facts for older-car users', () => {
@@ -265,7 +289,30 @@ test('quote recommendation instruction gives a parsable direct recommendation', 
   assert.match(instruction, /\*\*Trade-off:\*\*/i);
   assert.match(instruction, /\*\*Next:\*\*/i);
   assert.match(instruction, /Approved fact-backed reasons/i);
+  assert.match(instruction, /Recommendation score version/i);
+  assert.match(instruction, /Reason codes/i);
   assert.match(instruction, /Do not expand them into extra benefits/i);
   assert.match(instruction, /Do not show the full quote list again/i);
   assert.doesNotMatch(instruction, /so mention/i);
+});
+
+test('quote recommendation instruction names cheapest alternative in next question', () => {
+  const state = {
+    step: FLOW_STEPS.QUOTES,
+  };
+  const decision = decide('which is better?', state);
+  const quoteRecommendation = buildQuoteRecommendation({
+    quotes: getQuotes(),
+    state,
+    message: 'which is better?',
+  });
+  const instruction = buildQuoteRecommendationInstruction(decision, {
+    quoteRecommendation,
+    state,
+    message: 'which is better?',
+  });
+
+  assert.match(instruction, /Want to go with Tokio Marine Insurance - RM 800.00, choose the cheapest option Takaful Ikhlas Insurance - RM 796.00, or explore others/i);
+  assert.doesNotMatch(instruction, /Want to go with this/i);
+  assert.doesNotMatch(instruction, /\[cheapest insurer name\]/i);
 });

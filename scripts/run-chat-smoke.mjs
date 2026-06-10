@@ -4,6 +4,7 @@ import { existsSync, readFileSync } from 'node:fs';
 
 const DEFAULT_BASE_URL = 'http://localhost:3000';
 const DEFAULT_TIMEOUT_MS = 45_000;
+const PRICE_WITHOUT_CENTS_REGEX = /RM\s+\d{1,3}(?:,\d{3})*(?!\.\d{2}|[A-Za-z\d,])/gi;
 const LOCAL_ENV_KEYS = new Set([
   'CHAT_SMOKE_VERCEL_BYPASS_SECRET',
   'VERCEL_AUTOMATION_BYPASS_SECRET',
@@ -60,6 +61,14 @@ function assertIncludes(text, needle, label) {
   }
 }
 
+function assertNotIncludes(text, needle, label) {
+  if (String(text || '').toLowerCase().includes(String(needle || '').toLowerCase())) {
+    fail(`Expected reply not to include "${needle}" for ${label}.`, {
+      reply: String(text || '').slice(0, 1200),
+    });
+  }
+}
+
 function assertMatches(text, pattern, label) {
   if (!pattern.test(String(text || ''))) {
     fail(`Expected reply to match ${pattern} for ${label}.`, {
@@ -70,6 +79,16 @@ function assertMatches(text, pattern, label) {
 
 function assertState(condition, label, details = null) {
   if (!condition) fail(label, details);
+}
+
+function assertNoIntegerPrices(text, label) {
+  const matches = String(text || '').match(PRICE_WITHOUT_CENTS_REGEX) || [];
+  if (matches.length > 0) {
+    fail(`Expected all RM prices to show 2 decimal places for ${label}.`, {
+      matches,
+      reply: String(text || '').slice(0, 1200),
+    });
+  }
 }
 
 async function clearSession(baseUrl, sessionId) {
@@ -245,6 +264,7 @@ async function run() {
     messages.push({ role: 'assistant', content: result.reply || '' });
     results.push({ userMessage, result });
     displayStep(results.length, userMessage, result);
+    assertNoIntegerPrices(result.reply, `turn ${results.length}`);
     return result;
   }
 
@@ -258,6 +278,11 @@ async function run() {
   const vehicle = await send('JRT 9289 951018145405');
   assertIncludes(vehicle.reply, 'Found your vehicle', 'vehicle lookup');
   assertIncludes(vehicle.reply, 'Perodua Myvi', 'vehicle lookup');
+  assertMatches(
+    vehicle.reply,
+    /Market Value\s*:<\/strong>\s*RM\s*\d[\d,]*\.\d{2}\s*-\s*RM\s*\d[\d,]*\.\d{2}/i,
+    'vehicle market value range'
+  );
   assertState(vehicle.state?.vehicleInfo?.sampleId === 'CAR01', 'Vehicle lookup did not return Mockoon CAR01 sample.', vehicle.state?.vehicleInfo);
 
   const quotes = await send('yes');
@@ -319,12 +344,44 @@ async function run() {
   assertMatches(recommendation.reply, /\*\*My pick:\*\*/i, 'quote recommendation');
   assertMatches(recommendation.reply, /\*\*Why:\*\*/i, 'quote recommendation');
   assertMatches(recommendation.reply, /\*\*Trade-off:\*\*/i, 'quote recommendation');
-  assertMatches(recommendation.reply, /\*\*Next:\*\*/i, 'quote recommendation');
+  assertMatches(
+    recommendation.reply,
+    /\?(?=[^?]*$)/,
+    'quote recommendation should end with a next-step question'
+  );
+  assertMatches(
+    recommendation.reply,
+    /\b(go with|choose|choice|select|proceed)\b/i,
+    'quote recommendation should ask for an insurer decision'
+  );
   assertState(recommendation.state?.step === 'quotes', 'Recommendation question should not advance the flow.', recommendation.state);
+
+  const ambiguousRecommendationAck = await send('ok');
+  assertMatches(
+    ambiguousRecommendationAck.reply,
+    /proceed with \*\*[^*]+Insurance\*\*|proceed with \*\*[^*]+\*\*/i,
+    'ambiguous recommendation acknowledgement'
+  );
+  assertMatches(ambiguousRecommendationAck.reply, /other insurers|explain the other/i, 'ambiguous recommendation acknowledgement');
+  assertNotIncludes(ambiguousRecommendationAck.reply, 'Choose Insurer', 'ambiguous recommendation acknowledgement');
+  assertState(!ambiguousRecommendationAck.state?.selectedQuote, 'Ambiguous recommendation acknowledgement should not select a quote.', ambiguousRecommendationAck.state);
+  assertState(ambiguousRecommendationAck.state?.step === 'quotes', 'Ambiguous recommendation acknowledgement should stay at quote selection.', ambiguousRecommendationAck.state);
 
   const insurer = await send('Takaful');
   assertIncludes(insurer.reply, 'Takaful', 'insurer selection');
   assertState(Boolean(insurer.state?.selectedQuote), 'Insurer selection should set selectedQuote.', insurer.state);
+
+  const addOnAdvice = await send('which do i need ? or i can skip');
+  assertMatches(addOnAdvice.reply, /Special Perils|Flood/i, 'add-on advice should mention flood/Special Perils');
+  assertMatches(addOnAdvice.reply, /Windscreen/i, 'add-on advice should mention windscreen');
+  assertMatches(addOnAdvice.reply, /Betterment|repair cost|older/i, 'add-on advice should mention betterment context');
+  assertMatches(addOnAdvice.reply, /skip/i, 'add-on advice should explain skip is allowed');
+  assertState(addOnAdvice.state?.step === 'addons', 'Add-on advice question should not advance to road tax.', addOnAdvice.state);
+  assertState(
+    Array.isArray(addOnAdvice.state?.selectedAddOns) && addOnAdvice.state.selectedAddOns.length === 0,
+    'Add-on advice question should not select or skip add-ons.',
+    addOnAdvice.state?.selectedAddOns
+  );
 
   const windscreenQuestion = await send('What is windscreen cover?');
   assertIncludes(windscreenQuestion.reply, 'windscreen', 'windscreen question');

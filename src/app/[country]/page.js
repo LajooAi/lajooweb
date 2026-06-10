@@ -9,6 +9,7 @@ import remarkGfm from "remark-gfm";
 import rehypeRaw from "rehype-raw";
 import rehypeSanitize, { defaultSchema } from "rehype-sanitize";
 import EqualWidthTitle from "@/components/EqualWidthTitle";
+import { getQuotePolicyDocumentLinks } from "@/lib/quotePolicyDocuments";
 
 // Strict HTML sanitization schema - only allow safe tags needed for formatting
 const sanitizeSchema = {
@@ -53,6 +54,28 @@ const flattenNodeText = (node) => {
   return "";
 };
 
+const STAGE_STEP_LABELS = {
+  "vehicle info": { step: "1", total: "6", title: "Vehicle info" },
+  "choose insurer": { step: "2", total: "6", title: "Choose insurer" },
+  "add-ons": { step: "3", total: "6", title: "Add-ons" },
+  "road tax": { step: "4", total: "6", title: "Road tax" },
+  "your details": { step: "5", total: "6", title: "Your details" },
+  payment: { step: "6", total: "6", title: "Payment" },
+};
+
+function ChatStepIndicator({ stage }) {
+  const parsed = STAGE_STEP_LABELS[String(stage || "").toLowerCase()];
+  if (!parsed) return null;
+
+  return (
+    <p className="chat-step-indicator">
+      <span className="chat-step-count">Step {parsed.step} of {parsed.total}</span>
+      <span className="chat-step-separator" aria-hidden="true"> · </span>
+      <span className="chat-step-title">{parsed.title}</span>
+    </p>
+  );
+}
+
 const simpleStageHeadingRegexSource = String.raw`(?:vehicle info|choose insurer|add-ons|road tax|your details|payment)`;
 const oldStepIndicatorRegexSource = String.raw`step\s*(\d+)\s*of\s*(\d+)\s*[—-]\s*(.+)`;
 const stepIndicatorRegex = new RegExp(String.raw`^(?:${oldStepIndicatorRegexSource}|${simpleStageHeadingRegexSource})$`, "i");
@@ -60,16 +83,24 @@ const isStepIndicator = (text) => stepIndicatorRegex.test(text.trim().replace(/\
 const parseStepIndicator = (text) => {
   const normalized = text.trim().replace(/\*/g, "");
   const match = normalized.match(new RegExp(String.raw`^${oldStepIndicatorRegexSource}$`, "i"));
-  if (match) return { title: match[3] };
+  if (match) {
+    const knownLabel = STAGE_STEP_LABELS[match[3].trim().toLowerCase()];
+    return {
+      step: match[1],
+      total: match[2],
+      title: knownLabel?.title || match[3],
+    };
+  }
   if (new RegExp(String.raw`^${simpleStageHeadingRegexSource}$`, "i").test(normalized)) {
-    return { title: normalized };
+    return STAGE_STEP_LABELS[normalized.toLowerCase()] || { step: null, total: null, title: normalized };
   }
   return null;
 };
 const isSummaryTitleLine = (text) => /^summary$/i.test(text.trim()) || /^✓\s*renewal summary\b/i.test(text.trim());
 const isSummaryDividerLine = (text) => /^[\-_─—–]{8,}$/.test(text.trim());
 const isSummaryTotalLine = (text) => /^(?:💰\s*)?total:\s*rm\s*\d[\d,]*/i.test(text.trim());
-const quoteBlockRegex = /<span[^>]*>\s*<img\s+src="([^"]+)"\s+alt="([^"]+)"[^>]*\/>\s*<strong>([^<]+)<\/strong>\s*—\s*<strong>RM\s*([\d,]+)<\/strong>\s*<\/span>\s*\n<span[^>]*>Sum Insured:\s*RM\s*([\d,]+)<\/span>\s*\n([\s\S]*?)\n<span[^>]*>~~RM\s*([\d,]+)~~\s*→\s*RM\s*([\d,]+)(?:\s*\(([^)]*)\))?<\/span>/g;
+const quoteMoneyRegexSource = String.raw`[\d,]+(?:\.\d{2})?`;
+const quoteBlockRegex = new RegExp(String.raw`<span[^>]*>\s*<img\s+src="([^"]+)"\s+alt="([^"]+)"[^>]*\/>\s*<strong>([^<]+)<\/strong>\s*—\s*<strong>RM\s*(${quoteMoneyRegexSource})<\/strong>\s*<\/span>\s*\n<span[^>]*>Sum Insured:\s*RM\s*(${quoteMoneyRegexSource})<\/span>\s*\n([\s\S]*?)\n<span[^>]*>~~RM\s*(${quoteMoneyRegexSource})~~\s*→\s*RM\s*(${quoteMoneyRegexSource})(?:\s*\(([^)]*)\))?<\/span>`, "g");
 const summarySectionRegex = /(?:^|\n)\s*(?:<span[^>]*>\s*)?(?:\*{0,2})?✓?\s*renewal summary(?:\*{0,2})?[^\n]*(?:<\/span>)?[\s\S]*?(?:\n\s*(?:\*{0,2})?(?:💰\s*)?total:?(?:\*{0,2})?\s*(?:&nbsp;)?\s*(?:<u>)?\s*rm[^\n]*)/i;
 const addOnsHeadingRegexSource = String.raw`(?:(?:\*{0,2})?step\s+(?:\*{0,2})?3(?:\*{0,2})?\s+of\s+(?:\*{0,2})?6(?:\*{0,2})?\s*[—-]\s*add-ons(?:\*{0,2})?|(?:\*{0,2})?add-ons(?:\*{0,2})?)`;
 const roadTaxHeadingRegexSource = String.raw`(?:(?:\*{0,2})?step\s+(?:\*{0,2})?4(?:\*{0,2})?\s+of\s+(?:\*{0,2})?6(?:\*{0,2})?\s*[—-]\s*road tax(?:\*{0,2})?|(?:\*{0,2})?road tax(?:\*{0,2})?)`;
@@ -108,6 +139,18 @@ const getQuoteDisplayName = (insurerName = "") => {
   if (lower.includes("msig")) return "MSIG Insurance";
   if (lower.includes("generali")) return "Generali Insurance";
   return insurerName;
+};
+
+const getShortInsurerName = (insurerName = "") => {
+  const lower = insurerName.toLowerCase();
+  if (lower.includes("takaful")) return "Takaful";
+  if (lower.includes("tokio")) return "Tokio";
+  if (lower.includes("etiqa")) return "Etiqa";
+  if (lower.includes("allianz")) return "Allianz";
+  if (lower.includes("lonpac")) return "Lonpac";
+  if (lower.includes("msig")) return "MSIG";
+  if (lower.includes("generali")) return "Generali";
+  return insurerName.split(/\s+/)[0] || "current";
 };
 
 const getInsurerKey = (insurerName = "") => {
@@ -476,7 +519,101 @@ const getAddOnOptionAliases = (option = {}) => {
   return aliases.map(normalizeAddOnReply).filter(Boolean);
 };
 
-const getSelectedAddOnIds = (messages = [], assistantIndex = -1, addOnsCard = null) => {
+const sortAddOnIdsByOptionOrder = (ids = [], options = []) => {
+  const wanted = new Set(ids.filter(Boolean));
+  return options.map((option) => option.id).filter((id) => wanted.has(id));
+};
+
+const getWindscreenCoverageFromStructuredAddOns = (addOns = []) => {
+  for (const addOn of addOns) {
+    const id = String(addOn?.id || "").toLowerCase();
+    const label = String([addOn?.name, addOn?.shortName, addOn?.summaryName].filter(Boolean).join(" "));
+    const normalizedLabel = normalizeAddOnReply(label);
+    const isWindscreen = id === "windscreen" || normalizedLabel.includes("windscreen");
+    if (!isWindscreen) continue;
+
+    const explicitCoverage = Number(addOn?.coverageAmount || addOn?.coverage || 0);
+    if (Number.isFinite(explicitCoverage) && explicitCoverage > 0) return explicitCoverage;
+
+    const amountMatch = label.match(/\brm\s*([\d,]+(?:\.\d{1,2})?)\b/i);
+    if (amountMatch) {
+      const parsedAmount = Number(amountMatch[1].replace(/,/g, ""));
+      if (Number.isFinite(parsedAmount) && parsedAmount > 0) return parsedAmount;
+    }
+  }
+
+  return null;
+};
+
+const getSelectedIdsFromStructuredAddOns = (addOns = [], options = []) => {
+  if (!Array.isArray(addOns) || addOns.length === 0 || options.length === 0) return [];
+
+  const selectedIds = new Set();
+  for (const addOn of addOns) {
+    const explicitId = String(addOn?.id || "").toLowerCase();
+    if (options.some((option) => option.id === explicitId)) {
+      selectedIds.add(explicitId);
+      continue;
+    }
+
+    const normalizedLabel = normalizeAddOnReply(
+      [addOn?.name, addOn?.shortName, addOn?.summaryName].filter(Boolean).join(" ")
+    );
+    if (!normalizedLabel) continue;
+
+    const matchedOption = options.find((option) =>
+      getAddOnOptionAliases(option).some((alias) =>
+        alias.length > 2 &&
+        (normalizedLabel === alias || normalizedLabel.includes(alias))
+      )
+    );
+
+    if (matchedOption?.id) selectedIds.add(matchedOption.id);
+  }
+
+  return sortAddOnIdsByOptionOrder([...selectedIds], options);
+};
+
+const getLatestConfirmedAddOnState = (messages = [], assistantIndex = -1, addOnsCard = null) => {
+  const options = Array.isArray(addOnsCard?.options) ? addOnsCard.options : [];
+  if (assistantIndex < 0 || options.length === 0) return null;
+
+  for (let index = messages.length - 1; index >= assistantIndex; index -= 1) {
+    const message = messages[index];
+    if (message?.role !== "assistant") continue;
+
+    const summaryAddOns = Array.isArray(message.summaryCard?.addOns)
+      ? message.summaryCard.addOns
+      : null;
+    if (summaryAddOns && summaryAddOns.length > 0) {
+      const ids = getSelectedIdsFromStructuredAddOns(summaryAddOns, options);
+      if (ids.length > 0) {
+        return {
+          ids,
+          windscreenCoverage: getWindscreenCoverageFromStructuredAddOns(summaryAddOns),
+        };
+      }
+    }
+
+    if (summaryAddOns && summaryAddOns.length === 0 && message.summaryCard?.addOnsConfirmed) {
+      return { ids: [], windscreenCoverage: null };
+    }
+
+    const cardSelectedIds = Array.isArray(message.addOnsCard?.selectedIds)
+      ? sortAddOnIdsByOptionOrder(message.addOnsCard.selectedIds, options)
+      : [];
+    if (cardSelectedIds.length > 0) {
+      return {
+        ids: cardSelectedIds,
+        windscreenCoverage: Number(message.addOnsCard?.defaultWindscreenCoverage || 0) || null,
+      };
+    }
+  }
+
+  return null;
+};
+
+const getSelectedAddOnIdsFromUserReply = (messages = [], assistantIndex = -1, addOnsCard = null) => {
   const options = Array.isArray(addOnsCard?.options) ? addOnsCard.options : [];
   if (assistantIndex < 0 || options.length === 0) return null;
 
@@ -505,6 +642,16 @@ const getSelectedAddOnIds = (messages = [], assistantIndex = -1, addOnsCard = nu
       );
     })
     .map((option) => option.id);
+};
+
+const getSelectedAddOnDisplayState = (messages = [], assistantIndex = -1, addOnsCard = null) => {
+  const latestConfirmedState = getLatestConfirmedAddOnState(messages, assistantIndex, addOnsCard);
+  if (latestConfirmedState) return latestConfirmedState;
+
+  const ids = getSelectedAddOnIdsFromUserReply(messages, assistantIndex, addOnsCard);
+  return Array.isArray(ids)
+    ? { ids, windscreenCoverage: Number(addOnsCard?.defaultWindscreenCoverage || 0) || null }
+    : null;
 };
 
 const isAddOnQuestionReply = (rawReply = "", normalizedReply = "") => {
@@ -553,13 +700,28 @@ function AddOnInfoButton({ label, number, info, activeInfoId, setActiveInfoId, i
   );
 }
 
-function AssistantAddOnsSelector({ addOnsCard, onConfirm, onSkip, selectedOptionIds = null }) {
+function AssistantAddOnsSelector({
+  addOnsCard,
+  onConfirm,
+  onSkip,
+  selectedOptionIds = null,
+  selectedWindscreenCoverage = null,
+}) {
   const options = Array.isArray(addOnsCard?.options) ? addOnsCard.options : [];
   const initialSelected = Array.isArray(addOnsCard?.selectedIds) ? addOnsCard.selectedIds : [];
   const defaultCoverage = Number(addOnsCard?.defaultWindscreenCoverage ?? 0);
+  const controlledWindscreenCoverage = Number(selectedWindscreenCoverage ?? 0);
+  const initialWindscreenCoverage =
+    controlledWindscreenCoverage > 0 ? controlledWindscreenCoverage : defaultCoverage;
   const [selectedIds, setSelectedIds] = useState(initialSelected);
-  const [windscreenCoverageInput, setWindscreenCoverageInput] = useState(formatQuoteMoney(defaultCoverage));
+  const [windscreenCoverageInput, setWindscreenCoverageInput] = useState(formatQuoteMoney(initialWindscreenCoverage));
   const [activeInfoId, setActiveInfoId] = useState(null);
+
+  useEffect(() => {
+    if (controlledWindscreenCoverage > 0) {
+      setWindscreenCoverageInput(formatQuoteMoney(controlledWindscreenCoverage));
+    }
+  }, [controlledWindscreenCoverage]);
 
   useEffect(() => {
     if (!activeInfoId || typeof document === "undefined") return undefined;
@@ -895,21 +1057,18 @@ const quoteDetailBenefits = {
   ],
 };
 
-const quoteDocumentLinks = [
-  {
-    label: "Product Disclosure Sheet",
-    url: "/sample-documents/product-disclosure-sheet.pdf",
-  },
-  {
-    label: "Certificate Wording",
-    url: "/sample-documents/certificate-wording.pdf",
-  },
-];
-
 const parseAssistantQuotePresentation = (content = "") => {
+  const isNormalQuoteList =
+    /great,\s*here'?s what we have/i.test(content) &&
+    /which option would you like to go with/i.test(content);
+  const isSwitchConfirmation =
+    /here is how it looks/i.test(content) &&
+    /confirm switch to/i.test(content) &&
+    /\bkeep\b/i.test(content);
+
   if (
-    !/great,\s*here'?s what we have/i.test(content) ||
-    !/which option would you like to go with/i.test(content)
+    !isNormalQuoteList &&
+    !isSwitchConfirmation
   ) {
     return null;
   }
@@ -930,9 +1089,10 @@ const parseAssistantQuotePresentation = (content = "") => {
       .filter(Boolean);
     const ncdPercent = (ncdText || "").match(/[\d.]+%/)?.[0] || "";
 
-    quotes.push({
+    const displayName = getQuoteDisplayName(insurer);
+    const quote = {
       id: getInsurerKey(insurer),
-      insurer: getQuoteDisplayName(insurer),
+      insurer: displayName,
       logoUrl,
       logoAlt,
       finalPrice,
@@ -942,7 +1102,19 @@ const parseAssistantQuotePresentation = (content = "") => {
       priceAfter,
       ncdPercent,
       selectionText: getQuoteSelectionText(insurer),
-    });
+    };
+
+    if (isSwitchConfirmation) {
+      if (quotes.length === 0) {
+        quote.ctaLabel = "Confirm Switch";
+        quote.selectionText = `confirm switch to ${displayName}`;
+      } else if (quotes.length === 1) {
+        quote.ctaLabel = `Keep ${getShortInsurerName(displayName)}`;
+        quote.selectionText = "keep current";
+      }
+    }
+
+    quotes.push(quote);
   }
 
   if (quotes.length < 2 || firstQuoteStart === -1 || lastQuoteEnd === -1) {
@@ -985,6 +1157,7 @@ function AssistantQuoteCards({ quotes = [], onSelectQuote }) {
           const quoteKey = quote.id || quote.insurer;
           const isExpanded = !!expandedQuotes[quoteKey];
           const detailBenefits = quoteDetailBenefits[quote.id] || quoteDetailBenefits.default;
+          const quoteDocumentLinks = getQuotePolicyDocumentLinks(quote.id);
 
           return (
             <article className="assistant-quote-card" key={quoteKey}>
@@ -1066,7 +1239,7 @@ function AssistantQuoteCards({ quotes = [], onSelectQuote }) {
                   onClick={() => onSelectQuote?.(quote)}
                   disabled={!onSelectQuote}
                 >
-                  Select
+                  {quote.ctaLabel || "Select"}
                 </button>
               </div>
             </article>
@@ -1089,7 +1262,7 @@ function AssistantQuoteCards({ quotes = [], onSelectQuote }) {
               </button>
             </div>
             <iframe className="assistant-pdf-frame" src={pdfModal.url} title={pdfModal.title} />
-            <p className="assistant-pdf-note">Sample document preview. Replace this file with the insurer PDF when ready.</p>
+            <p className="assistant-pdf-note">Policy document preview from LAJOO insurer PDF library. Please review the final issued policy documents before payment.</p>
           </div>
         </div>
       )}
@@ -1993,7 +2166,13 @@ export default function Home() {
         if (parsed) {
           return (
             <p className="chat-step-indicator">
-              {parsed.title}
+              {parsed.step && parsed.total ? (
+                <span className="chat-step-count">Step {parsed.step} of {parsed.total}</span>
+              ) : null}
+              {parsed.step && parsed.total ? (
+                <span className="chat-step-separator" aria-hidden="true"> · </span>
+              ) : null}
+              <span className="chat-step-title">{parsed.title}</span>
             </p>
           );
         }
@@ -2265,6 +2444,11 @@ export default function Home() {
                                 msg.paymentCard
                               );
                               if (nestedAddOnsPresentation) {
+                                const selectedAddOnState = getSelectedAddOnDisplayState(
+                                  messages,
+                                  messageIndex,
+                                  nestedAddOnsPresentation.addOns
+                                );
                                 return (
                                   <>
                                     {nestedAddOnsPresentation.before && (
@@ -2280,7 +2464,8 @@ export default function Home() {
                                       addOnsCard={nestedAddOnsPresentation.addOns}
                                       onConfirm={isStreaming ? undefined : handleAddOnsConfirm}
                                       onSkip={isStreaming ? undefined : handleAddOnsSkip}
-                                      selectedOptionIds={getSelectedAddOnIds(messages, messageIndex, nestedAddOnsPresentation.addOns)}
+                                      selectedOptionIds={selectedAddOnState?.ids ?? null}
+                                      selectedWindscreenCoverage={selectedAddOnState?.windscreenCoverage ?? null}
                                     />
                                     {nestedAddOnsPresentation.after && (
                                       <ReactMarkdown
@@ -2307,6 +2492,7 @@ export default function Home() {
                                         {nestedRoadTaxPresentation.before}
                                       </ReactMarkdown>
                                     )}
+                                    <ChatStepIndicator stage="road tax" />
                                     <AssistantRoadTaxSelector
                                       roadTaxCard={nestedRoadTaxPresentation.roadTax}
                                       onSelect={isStreaming ? undefined : handleRoadTaxSelect}
@@ -2370,32 +2556,42 @@ export default function Home() {
                             })()}
                           </>
                         ) : addOnsPresentation ? (
-                          <>
-                            {addOnsPresentation.before && (
-                              <ReactMarkdown
-                                remarkPlugins={[remarkGfm]}
-                                rehypePlugins={[rehypeRaw, [rehypeSanitize, sanitizeSchema]]}
-                                components={markdownComponents}
-                              >
-                                {addOnsPresentation.before}
-                              </ReactMarkdown>
-                            )}
-                            <AssistantAddOnsSelector
-                              addOnsCard={addOnsPresentation.addOns}
-                              onConfirm={isStreaming ? undefined : handleAddOnsConfirm}
-                              onSkip={isStreaming ? undefined : handleAddOnsSkip}
-                              selectedOptionIds={getSelectedAddOnIds(messages, messageIndex, addOnsPresentation.addOns)}
-                            />
-                            {addOnsPresentation.after && (
-                              <ReactMarkdown
-                                remarkPlugins={[remarkGfm]}
-                                rehypePlugins={[rehypeRaw, [rehypeSanitize, sanitizeSchema]]}
-                                components={markdownComponents}
-                              >
-                                {addOnsPresentation.after}
-                              </ReactMarkdown>
-                            )}
-                          </>
+                          (() => {
+                            const selectedAddOnState = getSelectedAddOnDisplayState(
+                              messages,
+                              messageIndex,
+                              addOnsPresentation.addOns
+                            );
+                            return (
+                              <>
+                                {addOnsPresentation.before && (
+                                  <ReactMarkdown
+                                    remarkPlugins={[remarkGfm]}
+                                    rehypePlugins={[rehypeRaw, [rehypeSanitize, sanitizeSchema]]}
+                                    components={markdownComponents}
+                                  >
+                                    {addOnsPresentation.before}
+                                  </ReactMarkdown>
+                                )}
+                                <AssistantAddOnsSelector
+                                  addOnsCard={addOnsPresentation.addOns}
+                                  onConfirm={isStreaming ? undefined : handleAddOnsConfirm}
+                                  onSkip={isStreaming ? undefined : handleAddOnsSkip}
+                                  selectedOptionIds={selectedAddOnState?.ids ?? null}
+                                  selectedWindscreenCoverage={selectedAddOnState?.windscreenCoverage ?? null}
+                                />
+                                {addOnsPresentation.after && (
+                                  <ReactMarkdown
+                                    remarkPlugins={[remarkGfm]}
+                                    rehypePlugins={[rehypeRaw, [rehypeSanitize, sanitizeSchema]]}
+                                    components={markdownComponents}
+                                  >
+                                    {addOnsPresentation.after}
+                                  </ReactMarkdown>
+                                )}
+                              </>
+                            );
+                          })()
                         ) : roadTaxPresentation ? (
                           <>
                             {roadTaxPresentation.before && (
@@ -2407,6 +2603,7 @@ export default function Home() {
                                 {roadTaxPresentation.before}
                               </ReactMarkdown>
                             )}
+                            <ChatStepIndicator stage="road tax" />
                             <AssistantRoadTaxSelector
                               roadTaxCard={roadTaxPresentation.roadTax}
                               onSelect={isStreaming ? undefined : handleRoadTaxSelect}

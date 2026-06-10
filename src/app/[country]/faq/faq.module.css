@@ -163,7 +163,15 @@
   }
 
   .faqList {
-    width: 450px;
+    width: min(630px, calc(100vw - 64px));
+  }
+
+  .roadStripes {
+    width: min(630px, calc(100vw - 64px));
+  }
+
+  .roadStripeMark {
+    width: 120px;
   }
 
   .faqItem {

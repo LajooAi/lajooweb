@@ -4,6 +4,8 @@ import {
   appendKnowledgeSourceTraceToMetadata,
   buildKnowledgeSourceTrace,
 } from '../src/server/ai/sourceTrace.js';
+import { getQuotes } from '../src/lib/insuranceData.js';
+import { buildQuoteRecommendation } from '../src/server/insurance/recommendationEngine.js';
 
 test('source trace keeps exact fact source fields and masks sensitive question text', () => {
   const trace = buildKnowledgeSourceTrace({
@@ -60,4 +62,35 @@ test('source trace metadata keeps a bounded audit history', () => {
   assert.equal(metadata.knowledgeSourceTraces.length, 30);
   assert.equal(metadata.knowledgeSourceTraces[0].traceId, 'kst_5');
   assert.equal(metadata.lastKnowledgeSourceTrace.traceId, 'kst_34');
+});
+
+test('source trace stores recommendation explainability even without document sources', () => {
+  const quoteRecommendation = buildQuoteRecommendation({
+    quotes: getQuotes(),
+    message: 'which is the best?',
+  });
+  const trace = buildKnowledgeSourceTrace({
+    sessionId: 'chat_recommendation_trace_test',
+    latestMessage: 'which is the best?',
+    state: { step: 'quotes' },
+    intent: { intent: 'ask_question' },
+    decision: { mode: 'quote_comparison' },
+    turnPlan: { responsePattern: 'answer_then_resume', questionGuidance: 'quote_recommendation' },
+    quoteRecommendation,
+    now: new Date('2026-06-07T12:30:00.000Z'),
+  });
+
+  assert.ok(trace.traceId.startsWith('kst_'));
+  assert.equal(trace.sourceCount, 0);
+  assert.equal(trace.sources.length, 0);
+  assert.equal(trace.recommendation.insurerKey, 'tokio');
+  assert.equal(trace.recommendation.scoreVersion, 'quote_recommendation_v2');
+  assert.equal(trace.recommendation.isCloseCall, true);
+  assert.ok(trace.recommendation.reasonCodes.includes('near_cheapest_with_higher_sum_insured'));
+  assert.equal(trace.recommendation.explainability.governance.paidPlacementApplied, false);
+  assert.ok(trace.recommendation.explainability.quoteSnapshot.length >= 7);
+
+  const metadata = appendKnowledgeSourceTraceToMetadata({}, trace, { step: 'quotes' });
+  assert.equal(metadata.lastKnowledgeSourceTrace.recommendation.insurerKey, 'tokio');
+  assert.equal(metadata.lastKnowledgeSourceTrace.recommendation.explainability.reasonCodes.includes('balanced_default'), true);
 });

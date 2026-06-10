@@ -196,14 +196,14 @@ export async function getRoadTaxOptions(vehicleInfo) {
       name: "Yes, deliver it to me",
       subtitle: "(3-5 days)",
       price: roadTaxAmount + 10, // +10 for delivery
-      displayPrice: `RM ${roadTaxAmount} + RM 10 delivery`
+      displayPrice: `RM ${Number(roadTaxAmount || 0).toLocaleString('en-MY', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} + RM 10.00 delivery`
     },
     {
       id: "digital",
       name: "Yes, digital only",
       subtitle: "Instant delivery",
       price: roadTaxAmount,
-      displayPrice: `RM ${roadTaxAmount}`
+      displayPrice: `RM ${Number(roadTaxAmount || 0).toLocaleString('en-MY', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
     },
     {
       id: "no",
