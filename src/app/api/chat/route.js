@@ -2479,7 +2479,8 @@ function normalizePriceFormatSpacing(text) {
     .replace(/\bRM\s+(\d{1,3}(?:,\d{3})*|\d+)(?:\.(\d{1,2}))?(?![\dA-Za-z,])/g, (_match, integerPart, decimalPart = '') => {
       const decimals = String(decimalPart || '').padEnd(2, '0').slice(0, 2);
       return `RM ${integerPart}.${decimals}`;
-    });
+    })
+    .replace(/\bRM\s+(\d{1,3}(?:,\d{3})*|\d+)\.(\d{2})(?:\.00)+\b/g, 'RM $1.$2');
 }
 
 const DISALLOWED_STEP2_INTRO_LINE_REGEX = /^\s*(?:let['’]?s|lets)\s+compare\s+your\s+options[:.!?]?\s*$/i;

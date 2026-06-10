@@ -89,6 +89,14 @@ function assertNoIntegerPrices(text, label) {
       reply: String(text || '').slice(0, 1200),
     });
   }
+
+  const malformedMatches = String(text || '').match(/\bRM\s+\d{1,3}(?:,\d{3})*\.\d{2}\.\d{2}\b/gi) || [];
+  if (malformedMatches.length > 0) {
+    fail(`Expected RM prices not to contain duplicated decimal parts for ${label}.`, {
+      matches: malformedMatches,
+      reply: String(text || '').slice(0, 1200),
+    });
+  }
 }
 
 async function clearSession(baseUrl, sessionId) {
