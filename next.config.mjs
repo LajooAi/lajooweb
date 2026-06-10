@@ -9,6 +9,11 @@ const nextConfig = {
   distDir: process.env.NEXT_DIST_DIR || ".next",
   // Pin tracing root to this app directory to avoid lockfile-root mis-detection.
   outputFileTracingRoot: __dirname,
+  outputFileTracingIncludes: {
+    "/api/policy-documents/[insurer]/[document]": [
+      "./knowledge/raw-pdfs/**/*.pdf",
+    ],
+  },
   async redirects() {
     return [
       // Dev & prod safety net: redirect bare "/" to /my
