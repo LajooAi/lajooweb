@@ -67,6 +67,18 @@ test('advisor intent detects quote price-gap questions', () => {
   assert.equal(advisorIntent.shouldPreventFlowAdvance, true);
 });
 
+test('advisor intent detects direct-insurer discount objections without recommendation routing', () => {
+  const state = stateAt(FLOW_STEPS.QUOTES);
+  const advisorIntent = detectAdvisorIntent('i can get 10% from insurers directly why should i go with you', {
+    state,
+    intent: { intent: USER_INTENTS.ASK_QUESTION, confidence: 0.9 },
+  });
+
+  assert.equal(advisorIntent.intent, ADVISOR_INTENTS.QUOTE_OBJECTION);
+  assert.equal(advisorIntent.topic, ADVISOR_TOPICS.DIRECT_INSURER_DISCOUNT);
+  assert.equal(advisorIntent.shouldPreventFlowAdvance, true);
+});
+
 test('advisor intent detects human handoff and privacy concerns', () => {
   const state = stateAt(FLOW_STEPS.PERSONAL_DETAILS);
   const handoff = detectAdvisorIntent('can i speak to human agent?', {

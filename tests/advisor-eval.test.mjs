@@ -269,6 +269,20 @@ const advisorEvalCases = [
     response: [/would not ignore/i, /Allianz Insurance/i, /worth the comfort/i],
   },
   {
+    name: 'direct insurer discount objection sells LAJOO value without auto-picking insurer',
+    message: 'i can get 10% from insurers directly why should i go with you',
+    state: quoteState,
+    advisorIntent: ADVISOR_INTENTS.QUOTE_OBJECTION,
+    topic: ADVISOR_TOPICS.DIRECT_INSURER_DISCOUNT,
+    response: [
+      /real \*\*10% direct discount\*\*/i,
+      /same cover, same sum insured, and same add-ons/i,
+      /upside of using \*\*LAJOO\*\*/i,
+      /compare your direct insurer offer against these quotes/i,
+    ],
+    responseNot: [/Tokio Marine Insurance - RM 800.00/i, /Takaful Ikhlas Insurance - RM 796.00/i, /Back to your renewal/i],
+  },
+  {
     name: 'quote price-gap question explains economics before closing',
     message: 'what about other insurers, why is some so expensive and the price so much difference',
     state: quoteState,

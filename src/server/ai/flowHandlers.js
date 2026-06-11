@@ -385,20 +385,11 @@ function buildQuoteStageBettermentAdvisorReply(state) {
   const vehicleAge = getVehicleAgeFromState(state);
   const vehicleName = formatVehicleName(state);
   const premiumOrExpensiveVehicle = isPremiumOrExpensiveVehicle(state);
-  const recommended = state?.lastRecommendedInsurer
-    ? summarizeQuoteOption(quoteSelectionFromIntent(state, state.lastRecommendedInsurer))
-    : pickBalancedQuoteForAdvisor(state);
   const vehicleLine = premiumOrExpensiveVehicle
     ? `For your **${vehicleAge !== null ? `${vehicleAge}-year-old ` : ''}${vehicleName}**, I would consider it more seriously because older premium, continental, performance, luxury, or cars with expensive parts can have bigger repair-cost surprises.`
     : vehicleAge !== null
       ? `For your **${vehicleAge}-year-old ${vehicleName}**, I would treat it as **nice-to-have** if you want extra repair-cost comfort. It matters more for older premium, continental, performance, luxury, or cars with expensive parts.`
       : `For **${vehicleName}**, I would treat it as useful if repair-cost surprises matter. It matters more for older premium, continental, performance, luxury, or cars with expensive parts.`;
-  const recommendationLine = recommended
-    ? `My earlier advice still stands: **${recommended.insurerName} - ${formatMoney(recommended.price)}** is the balanced pick. Choose the insurer first, then I’ll help you review Betterment waiver / zero-betterment in the add-ons step.`
-    : `Choose the insurer first, then I’ll help you review Betterment waiver / zero-betterment in the add-ons step.`;
-  const closeLine = recommended
-    ? `Shall I select **${recommended.insurerName} - ${formatMoney(recommended.price)}** first, then we review the Betterment waiver option at add-ons?`
-    : `Would you like my recommendation now, or do you want to compare the available insurers first?`;
 
   return `Zero betterment helps reduce the extra amount you may need to pay when an older damaged part is replaced with a new part during an own-damage repair.
 
@@ -406,9 +397,9 @@ You can review **Betterment waiver / zero-betterment** in the add-ons step later
 
 ${vehicleLine}
 
-${recommendationLine}
+For now, choose the insurer first. After that, I’ll show the actual add-on options and help you decide whether Betterment waiver is worth adding.
 
-${closeLine}`;
+Would you like to choose an insurer from the list, or ask me to recommend one?`;
 }
 
 function buildPreAddOnsAdvisorReply(state, advisorIntent) {
@@ -701,6 +692,16 @@ Which one would you like to proceed with?`;
 }
 
 function buildQuoteObjectionAdvisorReply(state, advisorIntent) {
+  if (advisorIntent?.topic === ADVISOR_TOPICS.DIRECT_INSURER_DISCOUNT) {
+    return `That is a fair question. If an insurer gives you a real **10% direct discount** for the same cover, same sum insured, and same add-ons, that saving matters.
+
+The upside of using **LAJOO** is not only the premium. I can help you compare the quotes side by side, avoid missing important add-ons, handle road tax choices, keep the renewal steps organised, and let you ask coverage questions before paying.
+
+So the practical way to decide is simple: if the direct insurer offer is clearly cheaper for the same protection, consider it. If you want convenience, comparison, and guided renewal support, continue here.
+
+Would you like to continue with the LAJOO quote list, or compare your direct insurer offer against these quotes?`;
+  }
+
   const [mentionedKey] = advisorIntent?.entities?.insurerKeys || [];
   const mentionedQuote = mentionedKey ? summarizeQuoteOption(quoteSelectionFromIntent(state, mentionedKey)) : null;
   const balanced = pickBalancedQuoteForAdvisor(state);

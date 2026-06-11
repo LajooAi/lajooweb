@@ -926,6 +926,45 @@ test('advisor forced response explains quote price gaps with current quote econo
   assert.equal(openAiMessages.length, 0);
 });
 
+test('advisor forced response answers direct-insurer discount objection without auto-recommendation', () => {
+  const state = new ConversationState();
+  Object.assign(state, {
+    step: FLOW_STEPS.QUOTES,
+    plateNumber: 'JRT9289',
+    nricNumber: '951018145405',
+    lastRecommendedInsurer: 'tokio',
+  });
+  const openAiMessages = [];
+
+  const result = applyDeterministicFlowHandlers({
+    openAiMessages,
+    state,
+    intent: { intent: USER_INTENTS.ASK_QUESTION, confidence: 0.9 },
+    advisorIntent: {
+      intent: ADVISOR_INTENTS.QUOTE_OBJECTION,
+      topic: ADVISOR_TOPICS.DIRECT_INSURER_DISCOUNT,
+      confidence: 0.92,
+      shouldAnswerFirst: true,
+      shouldPreventFlowAdvance: true,
+    },
+    turnPlan: {},
+    messages: [{ role: 'user', content: 'i can get 10% from insurers directly why should i go with you' }],
+    latestMessage: 'i can get 10% from insurers directly why should i go with you',
+    callbacks: makeCallbacks(),
+  });
+
+  assert.match(result.forcedAssistantResponse, /real \*\*10% direct discount\*\*/i);
+  assert.match(result.forcedAssistantResponse, /same cover, same sum insured, and same add-ons/i);
+  assert.match(result.forcedAssistantResponse, /upside of using \*\*LAJOO\*\*/i);
+  assert.match(result.forcedAssistantResponse, /compare the quotes side by side/i);
+  assert.match(result.forcedAssistantResponse, /compare your direct insurer offer against these quotes/i);
+  assert.doesNotMatch(result.forcedAssistantResponse, /Tokio Marine Insurance - RM 800.00/i);
+  assert.doesNotMatch(result.forcedAssistantResponse, /Takaful Ikhlas Insurance - RM 796.00/i);
+  assert.doesNotMatch(result.forcedAssistantResponse, /Back to your renewal/i);
+  assert.equal(state.selectedQuote, null);
+  assert.equal(openAiMessages.length, 0);
+});
+
 test('advisor forced response recommends All Drivers for spouse driving', () => {
   const state = new ConversationState();
   Object.assign(state, {
