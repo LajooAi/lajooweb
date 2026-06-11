@@ -124,6 +124,56 @@ test('advisor forced response does not offer betterment selection before add-ons
   assert.equal(openAiMessages.length, 0);
 });
 
+test('advisor forced response does not auto-recommend insurer for quote-stage betterment question', () => {
+  const state = new ConversationState();
+  Object.assign(state, {
+    step: FLOW_STEPS.QUOTES,
+    plateNumber: 'JRT9289',
+    nricNumber: '951018145405',
+    lastRecommendedInsurer: 'tokio',
+    selectedQuote: null,
+    vehicleInfo: {
+      make: 'Perodua',
+      model: 'Myvi',
+      variant: '1.5L',
+      year: 2019,
+    },
+  });
+  const openAiMessages = [];
+
+  const result = applyDeterministicFlowHandlers({
+    openAiMessages,
+    state,
+    intent: { intent: USER_INTENTS.ASK_QUESTION, confidence: 0.9 },
+    advisorIntent: {
+      intent: ADVISOR_INTENTS.COVERAGE_RISK_ADVICE,
+      topic: ADVISOR_TOPICS.BETTERMENT,
+      confidence: 0.9,
+      shouldAnswerFirst: true,
+      shouldPreventFlowAdvance: true,
+    },
+    turnPlan: {},
+    messages: [{ role: 'user', content: 'what is zero betterment' }],
+    latestMessage: 'what is zero betterment',
+    callbacks: makeCallbacks(),
+  });
+
+  assert.match(result.forcedAssistantResponse, /Zero betterment helps reduce/i);
+  assert.match(result.forcedAssistantResponse, /add-ons step later/i);
+  assert.match(result.forcedAssistantResponse, /7-year-old Perodua Myvi/i);
+  assert.match(result.forcedAssistantResponse, /nice-to-have/i);
+  assert.match(result.forcedAssistantResponse, /choose the insurer first/i);
+  assert.match(result.forcedAssistantResponse, /ask me to recommend one/i);
+  assert.doesNotMatch(result.forcedAssistantResponse, /My earlier advice/i);
+  assert.doesNotMatch(result.forcedAssistantResponse, /Tokio Marine Insurance - RM 800.00/i);
+  assert.doesNotMatch(result.forcedAssistantResponse, /Takaful Ikhlas Insurance - RM 796.00/i);
+  assert.doesNotMatch(result.forcedAssistantResponse, /Shall I select/i);
+  assert.doesNotMatch(result.forcedAssistantResponse, /Do you want to add \*\*Betterment waiver\*\*/i);
+  assert.equal(state.step, FLOW_STEPS.QUOTES);
+  assert.equal(state.selectedQuote, null);
+  assert.equal(openAiMessages.length, 0);
+});
+
 test('flow handler clarifies weak acknowledgement after insurer recommendation', () => {
   const state = new ConversationState();
   Object.assign(state, {

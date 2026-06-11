@@ -421,8 +421,8 @@ const advisorEvalCases = [
     state: quoteState,
     advisorIntent: ADVISOR_INTENTS.COVERAGE_RISK_ADVICE,
     topic: ADVISOR_TOPICS.BETTERMENT,
-    response: [/Zero betterment helps reduce/i, /Tokio Marine Insurance/i, /actual add-on options/i, /add-ons step/i, /7-year-old Perodua Myvi/i, /nice-to-have/i, /Shall I select \*\*Tokio Marine Insurance - RM 800.00\*\* first/i],
-    responseNot: [/insurer\/product-fit question first/i, /I should not jump/i, /cannot confirm/i, /verified facts/i, /clearest zero-betterment signal/i, /final availability and price can depend/i, /RM 350.00/i, /Do you want to add \*\*Betterment waiver\*\*/i, /or skip it/i, /do not see a confirmed zero-betterment insurer/i],
+    response: [/Zero betterment helps reduce/i, /add-ons step/i, /7-year-old Perodua Myvi/i, /nice-to-have/i, /choose the insurer first/i, /ask me to recommend one/i],
+    responseNot: [/insurer\/product-fit question first/i, /I should not jump/i, /cannot confirm/i, /verified facts/i, /clearest zero-betterment signal/i, /final availability and price can depend/i, /RM 350.00/i, /Do you want to add \*\*Betterment waiver\*\*/i, /or skip it/i, /do not see a confirmed zero-betterment insurer/i, /My earlier advice/i, /Tokio Marine Insurance - RM 800.00/i, /Takaful Ikhlas Insurance - RM 796.00/i, /Shall I select/i],
   },
   {
     name: 'zero betterment at vehicle-info stage stays advisory and does not select add-on',
@@ -431,7 +431,7 @@ const advisorEvalCases = [
     advisorIntent: ADVISOR_INTENTS.COVERAGE_RISK_ADVICE,
     topic: ADVISOR_TOPICS.BETTERMENT,
     response: [/Zero betterment helps reduce/i, /actual add-on options/i, /vehicle plate/i, /owner identification number/i],
-    responseNot: [/RM 350.00/i, /Do you want to add/i, /or skip it/i, /add \*\*Betterment waiver\*\*/i],
+    responseNot: [/RM 350.00/i, /Do you want to add/i, /or skip it/i, /add \*\*Betterment waiver\*\*/i, /Tokio Marine Insurance/i, /Takaful Ikhlas Insurance/i, /My earlier advice/i],
   },
   {
     name: 'LLTP shorthand is understood',
