@@ -261,16 +261,19 @@ export default function WhatIsLajooPage() {
       text: "Amazing platform for me to renew all my car insurance road tax, super fast and convenient. Done anytime even at 2am instantly.",
       author: "Ananda Vandram",
       time: "August 2025",
+      avatar: "/avatars/ananda.png",
     },
     {
       text: "The best part is how incredibly fast the service is. Everything handled and completed before I even brewed coffee.",
       author: "Param V",
       time: "March 2024",
+      avatar: "/avatars/param.png",
     },
     {
       text: "First time using the service, smooth experience, clear pricing, and I could compare options without waiting around for an agent.",
       author: "Ain",
       time: "January 2024",
+      avatar: "/avatars/ain.png",
     },
   ];
 

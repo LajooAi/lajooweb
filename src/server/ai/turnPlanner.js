@@ -135,7 +135,7 @@ function asksDirectCheaperOutside(text) {
 function asksWhichAddOnsNeeded(text) {
   return textMatches(
     text,
-    /which (do i|one|should)|what (do i|should)|need|recommend|important|essential|must[-\s]?have|must\s+(?:take|buy|add|choose)|priority|prioritise|prioritize|required|compulsory/i
+    /which (do i|one|should)|what (do i|should)|need|recommend|important|essential|must[-\s]?have|must\s+(?:take|buy|add|choose)|priority|prioritise|prioritize|required|compulsory|should\s+i\s+skip|can\s+i\s+skip|is\s+it\s+(?:ok|okay|safe)\s+to\s+skip/i
   );
 }
 
@@ -186,7 +186,7 @@ function resolveQuestionGuidance({ text, step, intent, responsePattern }) {
 function isPaymentOrPolicyAssertion(text) {
   return textMatches(
     text,
-    /\b(i\s+paid|paid\s+already|payment\s+(?:done|made|complete|completed|success|successful|confirmed)|confirm\s+(?:my\s+)?payment|issue\s+(?:my\s+)?policy|policy\s+(?:issued|ready|active)|send\s+(?:my\s+)?policy)\b/i
+    /\b(i\s+paid|paid\s+already|done\s+(?:purchased|purchase|paid|payment)|(?:purchased|purchase)\s+(?:done|already|complete|completed)|payment\s+(?:done|made|complete|completed|success|successful|confirmed)|confirm\s+(?:my\s+)?payment|issue\s+(?:my\s+)?policy|policy\s+(?:issued|ready|active)|send\s+(?:my\s+)?policy)\b/i
   );
 }
 
@@ -676,6 +676,7 @@ Do NOT jump steps.`;
     case TURN_QUESTION_GUIDANCE.ADDON_RECOMMENDATION:
       return `User wants professional advice on which add-ons they need, and may also be asking whether they can skip.
 Do NOT treat this as a skip selection. Do NOT advance to road tax yet.
+If the user asks "should I skip", "is it necessary", "minimum only", or "do I really need this", answer with a direct verdict first before explaining the options.
 
 Known context:
 ${vehicleAddOnContext}
@@ -686,14 +687,14 @@ Give a practical recommendation, not a generic menu. Use the option numbers so t
 
 2. **Special Perils** (${formatMoney(ADD_ON_BY_ID?.flood?.price || 150)}) - covers flood and selected natural-disaster damage such as landslide/landslip or storm, subject to insurer terms. Strongly consider it if the car is parked in a low-lying area, basement, near flood-prone roads, hillside/landslide-prone areas, or the user lives/works in an area that floods. If location risk is unknown, say so and ask where the car is usually parked only if needed.
 
-8. **Betterment waiver** (${formatMoney(ADD_ON_BY_ID?.betterment_waiver?.price || 350)}) - consider it for older cars, cars with expensive parts, or continental/performance/luxury vehicles because betterment can become a surprise repair cost when old damaged parts are replaced with new parts.
+8. **Betterment waiver** (${formatMoney(ADD_ON_BY_ID?.betterment_waiver?.price || 350)}) - for an older everyday car such as a 7-year-old Myvi, treat this as nice-to-have if the user wants extra repair-cost comfort. Recommend it more strongly for older premium, continental, performance, luxury, or cars with expensive parts because betterment can become a bigger surprise repair cost when old damaged parts are replaced with new parts.
 
 3. **E-hailing** (${formatMoney(ADD_ON_BY_ID?.ehailing?.price || 2000)}) - required if the user drives for Grab, inDrive, or any ride-sharing service. Skip this if they do not do e-hailing.
 
 Also mention they can skip add-ons if they want the lowest total and none of the risk conditions apply.
 
 End with one confident close question, for example:
-"My practical pick is **2 Special Perils (${formatMoney(ADD_ON_BY_ID?.flood?.price || 150)})**${state?.selectedQuote ? ', plus **1 Windscreen** if you drive highways/long distance often or glass replacement would hurt your budget' : ''}${vehicleAddOnContext.includes('5+ years old') ? `, and consider **8 Betterment waiver (${formatMoney(ADD_ON_BY_ID?.betterment_waiver?.price || 350)})** because the car is older` : ''}. Do you want that, just **2**, **2 and 8**, or **skip add-ons**?"
+"My practical pick is **2 Special Perils (${formatMoney(ADD_ON_BY_ID?.flood?.price || 150)})**${state?.selectedQuote ? ', plus **1 Windscreen** if you drive highways/long distance often or glass replacement would hurt your budget' : ''}${vehicleAddOnContext.includes('5+ years old') ? `, and **8 Betterment waiver (${formatMoney(ADD_ON_BY_ID?.betterment_waiver?.price || 350)})** only if you want extra repair-cost comfort` : ''}. Do you want that, just **2**, **2 and 8**, or **skip add-ons**?"
 
 Do NOT combine into one paragraph. Keep the option numbers visible: 1, 2, 8, and 3.`;
 

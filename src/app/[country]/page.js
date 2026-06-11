@@ -2,7 +2,7 @@
 import Head from "next/head";
 import Link from "next/link";
 import Image from "next/image";
-import { useEffect, useRef, useState, useCallback } from "react";
+import { useEffect, useRef, useState, useCallback, useMemo } from "react";
 import { useParams, useSearchParams } from "next/navigation";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -116,6 +116,7 @@ const addOnsSectionRegex = new RegExp(String.raw`(?:^|\n)\s*${addOnsHeadingRegex
 const roadTaxSectionRegex = new RegExp(String.raw`(?:^|\n)\s*${roadTaxHeadingRegexSource}\s*\n+[\s\S]*?(?:printed road tax is only for Foreign ID or Company vehicles\.?)`, "i");
 const paymentSectionRegex = new RegExp(String.raw`(?:^|\n)\s*${paymentHeadingRegexSource}\s*\n+[\s\S]*?(?:policy documents and payment receipt will be sent to your WhatsApp and email\.?)`, "i");
 const WINDSCREEN_PREMIUM_RATE = 0.15;
+const EMPTY_ARRAY = Object.freeze([]);
 
 const getQuoteSelectionText = (insurerName = "") => {
   const lower = insurerName.toLowerCase();
@@ -406,14 +407,46 @@ const parseMoneyInput = (value) => {
   return Number.isFinite(numeric) ? numeric : 0;
 };
 
-const formatAddOnsUserReply = (labels = []) => {
+const normalizeFlowStep = (step = "") =>
+  String(step || "").toLowerCase().replace(/[\s-]+/g, "_");
+
+const getAddOnsCommitMode = (step = "") => {
+  const normalizedStep = normalizeFlowStep(step);
+  if (normalizedStep === "payment") return "payment";
+  if (["roadtax", "road_tax", "personal_details", "otp", "success"].includes(normalizedStep)) {
+    return "update";
+  }
+  return "confirm";
+};
+
+const getAddOnsCommitLabel = (commitMode = "confirm") => {
+  if (commitMode === "payment") return "Update total";
+  if (commitMode === "update") return "Update add-ons";
+  return "Confirm";
+};
+
+const formatAddOnsListForReply = (labels = []) => {
   const items = labels.filter(Boolean);
   if (items.length === 0) return "";
-  if (items.length === 1) return `Add ${items[0]}`;
-  if (items.length === 2) return `Add ${items[0]} and ${items[1]}`;
+  if (items.length === 1) return items[0];
+  if (items.length === 2) return `${items[0]} and ${items[1]}`;
 
-  return `Add ${items.slice(0, -1).join(", ")}, and ${items[items.length - 1]}`;
+  return `${items.slice(0, -1).join(", ")}, and ${items[items.length - 1]}`;
 };
+
+const formatAddOnsUserReply = (labels = [], options = {}) => {
+  const selectedList = formatAddOnsListForReply(labels);
+  if (!selectedList) return "";
+
+  const commitMode = options.commitMode || "confirm";
+  if (commitMode === "payment") return `Update add-ons to only ${selectedList} and update total`;
+  if (commitMode === "update") return `Update add-ons to only ${selectedList}`;
+
+  return `Add ${selectedList}`;
+};
+
+const formatAddOnsSkipReply = (commitMode = "confirm") =>
+  commitMode === "confirm" ? "skip add-ons" : "change add-ons to skip all";
 
 const normalizeRoadTaxReply = (value = "") =>
   String(value)
@@ -423,11 +456,14 @@ const normalizeRoadTaxReply = (value = "") =>
     .replace(/\s+/g, " ")
     .trim();
 
-const getRoadTaxOptionAliases = (option = {}) => {
+const getRoadTaxOptionAliases = (option = {}, context = {}) => {
   const aliases = [option.id, option.label, option.message].filter(Boolean);
 
   if (option.id === "12month-digital") {
-    aliases.push("12 months digital", "digital road tax", "yes", "ok");
+    aliases.push("12 months digital", "digital road tax");
+    if (!context.hasDeliveredRoadTaxChoice) {
+      aliases.push("yes", "ok");
+    }
   }
 
   if (option.id === "12month-physical") {
@@ -441,16 +477,47 @@ const getRoadTaxOptionAliases = (option = {}) => {
   return aliases.map(normalizeRoadTaxReply).filter(Boolean);
 };
 
-const getSelectedRoadTaxOptionId = (messages = [], assistantIndex = -1, roadTaxCard = null) => {
+const getSelectedRoadTaxOptionIdFromState = (state = null, options = []) => {
+  const selectedRoadTax = state?.selectedRoadTax;
+  if (!selectedRoadTax || options.length === 0) return null;
+
+  const explicitId = normalizeRoadTaxReply(selectedRoadTax.id || selectedRoadTax.optionId || "");
+  const selectedText = normalizeRoadTaxReply(
+    [
+      selectedRoadTax.id,
+      selectedRoadTax.optionId,
+      selectedRoadTax.name,
+      selectedRoadTax.label,
+      selectedRoadTax.message,
+    ].filter(Boolean).join(" ")
+  );
+
+  const selectedOption = options.find((option) => {
+    if (explicitId && normalizeRoadTaxReply(option.id) === explicitId) return true;
+
+    const aliases = getRoadTaxOptionAliases(option);
+    return aliases.some((alias) =>
+      selectedText === alias || (alias.length > 3 && selectedText.includes(alias))
+    );
+  });
+
+  return selectedOption?.available ? selectedOption.id : null;
+};
+
+const getSelectedRoadTaxOptionId = (messages = [], assistantIndex = -1, roadTaxCard = null, state = null) => {
   const options = Array.isArray(roadTaxCard?.options) ? roadTaxCard.options : [];
   if (assistantIndex < 0 || options.length === 0) return null;
+
+  const selectedFromState = getSelectedRoadTaxOptionIdFromState(state, options);
+  if (selectedFromState) return selectedFromState;
 
   const nextUserMessage = messages.slice(assistantIndex + 1).find((message) => message?.role === "user");
   const userReply = normalizeRoadTaxReply(nextUserMessage?.content || "");
   if (!userReply) return null;
+  const hasDeliveredRoadTaxChoice = options.some((option) => option.id === "12month-physical" && option.available);
 
   const selectedOption = options.find((option) =>
-    getRoadTaxOptionAliases(option).some((alias) =>
+    getRoadTaxOptionAliases(option, { hasDeliveredRoadTaxChoice }).some((alias) =>
       userReply === alias || (alias.length > 3 && userReply.includes(alias))
     )
   );
@@ -706,22 +773,32 @@ function AssistantAddOnsSelector({
   onSkip,
   selectedOptionIds = null,
   selectedWindscreenCoverage = null,
+  commitMode = "confirm",
 }) {
-  const options = Array.isArray(addOnsCard?.options) ? addOnsCard.options : [];
-  const initialSelected = Array.isArray(addOnsCard?.selectedIds) ? addOnsCard.selectedIds : [];
+  const options = Array.isArray(addOnsCard?.options) ? addOnsCard.options : EMPTY_ARRAY;
+  const initialSelected = Array.isArray(addOnsCard?.selectedIds) ? addOnsCard.selectedIds : EMPTY_ARRAY;
   const defaultCoverage = Number(addOnsCard?.defaultWindscreenCoverage ?? 0);
   const controlledWindscreenCoverage = Number(selectedWindscreenCoverage ?? 0);
   const initialWindscreenCoverage =
     controlledWindscreenCoverage > 0 ? controlledWindscreenCoverage : defaultCoverage;
-  const [selectedIds, setSelectedIds] = useState(initialSelected);
+  const syncedSelectedIds = useMemo(
+    () => sortAddOnIdsByOptionOrder(
+      Array.isArray(selectedOptionIds) ? selectedOptionIds : initialSelected,
+      options
+    ),
+    [initialSelected, options, selectedOptionIds]
+  );
+  const [selectedIds, setSelectedIds] = useState(syncedSelectedIds);
   const [windscreenCoverageInput, setWindscreenCoverageInput] = useState(formatQuoteMoney(initialWindscreenCoverage));
   const [activeInfoId, setActiveInfoId] = useState(null);
 
   useEffect(() => {
-    if (controlledWindscreenCoverage > 0) {
-      setWindscreenCoverageInput(formatQuoteMoney(controlledWindscreenCoverage));
-    }
-  }, [controlledWindscreenCoverage]);
+    setSelectedIds(syncedSelectedIds);
+  }, [syncedSelectedIds]);
+
+  useEffect(() => {
+    setWindscreenCoverageInput(formatQuoteMoney(initialWindscreenCoverage));
+  }, [initialWindscreenCoverage]);
 
   useEffect(() => {
     if (!activeInfoId || typeof document === "undefined") return undefined;
@@ -745,14 +822,15 @@ function AssistantAddOnsSelector({
 
   const windscreenCoverage = Math.max(0, parseMoneyInput(windscreenCoverageInput));
   const windscreenPrice = windscreenCoverage * WINDSCREEN_PREMIUM_RATE;
-  const displayedSelectedIds = Array.isArray(selectedOptionIds) ? selectedOptionIds : selectedIds;
+  const displayedSelectedIds = sortAddOnIdsByOptionOrder(selectedIds, options);
   const hasSelection = displayedSelectedIds.length > 0;
+  const confirmLabel = getAddOnsCommitLabel(commitMode);
 
   const toggleAddOn = (id) => {
     setSelectedIds((prev) =>
       prev.includes(id)
-        ? prev.filter((item) => item !== id)
-        : [...prev, id]
+        ? sortAddOnIdsByOptionOrder(prev.filter((item) => item !== id), options)
+        : sortAddOnIdsByOptionOrder([...prev, id], options)
     );
   };
 
@@ -767,6 +845,7 @@ function AssistantAddOnsSelector({
       selectedIds: displayedSelectedIds,
       options,
       windscreenCoverage,
+      commitMode,
     });
   };
 
@@ -832,7 +911,7 @@ function AssistantAddOnsSelector({
       </div>
 
       <div className="assistant-addons-actions">
-        <button type="button" className="assistant-addons-skip" onClick={onSkip}>
+        <button type="button" className="assistant-addons-skip" onClick={() => onSkip?.({ commitMode })}>
           Skip &gt;&gt;
         </button>
         <button
@@ -841,7 +920,7 @@ function AssistantAddOnsSelector({
           disabled={!hasSelection}
           onClick={handleConfirm}
         >
-          Confirm
+          {confirmLabel}
         </button>
       </div>
 
@@ -1311,6 +1390,7 @@ export default function Home() {
   const [isTurnAnchoring, setIsTurnAnchoring] = useState(false);
   const [anchorSpacerPx, setAnchorSpacerPx] = useState(0);
   const [heroInsurerLoopWidth, setHeroInsurerLoopWidth] = useState(0);
+  const [heroInsurerAnimationSeed, setHeroInsurerAnimationSeed] = useState(0);
   const threadRef = useRef(null);
   const homeMainRef = useRef(null);
   const heroInsurerGroupRef = useRef(null);
@@ -1340,32 +1420,56 @@ export default function Home() {
   const params = useParams();
   const country = (params?.country || "my").toLowerCase();
 
+  const hasMessages = messages.length > 0;
+
   useEffect(() => {
-    const group = heroInsurerGroupRef.current;
-    if (!group) return undefined;
-
-    const updateLoopWidth = () => {
-      setHeroInsurerLoopWidth(group.getBoundingClientRect().width);
-    };
-
-    updateLoopWidth();
-
-    if (typeof ResizeObserver === "undefined") {
+    if (hasMessages) {
+      setHeroInsurerLoopWidth(0);
       return undefined;
     }
 
-    const resizeObserver = new ResizeObserver(() => {
+    let cancelled = false;
+    let resizeObserver = null;
+    let firstFrame = 0;
+    let secondFrame = 0;
+
+    const updateLoopWidth = () => {
+      if (cancelled) return;
+      const group = heroInsurerGroupRef.current;
+      if (!group) return;
+
+      const nextWidth = group.getBoundingClientRect().width;
+      if (nextWidth <= 0) return;
+
+      setHeroInsurerLoopWidth((previousWidth) =>
+        Math.abs(previousWidth - nextWidth) > 0.5 ? nextWidth : previousWidth
+      );
+    };
+
+    const attachObserver = () => {
+      const group = heroInsurerGroupRef.current;
+      if (!group || typeof ResizeObserver === "undefined") return;
+
+      resizeObserver = new ResizeObserver(updateLoopWidth);
+      resizeObserver.observe(group);
+    };
+
+    setHeroInsurerAnimationSeed((seed) => seed + 1);
+
+    firstFrame = requestAnimationFrame(() => {
       updateLoopWidth();
+      attachObserver();
+      secondFrame = requestAnimationFrame(updateLoopWidth);
     });
 
-    resizeObserver.observe(group);
-
     return () => {
-      resizeObserver.disconnect();
+      cancelled = true;
+      if (firstFrame) cancelAnimationFrame(firstFrame);
+      if (secondFrame) cancelAnimationFrame(secondFrame);
+      resizeObserver?.disconnect();
     };
-  }, []);
+  }, [hasMessages, sessionKey]);
 
-  const hasMessages = messages.length > 0;
   const USER_MESSAGE_TOP_OFFSET = 4;
   const MAX_USER_ANCHOR_ATTEMPTS = 120;
 
@@ -2086,8 +2190,9 @@ export default function Home() {
     handleQuickStart(selectionText);
   };
 
-  const handleAddOnsConfirm = ({ selectedIds = [], options = [], windscreenCoverage = 0 }) => {
+  const handleAddOnsConfirm = ({ selectedIds = [], options = [], windscreenCoverage = 0, commitMode }) => {
     if (!selectedIds.length) return;
+    const resolvedCommitMode = commitMode || getAddOnsCommitMode(conversationStateRef.current?.step);
     const selectedLabels = options
       .filter((option) => selectedIds.includes(option.id))
       .map((option) => {
@@ -2100,12 +2205,13 @@ export default function Home() {
       });
 
     if (selectedLabels.length > 0) {
-      handleQuickStart(formatAddOnsUserReply(selectedLabels));
+      handleQuickStart(formatAddOnsUserReply(selectedLabels, { commitMode: resolvedCommitMode }));
     }
   };
 
-  const handleAddOnsSkip = () => {
-    handleQuickStart("skip add-ons");
+  const handleAddOnsSkip = ({ commitMode } = {}) => {
+    const resolvedCommitMode = commitMode || getAddOnsCommitMode(conversationStateRef.current?.step);
+    handleQuickStart(formatAddOnsSkipReply(resolvedCommitMode));
   };
 
   const handleRoadTaxSelect = (option) => {
@@ -2122,7 +2228,9 @@ export default function Home() {
       // Open payment links in new tab
       const isPaymentLink = href && href.includes('/payment/');
       const isDocumentPdfLink = typeof href === "string" && /\/documents\/.+\.pdf(?:\?.*)?$/i.test(href);
-      const shouldOpenNewTab = isPaymentLink || isDocumentPdfLink || anchorProps.target === "_blank";
+      const isContactSupportLink = typeof href === "string" && /\/contact-us\/?(?:[?#].*)?$/i.test(href);
+      const shouldOpenNewTab =
+        isPaymentLink || isDocumentPdfLink || isContactSupportLink || anchorProps.target === "_blank";
       const shouldDownload = isDocumentPdfLink || anchorProps.download !== undefined;
       const hrefWithSession =
         isPaymentLink && href && !/[?&]session=/.test(href)
@@ -2297,6 +2405,7 @@ export default function Home() {
 
               <div className="home-hero-insurers" aria-label="Trusted insurers">
                 <div
+                  key={`home-hero-insurers-track-${heroInsurerAnimationSeed}-${Math.round(heroInsurerLoopWidth)}`}
                   className={`home-hero-insurers-track${heroInsurerLoopWidth ? " is-ready" : ""}`}
                   style={
                     heroInsurerLoopWidth
@@ -2466,6 +2575,7 @@ export default function Home() {
                                       onSkip={isStreaming ? undefined : handleAddOnsSkip}
                                       selectedOptionIds={selectedAddOnState?.ids ?? null}
                                       selectedWindscreenCoverage={selectedAddOnState?.windscreenCoverage ?? null}
+                                      commitMode={getAddOnsCommitMode(conversationStateRef.current?.step)}
                                     />
                                     {nestedAddOnsPresentation.after && (
                                       <ReactMarkdown
@@ -2496,7 +2606,12 @@ export default function Home() {
                                     <AssistantRoadTaxSelector
                                       roadTaxCard={nestedRoadTaxPresentation.roadTax}
                                       onSelect={isStreaming ? undefined : handleRoadTaxSelect}
-                                      selectedOptionId={getSelectedRoadTaxOptionId(messages, messageIndex, nestedRoadTaxPresentation.roadTax)}
+                                      selectedOptionId={getSelectedRoadTaxOptionId(
+                                        messages,
+                                        messageIndex,
+                                        nestedRoadTaxPresentation.roadTax,
+                                        conversationStateRef.current
+                                      )}
                                     />
                                     {nestedRoadTaxPresentation.after && (
                                       <ReactMarkdown
@@ -2579,6 +2694,7 @@ export default function Home() {
                                   onSkip={isStreaming ? undefined : handleAddOnsSkip}
                                   selectedOptionIds={selectedAddOnState?.ids ?? null}
                                   selectedWindscreenCoverage={selectedAddOnState?.windscreenCoverage ?? null}
+                                  commitMode={getAddOnsCommitMode(conversationStateRef.current?.step)}
                                 />
                                 {addOnsPresentation.after && (
                                   <ReactMarkdown
@@ -2607,7 +2723,12 @@ export default function Home() {
                             <AssistantRoadTaxSelector
                               roadTaxCard={roadTaxPresentation.roadTax}
                               onSelect={isStreaming ? undefined : handleRoadTaxSelect}
-                              selectedOptionId={getSelectedRoadTaxOptionId(messages, messageIndex, roadTaxPresentation.roadTax)}
+                              selectedOptionId={getSelectedRoadTaxOptionId(
+                                messages,
+                                messageIndex,
+                                roadTaxPresentation.roadTax,
+                                conversationStateRef.current
+                              )}
                             />
                             {roadTaxPresentation.after && (
                               <ReactMarkdown

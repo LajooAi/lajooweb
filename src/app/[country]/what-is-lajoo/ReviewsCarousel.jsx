@@ -28,7 +28,9 @@ export default function ReviewsCarousel({ reviews = [] }) {
     <div className="reviews-carousel">
       <article className="review-card review-card--featured">
         <div className="review-card__head">
-          <div className="review-card__avatar" aria-hidden="true" />
+          <div className="review-card__avatar" aria-hidden="true">
+            {activeReview.avatar ? <img src={activeReview.avatar} alt="" /> : null}
+          </div>
           <div className="review-card__identity">
             <p className="review-card__author">{activeReview.author}</p>
             <p className="review-card__date">{activeReview.time}</p>

@@ -195,7 +195,7 @@ export function buildAddOnsFromSelection(addOnIds = [], options = {}) {
 
 const ADD_ON_TEXT_ALIASES = {
   windscreen: ['windscreen', 'wind screen', 'glass'],
-  flood: ['flood', 'special perils', 'perils', 'natural disaster', 'natural disasters', 'landslide', 'landslip', 'storm'],
+  flood: ['flood', 'special peril', 'special perils', 'peril', 'perils', 'natural disaster', 'natural disasters', 'landslide', 'landslip', 'storm'],
   ehailing: ['e-hailing', 'ehailing', 'e hailing', 'grab', 'ride sharing', 'rideshare', 'ride share'],
   all_drivers: ['all drivers', 'all driver'],
   legal_liability_passengers: ['legal liability to passengers', 'legal liability passenger', 'llp'],
@@ -203,7 +203,7 @@ const ADD_ON_TEXT_ALIASES = {
   strike_riot: ['strike riot', 'riot', 'civil commotion'],
   betterment_waiver: ['betterment waiver', 'betterment', 'zero betterment'],
   ncd_relief: ['ncd relief', 'current year ncd'],
-  body_painting: ['body painting', 'paint'],
+  body_painting: ['body painting', 'vehicle body painting', 'full vehicle body painting', 'paint'],
   personal_accident: ['personal accident'],
 };
 
@@ -220,10 +220,23 @@ function uniqueCatalogOrder(ids = []) {
   return ADD_ON_CATALOG.map((addOn) => addOn.id).filter((id) => wanted.has(id));
 }
 
+function normalizeAddOnCommandSpacing(value) {
+  return String(value || '').replace(
+    /\b(add|include|remove|delete|drop|exclude|want|need|take|get|choose|select|with)(?=(?:vehicle|windscreen|body|paint|betterment|flood|special|peril|all|driver|legal|liability|lltp|strike|riot|civil|personal|accident|ncd|e-?hailing|ehailing|grab))/gi,
+    '$1 '
+  );
+}
+
 function addOnAliasPattern(id) {
   const aliases = ADD_ON_TEXT_ALIASES[id] || [];
   const parts = aliases.map(escapeRegex);
   return `(?:${parts.join('|')})`;
+}
+
+function maskMoneyAmounts(text) {
+  return String(text || '')
+    .replace(/\brm\s*\d[\d,]*(?:\.\d{1,2})?\b/gi, ' ')
+    .replace(/\b\d{1,3}(?:,\d{3})+(?:\.\d{1,2})?\b/g, ' ');
 }
 
 function addOnIdFromTextValue(value) {
@@ -238,6 +251,7 @@ function addOnIdFromTextValue(value) {
 
 function addOnIdsMentionedInText(text) {
   const raw = String(text || '').toLowerCase();
+  const numberText = maskMoneyAmounts(raw);
   const ids = [];
 
   for (const id of Object.keys(ADD_ON_TEXT_ALIASES)) {
@@ -246,7 +260,7 @@ function addOnIdsMentionedInText(text) {
     }
   }
 
-  for (const match of raw.matchAll(/(?<![\d,])(?:option\s*)?([1-9]|1[01])(?![\d,])/g)) {
+  for (const match of numberText.matchAll(/(?:^|[^\d])(?:option\s*)?([1-9]|1[01])(?=$|[^\d])/g)) {
     const id = ADD_ON_NUMBER_TO_ID[match[1]];
     if (id) ids.push(id);
   }
@@ -308,7 +322,7 @@ export function addOnIdsFromState(state) {
 }
 
 export function resolveAddOnChangeFromText(text, state = {}) {
-  const raw = String(text || '').toLowerCase();
+  const raw = normalizeAddOnCommandSpacing(String(text || '').toLowerCase());
   const existingIds = addOnIdsFromState(state);
   const mentionedIds = addOnIdsMentionedInText(raw);
   const removeAll =
@@ -327,16 +341,15 @@ export function resolveAddOnChangeFromText(text, state = {}) {
   if (mentionedIds.length === 0) return null;
 
   const removeIds = addOnIdsWithContext(raw, 'remove|delete|drop|take out|exclude|without|no');
-  const keepIds = uniqueCatalogOrder([
-    ...addOnIdsWithContext(raw, 'keep|retain', { before: true, after: false }),
-    ...addOnIdsWithOnlyCue(raw),
-  ]);
+  const explicitKeepIds = addOnIdsWithContext(raw, 'keep|retain', { before: true, after: false });
+  const onlyCueIds = addOnIdsWithOnlyCue(raw);
+  const keepIds = uniqueCatalogOrder([...explicitKeepIds, ...onlyCueIds]);
   const addIds = addOnIdsWithContext(raw, 'add|include|want|need|take|get|choose|select|with');
   const hasOnlyCue = /\b(?:only|just)\b/i.test(raw);
   const hasEditCue = /\b(?:remove|delete|drop|take out|exclude|without|add|include|keep|retain|only|just|change|switch|update)\b/i.test(raw);
 
   let nextIds = null;
-  if (keepIds.length > 0 && (hasOnlyCue || removeIds.length > 0 || /\b(?:keep|retain)\b/i.test(raw))) {
+  if (explicitKeepIds.length > 0 && (removeIds.length > 0 || /\b(?:keep|retain)\b/i.test(raw))) {
     nextIds = keepIds;
   } else if (hasOnlyCue) {
     nextIds = uniqueCatalogOrder(mentionedIds.filter((id) => !removeIds.includes(id)));

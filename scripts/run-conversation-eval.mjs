@@ -94,6 +94,15 @@ function applyIntentMutation(state, intent, message) {
     if (roadTax) state.selectRoadTax(roadTax);
   }
 
+  if (intent.intent === USER_INTENTS.CHANGE_ROADTAX) {
+    const roadTaxMap = {
+      '12month-digital': { name: '12 Months Digital', price: 90 },
+      none: { name: 'No Road Tax', price: 0 },
+    };
+    const roadTax = roadTaxMap[intent.data?.option];
+    if (roadTax) state.changeRoadTax(roadTax);
+  }
+
   if (intent.intent === USER_INTENTS.SUBMIT_DETAILS) {
     const extracted = extractPersonalInfo(String(message || ''));
     const existing = state.personalDetails || {};

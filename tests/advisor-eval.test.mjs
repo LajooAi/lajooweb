@@ -307,6 +307,16 @@ const advisorEvalCases = [
     response: [/Zurich/i, /not in the current LAJOO panel/i, /Closest available fit/i],
   },
   {
+    name: 'exploratory quote mention explains insurer instead of selecting',
+    message: 'can we have a look at lonpac as well',
+    state: quoteState,
+    advisorIntent: ADVISOR_INTENTS.NONE,
+    rawIntent: USER_INTENTS.ASK_QUESTION,
+    decisionMode: CONVERSATION_MODES.QUOTE_COMPARISON,
+    response: [/Lonpac Insurance/i, /not selected it yet/i, /RM 960.00/i, /Tokio Marine Insurance - RM 800.00/i, /RM 160.00 higher/i, /cleaner balanced pick/i],
+    responseNot: [/Great choice/i, /Step 3 of 6/i, /Would you like some add-ons/i],
+  },
+  {
     name: 'general add-on advice does not auto-skip',
     message: 'which do i need ? or i can skip',
     state: addOnsState,
@@ -329,8 +339,51 @@ const advisorEvalCases = [
     state: addOnsState,
     rawIntent: USER_INTENTS.ASK_QUESTION,
     advisorIntent: ADVISOR_INTENTS.COVERAGE_RISK_ADVICE,
+    topic: ADVISOR_TOPICS.ADDON_SKIP_DECISION,
     decisionMode: CONVERSATION_MODES.INSURANCE_QUESTION,
-    response: [/My usual shortlist/i, /Special Perils/i, /Windscreen/i, /E-hailing/i, /skip add-ons/i],
+    response: [/^Yes - you can skip add-ons/i, /My practical minimum/i, /Special Perils/i, /Windscreen/i, /E-hailing/i, /skip add-ons/i],
+  },
+  {
+    name: 'casual must-take add-on phrasing uses advisor shortlist instead of generic delegation',
+    message: 'must take anything ah?',
+    state: addOnsState,
+    rawIntent: USER_INTENTS.ASK_QUESTION,
+    advisorIntent: ADVISOR_INTENTS.COVERAGE_RISK_ADVICE,
+    decisionMode: CONVERSATION_MODES.INSURANCE_QUESTION,
+    response: [/practical advice/i, /My usual shortlist/i, /Special Perils/i, /Windscreen/i, /What would you like/i],
+    responseNot: [/My pick is/i, /balanced pick/i, /choose an insurer/i],
+  },
+  {
+    name: 'help me decide at add-ons uses structured advisor shortlist',
+    message: 'help me decide',
+    state: addOnsState,
+    rawIntent: USER_INTENTS.ASK_QUESTION,
+    advisorIntent: ADVISOR_INTENTS.COVERAGE_RISK_ADVICE,
+    decisionMode: CONVERSATION_MODES.INSURANCE_QUESTION,
+    response: [/practical advice/i, /My usual shortlist/i, /2\. Special Perils/i, /1\. Windscreen/i, /8\. Betterment waiver/i, /nice-to-have/i],
+    responseNot: [/preventing unexpected repair costs/i, /mandatory/i, /must-buy/i],
+  },
+  {
+    name: 'should I skip add-ons gets a decision-first answer',
+    message: 'should i skip?',
+    state: addOnsState,
+    rawIntent: USER_INTENTS.ASK_QUESTION,
+    advisorIntent: ADVISOR_INTENTS.COVERAGE_RISK_ADVICE,
+    topic: ADVISOR_TOPICS.ADDON_SKIP_DECISION,
+    decisionMode: CONVERSATION_MODES.INSURANCE_QUESTION,
+    response: [/^Yes - you can skip add-ons/i, /My practical minimum/i, /2\. Special Perils/i, /1\. Windscreen/i, /3\. E-hailing/i, /8\. Betterment waiver/i, /nice-to-have.*not essential/i, /skip add-ons/i],
+    responseNot: [/Whether to skip add-ons entirely depends/i, /Which add-on\(s\) would you like to choose/i],
+  },
+  {
+    name: 'necessary add-on phrasing uses minimum decision path',
+    message: 'what is necessary tho?',
+    state: addOnsState,
+    rawIntent: USER_INTENTS.ASK_QUESTION,
+    advisorIntent: ADVISOR_INTENTS.COVERAGE_RISK_ADVICE,
+    topic: ADVISOR_TOPICS.ADDON_SKIP_DECISION,
+    decisionMode: CONVERSATION_MODES.INSURANCE_QUESTION,
+    response: [/^Yes - you can skip add-ons/i, /My practical minimum/i, /Special Perils/i, /Windscreen/i, /Betterment waiver/i],
+    responseNot: [/Based on your needs, you can choose/i],
   },
   {
     name: 'Grab usage recommends e-hailing clearly',
@@ -354,8 +407,8 @@ const advisorEvalCases = [
     state: quoteState,
     advisorIntent: ADVISOR_INTENTS.COVERAGE_RISK_ADVICE,
     topic: ADVISOR_TOPICS.BETTERMENT,
-    response: [/Zero betterment helps reduce/i, /Tokio Marine Insurance/i, /final availability and price can depend/i, /add-ons step/i, /7-year-old Perodua Myvi/i, /good-to-have/i, /Shall I select \*\*Tokio Marine Insurance - RM 800.00\*\* first/i],
-    responseNot: [/insurer\/product-fit question first/i, /I should not jump/i, /cannot confirm/i, /verified facts/i, /clearest zero-betterment signal/i, /RM 350.00/i, /Do you want to add \*\*Betterment waiver\*\*/i, /or skip it/i, /do not see a confirmed zero-betterment insurer/i],
+    response: [/Zero betterment helps reduce/i, /Tokio Marine Insurance/i, /actual add-on options/i, /add-ons step/i, /7-year-old Perodua Myvi/i, /nice-to-have/i, /Shall I select \*\*Tokio Marine Insurance - RM 800.00\*\* first/i],
+    responseNot: [/insurer\/product-fit question first/i, /I should not jump/i, /cannot confirm/i, /verified facts/i, /clearest zero-betterment signal/i, /final availability and price can depend/i, /RM 350.00/i, /Do you want to add \*\*Betterment waiver\*\*/i, /or skip it/i, /do not see a confirmed zero-betterment insurer/i],
   },
   {
     name: 'zero betterment at vehicle-info stage stays advisory and does not select add-on',
@@ -363,7 +416,7 @@ const advisorEvalCases = [
     state: startState,
     advisorIntent: ADVISOR_INTENTS.COVERAGE_RISK_ADVICE,
     topic: ADVISOR_TOPICS.BETTERMENT,
-    response: [/Zero betterment helps reduce/i, /should not show a price/i, /vehicle plate/i, /owner identification number/i],
+    response: [/Zero betterment helps reduce/i, /actual add-on options/i, /vehicle plate/i, /owner identification number/i],
     responseNot: [/RM 350.00/i, /Do you want to add/i, /or skip it/i, /add \*\*Betterment waiver\*\*/i],
   },
   {
@@ -396,7 +449,8 @@ const advisorEvalCases = [
     state: () => addOnsState({ vehicleInfo: { make: 'Porsche', model: 'Cayenne', year: 2010, postcode: '47000' } }),
     advisorIntent: ADVISOR_INTENTS.COVERAGE_RISK_ADVICE,
     topic: ADVISOR_TOPICS.BETTERMENT,
-    response: [/Betterment waiver/i, /RM 350.00/i, /expensive parts/i],
+    response: [/Betterment waiver/i, /RM 350.00/i, /consider it more seriously/i, /expensive parts/i],
+    responseNot: [/nice-to-have/i],
   },
   {
     name: 'windscreen amount delegation gives a practical amount',
@@ -549,6 +603,21 @@ test('advisor eval: unverified payment claim is blocked', () => {
   assert.equal(state.step, FLOW_STEPS.PAYMENT);
 });
 
+test('advisor eval: casual purchased wording is blocked as unverified payment claim', () => {
+  const state = paymentState({
+    transaction: {
+      paymentStatus: 'PENDING',
+      policyStatus: null,
+    },
+  });
+  const result = runAdvisorTurn('done purchased please check', state);
+
+  assert.equal(result.turnPlan.responsePattern, TURN_RESPONSE_PATTERNS.BLOCK_UNSAFE_ACTION);
+  assert.equal(result.turnPlan.shouldBlockUnsafeAction, true);
+  assert.ok(result.turnPlan.actions.includes('block_unverified_payment_or_policy_claim'));
+  assert.equal(state.step, FLOW_STEPS.PAYMENT);
+});
+
 test('advisor eval: wrong staging OTP does not advance to payment', () => {
   const state = detailsState({
     step: FLOW_STEPS.OTP,
@@ -590,4 +659,41 @@ test('advisor eval: late vehicle and road-tax corrections are classified before 
   assert.equal(vehicleCorrection.data?.plateNumber, 'WXY1234');
   assert.equal(roadTaxCorrection.intent, USER_INTENTS.CHANGE_ROADTAX);
   assert.equal(roadTaxCorrection.data?.option, 'none');
+});
+
+test('advisor eval: recent founder QA intent set stays on the intended path', () => {
+  const payState = paymentState({
+    selectedRoadTax: { name: '12 months digital road tax', price: 90 },
+    selectedAddOns: [
+      { id: 'flood', name: 'Inclusion of Special Perils', price: 150 },
+      { id: 'betterment_waiver', name: 'Betterment waiver', price: 350 },
+    ],
+  });
+  const addOnState = addOnsState();
+  const otpState = detailsState({
+    step: FLOW_STEPS.OTP,
+    personalDetails: {
+      email: 'ali@example.com',
+      phone: '0123456789',
+      address: 'Wrong address',
+    },
+  });
+  const quoteExploreState = quoteState();
+
+  const takeAwayRoadTax = detectUserIntent('take away roadtax', payState);
+  const bodyPainting = detectUserIntent('can help to addvehicle body painting', payState);
+  const addAllDrivers = detectUserIntent('can add all driver add-on ?', payState);
+  const multiAddOns = detectUserIntent('windscreen, special peril, all driver, and betterment', addOnState);
+  const addressCorrection = detectUserIntent('no, my address is 3a, elitis maya, valencia, sungai buloh, 47000 selangor', otpState);
+  const exploreLonpac = detectUserIntent('can we have a look at lonpac as well', quoteExploreState);
+
+  assert.equal(takeAwayRoadTax.intent, USER_INTENTS.CHANGE_ROADTAX);
+  assert.equal(takeAwayRoadTax.data?.option, 'none');
+  assert.equal(bodyPainting.intent, USER_INTENTS.CHANGE_ADDONS);
+  assert.equal(addAllDrivers.intent, USER_INTENTS.CHANGE_ADDONS);
+  assert.equal(multiAddOns.intent, USER_INTENTS.SELECT_ADDON);
+  assert.deepEqual(multiAddOns.data?.addOns, ['windscreen', 'flood', 'all_drivers', 'betterment_waiver']);
+  assert.equal(addressCorrection.intent, USER_INTENTS.CHANGE_PERSONAL_DETAILS);
+  assert.equal(addressCorrection.data?.field, 'address');
+  assert.equal(exploreLonpac.intent, USER_INTENTS.ASK_QUESTION);
 });

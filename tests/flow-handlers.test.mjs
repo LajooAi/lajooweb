@@ -158,6 +158,52 @@ test('flow handler clarifies weak acknowledgement after insurer recommendation',
   assert.equal(openAiMessages.length, 0);
 });
 
+test('flow handler explains exploratory insurer mention instead of selecting it', () => {
+  const state = new ConversationState();
+  Object.assign(state, {
+    step: FLOW_STEPS.QUOTES,
+    plateNumber: 'JRT9289',
+    nricNumber: '951018145405',
+    lastRecommendedInsurer: 'tokio',
+    selectedQuote: null,
+    vehicleInfo: {
+      make: 'Perodua',
+      model: 'Myvi',
+      variant: '1.5L',
+      year: 2019,
+    },
+  });
+  const openAiMessages = [];
+
+  const result = applyDeterministicFlowHandlers({
+    openAiMessages,
+    state,
+    intent: { intent: USER_INTENTS.ASK_QUESTION, confidence: 0.95 },
+    turnPlan: {},
+    messages: [
+      {
+        role: 'assistant',
+        content: '**My pick:** **Tokio Marine Insurance - RM 800.00**\n\n**Next:** Want to go with Tokio, or explore others?',
+      },
+      { role: 'user', content: 'can we have a look at lonpac as well' },
+    ],
+    latestMessage: 'can we have a look at lonpac as well',
+    callbacks: makeCallbacks(),
+  });
+
+  assert.equal(state.step, FLOW_STEPS.QUOTES);
+  assert.equal(state.selectedQuote, null);
+  assert.match(result.forcedAssistantResponse, /look at \*\*Lonpac Insurance\*\*/i);
+  assert.match(result.forcedAssistantResponse, /not selected it yet/i);
+  assert.match(result.forcedAssistantResponse, /Lonpac Insurance\*\* is \*\*RM 960.00\*\*/i);
+  assert.match(result.forcedAssistantResponse, /Tokio Marine Insurance - RM 800.00/i);
+  assert.match(result.forcedAssistantResponse, /RM 160.00 higher/i);
+  assert.match(result.forcedAssistantResponse, /cleaner balanced pick/i);
+  assert.doesNotMatch(result.forcedAssistantResponse, /Great choice/i);
+  assert.doesNotMatch(result.forcedAssistantResponse, /ADDONS_STEP_BLOCK/i);
+  assert.equal(openAiMessages.length, 0);
+});
+
 test('flow handler accepts ok after direct single-insurer selection prompt', () => {
   const state = new ConversationState();
   Object.assign(state, {
@@ -491,6 +537,50 @@ test('flow handler answers road tax alternative question without advancing state
   assert.match(result.forcedAssistantResponse, /Insurance must already be active/i);
   assert.match(result.forcedAssistantResponse, /12-month digital road tax \(RM 90.00\)/i);
   assert.match(result.forcedAssistantResponse, /skip road tax/i);
+  assert.equal(state.step, FLOW_STEPS.ROADTAX);
+  assert.equal(state.selectedRoadTax, null);
+  assert.equal(openAiMessages.length, 0);
+});
+
+test('flow handler clarifies road tax option when physical delivery is available', () => {
+  const state = new ConversationState();
+  Object.assign(state, {
+    step: FLOW_STEPS.ROADTAX,
+    plateNumber: 'FID5566',
+    nricNumber: 'A12345678',
+    ownerIdType: 'foreign_id',
+    selectedQuote: {
+      insurer: 'Tokio Marine Insurance',
+      priceAfter: 800,
+      priceBefore: 1000,
+      ncdPercent: 20,
+      sumInsured: 35000,
+      coverType: 'Comprehensive',
+    },
+    selectedAddOns: [],
+    addOnsConfirmed: true,
+    selectedRoadTax: null,
+  });
+  const openAiMessages = [];
+
+  const result = applyDeterministicFlowHandlers({
+    openAiMessages,
+    state,
+    intent: {
+      intent: USER_INTENTS.ASK_QUESTION,
+      confidence: 0.86,
+      data: { topic: 'clarify_roadtax_option' },
+    },
+    turnPlan: {},
+    messages: [{ role: 'user', content: 'yes' }],
+    latestMessage: 'yes',
+    callbacks: makeCallbacks(),
+  });
+
+  assert.match(result.forcedAssistantResponse, /both road tax options are available/i);
+  assert.match(result.forcedAssistantResponse, /12-month digital road tax \(RM 90.00\)/i);
+  assert.match(result.forcedAssistantResponse, /12-month physical \+ delivery \(RM 100.00\)/i);
+  assert.match(result.forcedAssistantResponse, /No road tax/i);
   assert.equal(state.step, FLOW_STEPS.ROADTAX);
   assert.equal(state.selectedRoadTax, null);
   assert.equal(openAiMessages.length, 0);
@@ -908,11 +998,63 @@ test('advisor forced response formats general add-on shortlist as readable list'
     callbacks: makeCallbacks(),
   });
 
-  assert.match(result.forcedAssistantResponse, /My usual shortlist:\n\n- \*\*2 Special Perils/i);
-  assert.match(result.forcedAssistantResponse, /\n- \*\*1 Windscreen\*\*/i);
-  assert.match(result.forcedAssistantResponse, /\n- \*\*3 E-hailing \(RM 2,000.00\)\*\*/i);
-  assert.match(result.forcedAssistantResponse, /\n- \*\*8 Betterment waiver \(RM 350.00\)\*\*/i);
-  assert.match(result.forcedAssistantResponse, /about \*\*7 years old\*\*/i);
+  assert.match(result.forcedAssistantResponse, /My usual shortlist:\n\n- \*\*2\. Special Perils/i);
+  assert.match(result.forcedAssistantResponse, /\n- \*\*1\. Windscreen\*\*/i);
+  assert.match(result.forcedAssistantResponse, /\n- \*\*3\. E-hailing \(RM 2,000.00\)\*\*/i);
+  assert.match(result.forcedAssistantResponse, /\n- \*\*8\. Betterment waiver \(RM 350.00\)\*\*/i);
+  assert.match(result.forcedAssistantResponse, /7-year-old Perodua Myvi/i);
+  assert.match(result.forcedAssistantResponse, /nice-to-have/i);
+  assert.match(result.forcedAssistantResponse, /older premium, continental, performance, luxury, or cars with expensive parts/i);
+  assert.equal(state.step, FLOW_STEPS.ADDONS);
+  assert.equal(state.selectedAddOns.length, 0);
+  assert.equal(openAiMessages.length, 0);
+});
+
+test('advisor forced response answers add-on skip decisions with a direct verdict', () => {
+  const state = new ConversationState();
+  Object.assign(state, {
+    step: FLOW_STEPS.ADDONS,
+    plateNumber: 'JRT9289',
+    nricNumber: '951018145405',
+    vehicleInfo: {
+      make: 'Perodua',
+      model: 'Myvi',
+      year: 2019,
+    },
+    selectedQuote: {
+      insurer: 'Tokio Marine Insurance',
+      priceAfter: 800,
+      sumInsured: 35000,
+    },
+  });
+  const openAiMessages = [];
+
+  const result = applyDeterministicFlowHandlers({
+    openAiMessages,
+    state,
+    intent: { intent: USER_INTENTS.ASK_QUESTION, confidence: 0.9 },
+    advisorIntent: {
+      intent: ADVISOR_INTENTS.COVERAGE_RISK_ADVICE,
+      topic: ADVISOR_TOPICS.ADDON_SKIP_DECISION,
+      confidence: 0.9,
+      shouldAnswerFirst: true,
+      shouldPreventFlowAdvance: true,
+    },
+    turnPlan: {},
+    messages: [{ role: 'user', content: 'should i skip?' }],
+    latestMessage: 'should i skip?',
+    callbacks: makeCallbacks(),
+  });
+
+  assert.match(result.forcedAssistantResponse, /^Yes - you can skip add-ons/i);
+  assert.match(result.forcedAssistantResponse, /My practical minimum/i);
+  assert.match(result.forcedAssistantResponse, /2\. Special Perils \(RM 150.00\)/i);
+  assert.match(result.forcedAssistantResponse, /1\. Windscreen/i);
+  assert.match(result.forcedAssistantResponse, /3\. E-hailing \(RM 2,000.00\)/i);
+  assert.match(result.forcedAssistantResponse, /8\. Betterment waiver \(RM 350.00\)/i);
+  assert.match(result.forcedAssistantResponse, /7-year-old Perodua Myvi/i);
+  assert.match(result.forcedAssistantResponse, /nice-to-have.*not essential/i);
+  assert.match(result.forcedAssistantResponse, /Do you want to \*\*skip add-ons\*\*, take \*\*2\. Special Perils only\*\*, or take \*\*1 and 2\*\*/i);
   assert.equal(state.step, FLOW_STEPS.ADDONS);
   assert.equal(state.selectedAddOns.length, 0);
   assert.equal(openAiMessages.length, 0);

@@ -131,11 +131,15 @@ test('planner blocks unverified payment and policy issuance claims', () => {
   };
 
   const turnPlan = planTurn('payment done, please issue policy now', state);
+  const purchasedPlan = planTurn('done purchased please check', state);
 
   assert.equal(turnPlan.responsePattern, TURN_RESPONSE_PATTERNS.BLOCK_UNSAFE_ACTION);
   assert.equal(turnPlan.forcedResponse, TURN_FORCED_RESPONSES.PAYMENT_NOT_CONFIRMED);
   assert.equal(turnPlan.safetyLevel, 'guarded');
   assert.ok(turnPlan.actions.includes('block_unverified_payment_or_policy_claim'));
+  assert.equal(purchasedPlan.responsePattern, TURN_RESPONSE_PATTERNS.BLOCK_UNSAFE_ACTION);
+  assert.equal(purchasedPlan.forcedResponse, TURN_FORCED_RESPONSES.PAYMENT_NOT_CONFIRMED);
+  assert.ok(purchasedPlan.actions.includes('block_unverified_payment_or_policy_claim'));
 });
 
 test('planner clarifies confused users with one simple follow-up', () => {
@@ -223,6 +227,8 @@ test('planner owns add-on recommendation guidance', () => {
   assert.match(instruction, /Special Perils/i);
   assert.match(instruction, /Betterment waiver/i);
   assert.match(instruction, /Betterment waiver\*{0,2}\s*\(RM 350(?:\.00)?\)/i);
+  assert.match(instruction, /nice-to-have/i);
+  assert.match(instruction, /older premium, continental, performance, luxury, or cars with expensive parts/i);
   assert.match(instruction, /E-hailing/i);
   assert.match(instruction, /Do NOT treat this as a skip selection/i);
   assert.match(instruction, /Keep the option numbers visible: 1, 2, 8, and 3/i);
@@ -233,6 +239,19 @@ test('planner owns add-on recommendation guidance', () => {
   assert.equal(importantTurnPlan.questionGuidance, TURN_QUESTION_GUIDANCE.ADDON_RECOMMENDATION);
   assert.match(importantInstruction, /Give a practical recommendation/i);
   assert.match(importantInstruction, /End with one confident close question/i);
+
+  const casualTurnPlan = planTurn('must take anything ah?', state);
+  const casualInstruction = buildTurnQuestionInstruction(casualTurnPlan, { state });
+
+  assert.equal(casualTurnPlan.questionGuidance, TURN_QUESTION_GUIDANCE.ADDON_RECOMMENDATION);
+  assert.match(casualInstruction, /Give a practical recommendation/i);
+
+  const skipDecisionTurnPlan = planTurn('should i skip?', state);
+  const skipDecisionInstruction = buildTurnQuestionInstruction(skipDecisionTurnPlan, { state });
+
+  assert.equal(skipDecisionTurnPlan.questionGuidance, TURN_QUESTION_GUIDANCE.ADDON_RECOMMENDATION);
+  assert.match(skipDecisionInstruction, /direct verdict first/i);
+  assert.match(skipDecisionInstruction, /Do NOT treat this as a skip selection/i);
 });
 
 test('planner owns road tax alternative guidance', () => {

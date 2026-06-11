@@ -72,9 +72,77 @@
     "turns": [
       { "user": "email me at me@demo.com", "expectedIntent": "submit_details", "expectedStepAfter": "personal_details" },
       { "user": "jimlim.marketing 012 2277 809 17, jln u12/38f, seksyen", "expectedIntent": "submit_details", "expectedStepAfter": "otp" },
-      { "user": "my phone is 0171234567", "expectedIntent": "other", "expectedStepAfter": "otp" },
+      { "user": "my phone is 0171234567", "expectedIntent": "change_personal_details", "expectedStepAfter": "otp" },
       { "user": "0171234567, jalan harmoni 9, rawang", "expectedIntent": "other", "expectedStepAfter": "otp" },
       { "user": "1234", "expectedIntent": "verify_otp", "expectedStepAfter": "payment" }
+    ]
+  },
+  {
+    "name": "Recent advisor add-on wording variants",
+    "initialState": {
+      "step": "addons",
+      "selectedQuote": { "insurer": "Tokio Marine Insurance", "priceAfter": 800 },
+      "selectedAddOns": [],
+      "addOnsConfirmed": false
+    },
+    "turns": [
+      { "user": "what is important?", "expectedIntent": "ask_question", "expectedStepAfter": "addons" },
+      { "user": "what are the items that i must take?", "expectedIntent": "ask_question", "expectedStepAfter": "addons" },
+      { "user": "must take anything ah?", "expectedIntent": "ask_question", "expectedStepAfter": "addons" },
+      { "user": "can i skip add-ons?", "expectedIntent": "ask_question", "expectedStepAfter": "addons" },
+      { "user": "skip add-ons", "expectedIntent": "select_addon", "expectedStepAfter": "roadtax" }
+    ]
+  },
+  {
+    "name": "Recent founder quote exploration variants",
+    "initialState": {
+      "step": "quotes",
+      "selectedQuote": false
+    },
+    "turns": [
+      { "user": "can we have a look at lonpac as well", "expectedIntent": "ask_question", "expectedStepAfter": "quotes" },
+      { "user": "how about generali?", "expectedIntent": "ask_question", "expectedStepAfter": "quotes" }
+    ]
+  },
+  {
+    "name": "Recent founder add-on selection wording",
+    "initialState": {
+      "step": "addons",
+      "selectedQuote": { "insurer": "Tokio Marine Insurance", "priceAfter": 800 },
+      "selectedAddOns": [],
+      "addOnsConfirmed": false
+    },
+    "turns": [
+      { "user": "windscreen, special peril, all driver, and betterment", "expectedIntent": "select_addon", "expectedStepAfter": "roadtax" }
+    ]
+  },
+  {
+    "name": "Recent road tax mixed intent and correction",
+    "initialState": {
+      "step": "roadtax",
+      "selectedQuote": { "insurer": "Tokio Marine Insurance", "priceAfter": 800 },
+      "selectedAddOns": [{ "id": "flood", "name": "Inclusion of Special Perils", "price": 150 }],
+      "addOnsConfirmed": true
+    },
+    "turns": [
+      { "user": "ok, why only digital ?", "expectedIntent": "ask_question", "expectedStepAfter": "roadtax" },
+      { "user": "yes digital road tax", "expectedIntent": "select_roadtax", "expectedStepAfter": "personal_details" },
+      { "user": "no I mean skip road tax after ok", "expectedIntent": "change_roadtax", "expectedStepAfter": "personal_details" }
+    ]
+  },
+  {
+    "name": "Recent OTP resend and safety",
+    "initialState": {
+      "step": "otp",
+      "selectedQuote": { "insurer": "Tokio Marine Insurance", "priceAfter": 800 },
+      "selectedRoadTax": { "name": "No Road Tax", "price": 0 },
+      "personalDetails": { "email": "ali@example.com", "phone": "0123456789", "address": "No 1 Jalan Test" }
+    },
+    "turns": [
+      { "user": "did not receive", "expectedIntent": "resend_otp", "expectedStepAfter": "otp" },
+      { "user": "9999", "expectedIntent": "verify_otp", "expectedStepAfter": "otp" },
+      { "user": "1234", "expectedIntent": "verify_otp", "expectedStepAfter": "payment" },
+      { "user": "1234", "expectedIntent": "select_payment", "expectedStepAfter": "success" }
     ]
   }
 ]

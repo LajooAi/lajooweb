@@ -62,6 +62,31 @@ test('addon engine resolves explicit later-step add-on corrections', () => {
   assert.equal(change.requiresWindscreenCoverage, false);
 });
 
+test('addon engine resolves exact UI add-on update commits', () => {
+  const state = {
+    selectedAddOns: buildAddOnsFromSelection(['flood', 'all_drivers', 'betterment_waiver']),
+  };
+  const change = resolveAddOnChangeFromText(
+    'Update add-ons to only Windscreen coverage RM 3,000.00, Inclusion of Special Perils, and Betterment waiver and update total',
+    state
+  );
+
+  assert.deepEqual(change.addOnIds, ['windscreen', 'flood', 'betterment_waiver']);
+  assert.deepEqual(change.addOns.map((item) => item.id), ['windscreen', 'flood', 'betterment_waiver']);
+  assert.equal(change.addOns[0].coverageAmount, 3000);
+  assert.equal(change.addOns[0].price, 450);
+  assert.equal(change.requiresWindscreenCoverage, false);
+});
+
+test('addon engine resolves comma-separated add-on option numbers', () => {
+  const change = resolveAddOnChangeFromText('update add-ons to only 1, 2, 8', {
+    selectedAddOns: [],
+  });
+
+  assert.deepEqual(change.addOnIds, ['windscreen', 'flood', 'betterment_waiver']);
+  assert.equal(change.requiresWindscreenCoverage, true);
+});
+
 test('addon engine keeps money amounts separate from option numbers', () => {
   const state = { selectedAddOns: [] };
   const change = resolveAddOnChangeFromText('add windscreen RM 2,000 please', state);
@@ -79,6 +104,25 @@ test('addon engine asks for windscreen coverage when adding it later without amo
 
   assert.deepEqual(change.addOnIds, ['windscreen', 'flood']);
   assert.equal(change.requiresWindscreenCoverage, true);
+});
+
+test('addon engine treats singular special peril as Special Perils', () => {
+  const state = { selectedAddOns: [] };
+  const change = resolveAddOnChangeFromText('add special peril and all driver', state);
+
+  assert.deepEqual(change.addOnIds, ['flood', 'all_drivers']);
+  assert.equal(change.requiresWindscreenCoverage, false);
+});
+
+test('addon engine resolves no-space add-on command typos', () => {
+  const state = {
+    selectedAddOns: buildAddOnsFromSelection(['flood']),
+  };
+  const change = resolveAddOnChangeFromText('can help to addvehicle body painting', state);
+
+  assert.deepEqual(change.addOnIds, ['flood', 'body_painting']);
+  assert.deepEqual(change.addOns.map((item) => item.id), ['flood', 'body_painting']);
+  assert.equal(change.requiresWindscreenCoverage, false);
 });
 
 test('road tax engine normalizes display names and API options', () => {

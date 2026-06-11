@@ -708,7 +708,7 @@ I can proceed with **12 months (Digital) — RM ${formatMoneyTwoDecimals(90)}** 
 function isPaymentCompletionClaim(message) {
   const text = String(message || '').toLowerCase();
   return (
-    /\b(payment|pay|paid|bayar|payment successful|payment success)\b/.test(text) &&
+    /\b(payment|pay|paid|bayar|purchase|purchased|payment successful|payment success)\b/.test(text) &&
     /\b(done|successful|success|completed|complete|already|paid|settled|made)\b/.test(text)
   );
 }
@@ -1355,7 +1355,7 @@ function describeAddOnChangeForReply(previousAddOns = [], nextAddOns = []) {
   return 'Done — I’ve removed the add-ons.';
 }
 
-function buildUpdatedAddOnsResumeReply(state, previousContext = {}) {
+function buildUpdatedAddOnsResumeReply(state, previousContext = {}, options = {}) {
   const updateLine = describeAddOnChangeForReply(
     previousContext.previousAddOns || [],
     state.selectedAddOns || []
@@ -1370,6 +1370,14 @@ function buildUpdatedAddOnsResumeReply(state, previousContext = {}) {
   const paymentRefreshLine = previousContext.hadPaymentState || previousContext.wasAtPaymentOrOtp
     ? 'Because the total changed, I’ll refresh the OTP/payment step before you pay.'
     : 'Because the total changed, I’ll refresh any payment step before you pay.';
+
+  if (state.step === FLOW_STEPS.PAYMENT && options.paymentLink) {
+    return `${updateLine}
+
+${keptLine} Because the total changed, I refreshed the payment link before you pay.
+
+${buildPaymentStepBlock(buildSummaryBox(state), options.paymentLink)}`;
+  }
 
   let continuation = '';
   if (state.step === FLOW_STEPS.OTP && hasCompletePersonalDetails(state.personalDetails)) {
@@ -1551,14 +1559,22 @@ ${changedLine}
 ${missingText}`;
 }
 
-function buildRoadTaxChangedReply(state) {
+function buildRoadTaxChangedReply(state, options = {}) {
   const roadTaxName = state.selectedRoadTax?.name || 'No Road Tax';
   const displayRoadTax = roadTaxName === 'No Road Tax'
     ? 'No Road Tax'
     : getRoadTaxDisplayName(state.selectedRoadTax);
   const actionLine = roadTaxName === 'No Road Tax'
-    ? 'Done — I’ve changed this renewal to **no road tax** and cleared downstream payment details so the total stays accurate.'
+    ? 'Done — I’ve removed road tax and changed this renewal to **No, just insurance — RM 0.00**. I cleared the old payment link so the total stays accurate.'
     : `Done — I’ve changed road tax to **${displayRoadTax}** and cleared downstream payment details so the total stays accurate.`;
+
+  if (options.paymentLink && state.step === FLOW_STEPS.PAYMENT) {
+    return `${actionLine}
+
+${roadTaxName !== 'No Road Tax' ? `${displayRoadTax} added! ✅` : 'No road tax. ✅'}
+
+${buildPaymentStepBlock(buildSummaryBox(state), options.paymentLink)}`;
+  }
 
   return `${actionLine}
 
@@ -3286,14 +3302,22 @@ export async function POST(request) {
     if (intent.intent === USER_INTENTS.CHANGE_ROADTAX && intent.data?.option && !forcedAssistantResponse) {
       const roadTax = roadTaxFromIntentOption(intent.data.option);
       const isDeliveredOption = intent.data.option.includes('deliver') || intent.data.option.includes('physical');
+      const existingDetails = (state.personalDetails && typeof state.personalDetails === 'object') ? state.personalDetails : {};
+      const canResumePaymentAfterRoadTaxChange = state.step === FLOW_STEPS.PAYMENT &&
+        state.otpVerified === true &&
+        !!(existingDetails.email && existingDetails.phone && existingDetails.address);
       if (isDeliveredOption && !canUseDeliveredRoadTax(state)) {
         roadTaxDeliveryBlocked = true;
         blockedRoadTaxOption = intent.data.option;
         state.selectedRoadTax = null;
         state.step = FLOW_STEPS.ROADTAX;
       } else if (roadTax) {
-        state.changeRoadTax(roadTax);
-        forcedAssistantResponse = buildRoadTaxChangedReply(state);
+        state.changeRoadTax(roadTax, { preserveVerifiedProgress: canResumePaymentAfterRoadTaxChange });
+        if (canResumePaymentAfterRoadTaxChange) {
+          paymentLinkFallback = buildPaymentLink(state);
+          shouldInjectPaymentLinkFallback = true;
+        }
+        forcedAssistantResponse = buildRoadTaxChangedReply(state, { paymentLink: paymentLinkFallback });
       }
     }
 
@@ -3360,8 +3384,16 @@ export async function POST(request) {
         state.selectedAddOns = addOns;
         state.addOnsConfirmed = true;
         if (resumeAfterAddOnChange) {
-          state.refreshAfterAddOnChange();
-          forcedAssistantResponse = buildUpdatedAddOnsResumeReply(state, previousContext);
+          state.refreshAfterAddOnChange({
+            preserveVerifiedProgress: !!previousContext.canResumePaymentAfterAddOnChange,
+          });
+          if (state.step === FLOW_STEPS.PAYMENT) {
+            paymentLinkFallback = buildPaymentLink(state);
+            shouldInjectPaymentLinkFallback = true;
+          }
+          forcedAssistantResponse = buildUpdatedAddOnsResumeReply(state, previousContext, {
+            paymentLink: paymentLinkFallback,
+          });
         } else {
           state.selectAddOns(addOns);
           forcedAssistantResponse = buildRoadTaxStepBlock(buildSummaryBox(state), state);
@@ -3464,6 +3496,9 @@ ${buildQuoteSelectionReply(state)}`;
           state.transaction?.paymentStatus
         ),
         wasAtPaymentOrOtp: [FLOW_STEPS.OTP, FLOW_STEPS.PAYMENT, FLOW_STEPS.SUCCESS].includes(state.step) || !!state.otpVerified,
+        canResumePaymentAfterAddOnChange: state.step === FLOW_STEPS.PAYMENT &&
+          state.otpVerified === true &&
+          hasCompletePersonalDetails(state.personalDetails),
       };
       const addOnChange = resolveAddOnChangeFromText(latestMessage, state);
 
@@ -3480,8 +3515,16 @@ ${buildQuoteSelectionReply(state)}`;
       } else if (addOnChange) {
         state.selectedAddOns = addOnChange.addOns;
         state.addOnsConfirmed = true;
-        state.refreshAfterAddOnChange();
-        forcedAssistantResponse = buildUpdatedAddOnsResumeReply(state, previousContext);
+        state.refreshAfterAddOnChange({
+          preserveVerifiedProgress: previousContext.canResumePaymentAfterAddOnChange,
+        });
+        if (state.step === FLOW_STEPS.PAYMENT) {
+          paymentLinkFallback = buildPaymentLink(state);
+          shouldInjectPaymentLinkFallback = true;
+        }
+        forcedAssistantResponse = buildUpdatedAddOnsResumeReply(state, previousContext, {
+          paymentLink: paymentLinkFallback,
+        });
       } else {
         forcedAssistantResponse = `No problem — we can adjust your add-ons before continuing.
 

@@ -28,6 +28,7 @@ import {
   detectPdpaConsentAcceptance,
   hasPdpaConsent,
 } from './pdpaConsent.js';
+import { canUseDeliveredRoadTaxByOwnerType } from './flowGuards.js';
 
 // ============================================================================
 // FLOW STEPS - The insurance renewal journey
@@ -329,7 +330,7 @@ export class ConversationState {
         const content = (msg.content || '').toLowerCase();
 
         // Skip messages that are questions (contain ? or question words + insurer)
-        if (/\?|tell me about|what about|how about|do i need|should i|explain|which one|recommend/i.test(content)) {
+        if (/\?|tell me about|what about|how about|do i need|should i|can we|could we|would we|look at|have a look|explain|which one|recommend/i.test(content)) {
           continue;
         }
 
@@ -466,8 +467,28 @@ export class ConversationState {
     return this;
   }
 
-  changeRoadTax(roadTax) {
+  changeRoadTax(roadTax, options = {}) {
     this.selectedRoadTax = roadTax;
+
+    if (options.preserveVerifiedProgress) {
+      this.paymentMethod = null;
+      this.transaction = {
+        quoteId: this.transaction?.quoteId || null,
+        reprice: null,
+        proposalId: null,
+        proposalStatus: null,
+        paymentIntentId: null,
+        paymentSnapshotId: null,
+        paymentStatus: null,
+        policyNumber: null,
+        policyStatus: null,
+        lastError: null,
+      };
+      this.pendingAction = null;
+      this.step = this._determineStep();
+      return this;
+    }
+
     this.clearDownstreamFromRoadTax();
     this.step = FLOW_STEPS.PERSONAL_DETAILS;
     return this;
@@ -593,10 +614,12 @@ export class ConversationState {
    * corrections such as "add option 10" after road tax or details were already
    * captured.
    */
-  refreshAfterAddOnChange() {
+  refreshAfterAddOnChange(options = {}) {
     this.addOnsConfirmed = true;
-    this.otpVerified = false;
-    this.resetOtpDelivery();
+    if (!options.preserveVerifiedProgress) {
+      this.otpVerified = false;
+      this.resetOtpDelivery();
+    }
     this.paymentMethod = null;
     this.transaction = {
       quoteId: this.transaction?.quoteId || null,
@@ -970,7 +993,7 @@ function hasGeneralQuestionSignal(text) {
   if (!msg) return false;
 
   if (/\?/.test(msg)) return true;
-  if (/\b(do i|should i|can i|could i|would i|what|why|how|when|where|which|who|explain|tell me|clarify|compare|difference|worth it|necessary)\b/i.test(msg)) return true;
+  if (/\b(do i|should i|can i|could i|would i|can we|could we|would we|what|why|how|when|where|which|who|explain|tell me|clarify|compare|difference|worth it|necessary|look at|have a look)\b/i.test(msg)) return true;
   if (/\b(apa|kenapa|bagaimana|macam mana|boleh ke|perlu ke|patut ke)\b/i.test(msg)) return true;
   if (hasApproxToken(msg, ['recommend', 'compare', 'comparison', 'difference', 'explain', 'clarify'], 2)) return true;
 
@@ -1155,10 +1178,11 @@ function detectRoadTaxChangeIntent(msg, currentState) {
   }
 
   const wantsNoRoadTax =
-    /\b(no|skip|remove|cancel|drop|without)\b.{0,35}\broad\s*tax|road\s*tax\b.{0,35}\b(no|skip|remove|cancel|drop|without)\b/i.test(text) ||
-    /\b(already|done|settled|renewed)\b.{0,40}\broad\s*tax|road\s*tax\b.{0,40}\b(already|done|settled|renewed)\b/i.test(text) ||
+    /\b(no|skip|remove|cancel|drop|without|exclude|take\s+away|take\s+out|take\s+off|don't\s+want|dont\s+want|do\s+not\s+want)\b.{0,35}\b(?:road\s*tax|roadtax)\b/i.test(text) ||
+    /\b(?:road\s*tax|roadtax)\b.{0,35}\b(no|skip|remove|cancel|drop|without|exclude|away|out|off|take\s+away|take\s+out|take\s+off)\b/i.test(text) ||
+    /\b(already|done|settled|renewed)\b.{0,40}\b(?:road\s*tax|roadtax)\b|\b(?:road\s*tax|roadtax)\b.{0,40}\b(already|done|settled|renewed)\b/i.test(text) ||
     /\b(just insurance|insurance only)\b/i.test(text) ||
-    /(?:noroadtax|skiproadtax|removeroadtax|cancelroadtax|noradtax|skiproadtex)/i.test(compact);
+    /(?:noroadtax|skiproadtax|removeroadtax|cancelroadtax|takeawayroadtax|takeoutroadtax|excluderoadtax|noradtax|skiproadtex)/i.test(compact);
 
   if (wantsNoRoadTax) {
     return {
@@ -1189,7 +1213,24 @@ function detectPersonalDetailCorrectionIntent(msg, currentState) {
   }
 
   const text = String(msg || '').trim();
-  const correctionMatch = text.match(/\b(?:change|update|correct|replace|edit)\s+(email|e-mail|phone|mobile|contact|address|addr)\s*(?:to|as|:)?\s+(.+)$/i);
+  const explicitCorrectionMatch = text.match(/\b(?:change|update|correct|replace|edit)\s+(email|e-mail|phone|mobile|contact|address|addr)\s*(?:to|as|:)?\s+(.+)$/i);
+  const existingDetails = currentState?.personalDetails && typeof currentState.personalDetails === 'object'
+    ? currentState.personalDetails
+    : null;
+  const hasExistingDetails = !!(
+    existingDetails?.email ||
+    existingDetails?.phone ||
+    existingDetails?.address
+  );
+  const isLateDetailsStep = [
+    FLOW_STEPS.OTP,
+    FLOW_STEPS.PAYMENT,
+    FLOW_STEPS.SUCCESS,
+  ].includes(currentState.step);
+  const naturalCorrectionMatch = (hasExistingDetails || isLateDetailsStep)
+    ? text.match(/^(?:no|nope|nah|sorry|wait|actually|correction|wrong|not\s+that|i\s+mean|i\s+meant)?[\s,.-]*(?:my|the)?\s*(email|e-mail|phone|mobile|contact|address|addr)\s*(?:should\s+be|is\s+actually|is|=|:)\s+(.+)$/i)
+    : null;
+  const correctionMatch = explicitCorrectionMatch || naturalCorrectionMatch;
   if (!correctionMatch) return null;
 
   const requestedField = correctionMatch[1].toLowerCase();
@@ -1233,6 +1274,13 @@ function detectResetRenewalIntent(msg, currentState) {
   return null;
 }
 
+function normalizeAddOnCommandSpacing(value) {
+  return String(value || '').replace(
+    /\b(add|include|remove|delete|drop|exclude|want|need|take|get|choose|select|with)(?=(?:vehicle|windscreen|body|paint|betterment|flood|special|peril|all|driver|legal|liability|lltp|strike|riot|civil|personal|accident|ncd|e-?hailing|ehailing|grab))/gi,
+    '$1 '
+  );
+}
+
 // ============================================================================
 // INTENT DETECTION - What does the user want to do?
 // ============================================================================
@@ -1268,6 +1316,7 @@ export const USER_INTENTS = {
 export function detectUserIntent(message, currentState) {
   const normalized = sanitizeIntentMessage(message);
   const msg = stripTagQuestionSuffix(normalized);
+  const addOnMsg = normalizeAddOnCommandSpacing(msg);
   const structuredMsg = msg;
 
   // Pending insurer-switch confirmation: only interpret short confirmations in this mode.
@@ -1372,15 +1421,15 @@ export function detectUserIntent(message, currentState) {
   const isPastAddOnsStep = [FLOW_STEPS.ROADTAX, FLOW_STEPS.PERSONAL_DETAILS, FLOW_STEPS.OTP, FLOW_STEPS.PAYMENT].includes(currentState.step);
   if (hasSelectedQuote && isPastAddOnsStep) {
     const mentionsAddOnTopic =
-      /\b(add-?ons?|addons?|windscreen|special perils|flood|e-?hailing|ehailing|betterment|all drivers?|legal liability|lltp|strike|riot|ncd relief|body painting|personal accident)\b/i.test(msg);
+      /\b(add-?ons?|addons?|windscreen|special perils?|flood|e-?hailing|ehailing|betterment|all drivers?|legal liability|lltp|strike|riot|ncd relief|(?:vehicle\s+)?body painting|personal accident)\b/i.test(addOnMsg);
     const hasEditVerb =
-      /\b(change|edit|update|adjust|modify|redo|go back|back to|remove|delete|take out|add|include|switch)\b/i.test(msg);
+      /\b(change|edit|update|adjust|modify|redo|go back|back to|remove|delete|take out|add|include|switch)\b/i.test(addOnMsg);
     const isPureExplanationQuestion =
-      /\b(what is|what's|explain|tell me|how does|do i need|should i|is it worth|which add-?ons?|recommend add-?ons?)\b/i.test(msg) &&
-      !/\b(can i|can we|i want|i need|please|pls)\b.*\b(add|include|remove|change|edit|update|adjust)\b/i.test(msg);
+      /\b(what is|what's|explain|tell me|how does|do i need|should i|is it worth|which add-?ons?|recommend add-?ons?)\b/i.test(addOnMsg) &&
+      !/\b(can i|can we|i want|i need|please|pls)\b.*\b(add|include|remove|change|edit|update|adjust)\b/i.test(addOnMsg);
     const isFutureAddOnQuestion =
-      /\bcan\s+i\b.{0,35}\b(still|later|after|before payment|before paying)\b.{0,35}\b(add|include|change)\b/i.test(msg) ||
-      /\bcan\s+i\b.{0,35}\b(add|include|change)\b.{0,35}\b(still|later|after|before payment|before paying)\b/i.test(msg);
+      /\bcan\s+i\b.{0,35}\b(still|later|after|before payment|before paying)\b.{0,35}\b(add|include|change)\b/i.test(addOnMsg) ||
+      /\bcan\s+i\b.{0,35}\b(add|include|change)\b.{0,35}\b(still|later|after|before payment|before paying)\b/i.test(addOnMsg);
 
     if (isFutureAddOnQuestion) {
       return { intent: USER_INTENTS.ASK_QUESTION, confidence: 0.9 };
@@ -1489,7 +1538,7 @@ export function detectUserIntent(message, currentState) {
     const hasSelectionNegationCue = /\b(no|not|don'?t|dont|can'?t|cannot|couldn'?t|not sure|between)\b/i.test(msg);
     const hasQuoteQuestionCue =
       hasGeneralQuestionSignal(msg) ||
-      /\b(about|tell me|explain|compare|difference|details|info)\b/i.test(msg);
+      /\b(about|tell me|explain|compare|difference|details|info|look at|have a look)\b/i.test(msg);
     if (singleInsurerMention && !hasSelectionNegationCue && !hasQuoteQuestionCue) {
       return {
         intent: USER_INTENTS.SELECT_QUOTE,
@@ -1501,7 +1550,7 @@ export function detectUserIntent(message, currentState) {
     // Treat as question if message contains question markers or inquiry words + insurer
     const isRecommendationQuestion = /\brecommend(?:ation)?\b|your (pick|choice|suggestion)|suggest/i.test(msg) || hasApproxToken(msg, ['recommend'], 2);
     const mentionsKnownInsurer = getInsurerKeysFromText(msg).length > 0;
-    const isQuestion = hasGeneralQuestionSignal(msg) || (/\b(tell me|what about|how about|about|interested|want to know|more about|details)\b/i.test(msg) && mentionsKnownInsurer) || /which is better|what(?:'s| is) better|better one|best one/i.test(msg);
+    const isQuestion = hasGeneralQuestionSignal(msg) || (/\b(tell me|what about|how about|about|interested|want to know|more about|details|look at|have a look)\b/i.test(msg) && mentionsKnownInsurer) || /which is better|what(?:'s| is) better|better one|best one/i.test(msg);
     const isDiscussion = /\b(which|what|why|compare|difference|better|best)\b/i.test(msg) || isRecommendationQuestion;
 
     if (isQuestion || isDiscussion) {
@@ -1530,7 +1579,7 @@ export function detectUserIntent(message, currentState) {
 
     // Bare insurer selection: "takaful", "etiqa please", "allianz lah"
     // Keep this strict to avoid hijacking question/inquiry messages.
-    const hasInquiryCue = /\b(about|tell|explain|compare|difference|why|what|which|recommend|info|details)\b/i.test(msg);
+    const hasInquiryCue = /\b(about|tell|explain|compare|difference|why|what|which|recommend|info|details|look at|have a look)\b/i.test(msg);
     const hasNegationCue = /\b(no|not|don'?t|dont|can'?t|cannot|couldn'?t|not sure)\b/i.test(msg);
     const normalizedWords = msg
       .replace(/[^a-z0-9\s]/gi, ' ')
@@ -1631,24 +1680,24 @@ export function detectUserIntent(message, currentState) {
     // Detect which add-ons are mentioned
     const mentionedAddOns = [];
 
-    const addonWords = msg
+    const addonWords = addOnMsg
       .replace(/[^a-z0-9\s]/gi, ' ')
       .split(/\s+/)
       .filter(Boolean);
 
-    const hasWindscreen = /windscreen/i.test(msg) || addonWords.some((w) => !!fuzzyMatch(w, ['windscreen'], 3));
+    const hasWindscreen = /windscreen/i.test(addOnMsg) || addonWords.some((w) => !!fuzzyMatch(w, ['windscreen'], 3));
     if (hasWindscreen) mentionedAddOns.push('windscreen');
-    if (/flood|disaster|perils|special perils/i.test(msg)) mentionedAddOns.push('flood');
-    if (/e.?hailing|grab|ride.?sharing|ride.?share/i.test(msg)) mentionedAddOns.push('ehailing');
-    if (/all drivers?/i.test(msg)) mentionedAddOns.push('all_drivers');
-    if (/legal liability to passengers?|llp\b/i.test(msg)) mentionedAddOns.push('legal_liability_passengers');
-    if (/lltp|negligence/i.test(msg)) mentionedAddOns.push('lltp_negligence');
-    if (/strike|riot|civil commotion/i.test(msg)) mentionedAddOns.push('strike_riot');
-    if (/betterment/i.test(msg)) mentionedAddOns.push('betterment_waiver');
-    if (/ncd relief|current year ncd/i.test(msg)) mentionedAddOns.push('ncd_relief');
-    if (/body painting|paint/i.test(msg)) mentionedAddOns.push('body_painting');
-    if (/personal accident/i.test(msg)) mentionedAddOns.push('personal_accident');
-    if (/\bboth\b|\ball (?:three|main|add.?ons?)\b/i.test(msg)) {
+    if (/flood|disaster|perils?|special perils?/i.test(addOnMsg)) mentionedAddOns.push('flood');
+    if (/e.?hailing|grab|ride.?sharing|ride.?share/i.test(addOnMsg)) mentionedAddOns.push('ehailing');
+    if (/all drivers?/i.test(addOnMsg)) mentionedAddOns.push('all_drivers');
+    if (/legal liability to passengers?|llp\b/i.test(addOnMsg)) mentionedAddOns.push('legal_liability_passengers');
+    if (/lltp|negligence/i.test(addOnMsg)) mentionedAddOns.push('lltp_negligence');
+    if (/strike|riot|civil commotion/i.test(addOnMsg)) mentionedAddOns.push('strike_riot');
+    if (/betterment/i.test(addOnMsg)) mentionedAddOns.push('betterment_waiver');
+    if (/ncd relief|current year ncd/i.test(addOnMsg)) mentionedAddOns.push('ncd_relief');
+    if (/body painting|paint/i.test(addOnMsg)) mentionedAddOns.push('body_painting');
+    if (/personal accident/i.test(addOnMsg)) mentionedAddOns.push('personal_accident');
+    if (/\bboth\b|\ball (?:three|main|add.?ons?)\b/i.test(addOnMsg)) {
       mentionedAddOns.push('windscreen', 'flood', 'ehailing');
     }
 
@@ -1666,7 +1715,7 @@ export function detectUserIntent(message, currentState) {
       '10': 'body_painting',
       '11': 'personal_accident',
     };
-    const numberMatches = msg.match(/\b(?:[1-9]|1[01])\b/g);
+    const numberMatches = addOnMsg.match(/\b(?:[1-9]|1[01])\b/g);
     if (numberMatches && mentionedAddOns.length === 0) {
       const unique = [...new Set(numberMatches)];
       for (const n of unique) {
@@ -1683,13 +1732,27 @@ export function detectUserIntent(message, currentState) {
       }
     }
 
+    const isAddOnExplanationCue = /\?|what is|what's|do i need|should i|tell me|explain|clarify|which one|which insurer|recommend|need this|worth it|necessary|how does|what does|meaning|mean/i.test(addOnMsg);
+    const isPlainMultiAddOnList =
+      mentionedAddOns.length >= 2 &&
+      !startsLikeQuestion &&
+      !isAddOnExplanationCue;
+
+    if (isPlainMultiAddOnList) {
+      return {
+        intent: USER_INTENTS.SELECT_ADDON,
+        confidence: 0.9,
+        data: { addOns: [...new Set(mentionedAddOns)], confirmed: true }
+      };
+    }
+
     // Check for EXPLICIT selection intent (not just mentioning)
     // "I want windscreen", "add windscreen", "yes windscreen", "ok windscreen", "windscreen please", "i'll take windscreen"
-    const hasSelectionIntent = /\b(add|want|yes|ok|okay|take|get|include|confirm|i'll take|i will take|give me|with)\b/i.test(msg);
+    const hasSelectionIntent = /\b(add|want|yes|ok|okay|take|get|include|confirm|i'll take|i will take|give me|with)\b/i.test(addOnMsg);
 
     // Check if this is a QUESTION about add-ons (not a selection)
     // "what is windscreen?", "do I need flood?", "tell me about special perils"
-    const isQuestion = !hasSelectionIntent && /\?|what is|what's|do i need|should i|tell me|explain|clarify|which one|which insurer|recommend|need this|worth it|necessary|how does|what does|betterment|zero betterment/i.test(msg);
+    const isQuestion = !hasSelectionIntent && (isAddOnExplanationCue || /zero betterment/i.test(addOnMsg));
 
     // Cross-topic insurance/policy questions can happen mid-step.
     // Answer first, then route back to add-ons (handled in route.js).
@@ -1705,7 +1768,7 @@ export function detectUserIntent(message, currentState) {
     }
 
     // Also accept direct confirmations like "windscreen" alone or "windscreen and flood"
-    const isDirectSelection = mentionedAddOns.length > 0 && /^(windscreen|flood|special perils|e.?hailing|betterment waiver|all drivers|personal accident|both|all)(\s*(and|,|\+)\s*(windscreen|flood|special perils|e.?hailing|betterment waiver|all drivers|personal accident))*\.?$/i.test(msg.trim());
+    const isDirectSelection = mentionedAddOns.length > 0 && /^(windscreen|flood|special perils|e.?hailing|betterment waiver|all drivers|personal accident|body painting|vehicle body painting|both|all)(\s*(and|,|\+)\s*(windscreen|flood|special perils|e.?hailing|betterment waiver|all drivers|personal accident|body painting|vehicle body painting))*\.?$/i.test(addOnMsg.trim());
     const isPoliteDirectSelection =
       mentionedAddOns.length > 0 &&
       /\b(please|pls|only|just|lah|la)\b/i.test(msg) &&
@@ -1739,6 +1802,7 @@ export function detectUserIntent(message, currentState) {
   const isRoadTaxStep = currentState.step === FLOW_STEPS.ROADTAX;
   if (isRoadTaxStep) {
     const compactMsg = msg.replace(/[^a-z0-9]/g, '');
+    const hasDeliveredRoadTaxChoice = canUseDeliveredRoadTaxByOwnerType(currentState.ownerIdType);
     if (isSimpleNegative(msg)) {
       return { intent: USER_INTENTS.SELECT_ROADTAX, confidence: 0.9, data: { option: 'none' } };
     }
@@ -1777,7 +1841,12 @@ export function detectUserIntent(message, currentState) {
     }
 
     // Single-option flow: "ok/yes/proceed" means accept default 12-month digital.
+    // If physical + delivery is available for Foreign ID / Company vehicles,
+    // bare affirmation is ambiguous and should ask which road-tax option they want.
     if (isSimpleAffirmative(msg)) {
+      if (hasDeliveredRoadTaxChoice) {
+        return { intent: USER_INTENTS.ASK_QUESTION, confidence: 0.86, data: { topic: 'clarify_roadtax_option' } };
+      }
       return { intent: USER_INTENTS.SELECT_ROADTAX, confidence: 0.9, data: { option: '12month-digital' } };
     }
 
@@ -1785,10 +1854,22 @@ export function detectUserIntent(message, currentState) {
     const hasAffirmative = hasAffirmativePrefix(msg) || /\b(add|include)\b/i.test(msg);
     const hasRoadTaxContext = /\b(renew|road tax|roadtax|digital|12 month|12 months|1 year)\b/i.test(msg);
     if (hasAffirmative && hasRoadTaxContext) {
+      if (hasDeliveredRoadTaxChoice && !/\b(digital|myjpj)\b/i.test(msg)) {
+        if (/deliver|delivery|printed|physical|sticker/i.test(msg)) {
+          return { intent: USER_INTENTS.SELECT_ROADTAX, confidence: 0.9, data: { option: '12month-physical' } };
+        }
+        return { intent: USER_INTENTS.ASK_QUESTION, confidence: 0.86, data: { topic: 'clarify_roadtax_option' } };
+      }
       return { intent: USER_INTENTS.SELECT_ROADTAX, confidence: 0.88, data: { option: '12month-digital' } };
     }
 
     if (hasAffirmativePrefix(msg) && !hasGeneralQuestionSignal(msg) && !/\b(no|none|skip)\b/i.test(msg)) {
+      if (hasDeliveredRoadTaxChoice && !hasRoadTaxContext) {
+        if (/deliver|delivery|printed|physical|sticker/i.test(msg)) {
+          return { intent: USER_INTENTS.SELECT_ROADTAX, confidence: 0.9, data: { option: '12month-physical' } };
+        }
+        return { intent: USER_INTENTS.ASK_QUESTION, confidence: 0.84, data: { topic: 'clarify_roadtax_option' } };
+      }
       return { intent: USER_INTENTS.SELECT_ROADTAX, confidence: 0.84, data: { option: '12month-digital' } };
     }
 
@@ -1796,6 +1877,12 @@ export function detectUserIntent(message, currentState) {
     const startsWithAction = /^(renew|add|include|take|go with)\b/i.test(msg);
     const hasSpecificRoadTaxTarget = /\b(road tax|roadtax|digital|12\s*(month|months|mth|mths|year|yr)|1\s*year)\b/i.test(msg);
     if (startsWithAction && hasSpecificRoadTaxTarget) {
+      if (hasDeliveredRoadTaxChoice && !/\b(digital|myjpj)\b/i.test(msg)) {
+        if (/deliver|delivery|printed|physical|sticker/i.test(msg)) {
+          return { intent: USER_INTENTS.SELECT_ROADTAX, confidence: 0.9, data: { option: '12month-physical' } };
+        }
+        return { intent: USER_INTENTS.ASK_QUESTION, confidence: 0.84, data: { topic: 'clarify_roadtax_option' } };
+      }
       return { intent: USER_INTENTS.SELECT_ROADTAX, confidence: 0.87, data: { option: '12month-digital' } };
     }
 

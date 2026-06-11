@@ -43,6 +43,31 @@ test('vehicle rejection reply is confident and gives manual verification path', 
   assert.match(routeSource, /Would you like to proceed with these details, or send corrected plate\/owner ID\?/i);
 });
 
+test('chat Contact Us links open away from the active renewal chat', () => {
+  const pageSource = readFileSync(new URL('../src/app/[country]/page.js', import.meta.url), 'utf8');
+
+  assert.match(pageSource, /isContactSupportLink/i);
+  assert.match(pageSource, /\/contact-us/i);
+  assert.match(pageSource, /isPaymentLink \|\| isDocumentPdfLink \|\| isContactSupportLink/i);
+});
+
+test('road tax card visual selection syncs from saved conversation state', () => {
+  const pageSource = readFileSync(new URL('../src/app/[country]/page.js', import.meta.url), 'utf8');
+
+  assert.match(pageSource, /getSelectedRoadTaxOptionIdFromState/i);
+  assert.match(pageSource, /state\?\.selectedRoadTax/i);
+  assert.match(pageSource, /selectedFromState/i);
+  assert.match(pageSource, /conversationStateRef\.current/i);
+});
+
+test('road tax card does not infer digital from yes when physical delivery is available', () => {
+  const pageSource = readFileSync(new URL('../src/app/[country]/page.js', import.meta.url), 'utf8');
+
+  assert.match(pageSource, /hasDeliveredRoadTaxChoice/i);
+  assert.match(pageSource, /if \(!context\.hasDeliveredRoadTaxChoice\)/i);
+  assert.match(pageSource, /aliases\.push\("yes", "ok"\)/i);
+});
+
 test('add-ons text menu surfaces betterment waiver when close allows option 8', () => {
   const routeSource = readFileSync(new URL('../src/app/api/chat/route.js', import.meta.url), 'utf8');
 

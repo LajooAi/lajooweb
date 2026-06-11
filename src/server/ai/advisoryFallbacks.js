@@ -37,7 +37,7 @@ function buildPreAddOnTopicFallback(state, topic) {
       : 'We can review this safely in the add-ons step before payment or policy issuance.';
 
   if (topic === ADVISOR_TOPICS.BETTERMENT) {
-    return `Zero betterment helps reduce the extra amount you may need to pay when an older damaged part is replaced with a new part during an own-damage repair. I should not show a price or ask you to add it until the add-ons step because availability and pricing depend on the selected insurer/product and vehicle details. ${close}`;
+    return `Zero betterment helps reduce the extra amount you may need to pay when an older damaged part is replaced with a new part during an own-damage repair. You can review Betterment waiver / zero-betterment in the add-ons step later, where the actual add-on options are shown. ${close}`;
   }
 
   if (topic === ADVISOR_TOPICS.WINDSCREEN || topic === ADVISOR_TOPICS.WINDSCREEN_AMOUNT) {
@@ -367,17 +367,17 @@ function buildNeedsGuidanceFallback(state) {
       ? Math.max(0, new Date().getFullYear() - vehicleYear)
       : null;
     const bettermentLine = vehicleAge !== null && vehicleAge >= 5
-      ? `- **8 Betterment waiver (RM 350.00)** - because your car is about **${vehicleAge} years old**, treat this as good-to-have if you want to reduce surprise repair costs from new replacement parts.`
-      : '- **8 Betterment waiver (RM 350.00)** - more useful for older cars, continental/performance cars, or cars with expensive parts.';
+      ? `- **8. Betterment waiver (RM 350.00)** - for a **${vehicleAge}-year-old everyday car**, treat this as **nice-to-have** if you want extra repair-cost comfort. It is more worth considering for older premium, continental, performance, luxury, or cars with expensive parts.`
+      : '- **8. Betterment waiver (RM 350.00)** - more useful for older premium, continental, performance, luxury, or cars with expensive parts.';
 
     return [
       'For add-ons, do not buy everything. Choose based on your real risk.',
       [
         '**My practical pick:**',
         '',
-        '- **2 Special Perils/Flood (RM 150.00)** - if your home, workplace, usual route, or parking spot can flood, or if you regularly drive/park near landslide or landslip-prone areas.',
-        '- **1 Windscreen** - if you drive a lot, especially highway or long-distance routes, or if paying for glass replacement yourself would be painful.',
-        '- **3 E-hailing (RM 2,000.00)** - only if this car is used for Grab, inDrive, or similar work.',
+        '- **2. Special Perils/Flood (RM 150.00)** - if your home, workplace, usual route, or parking spot can flood, or if you regularly drive/park near landslide or landslip-prone areas.',
+        '- **1. Windscreen** - if you drive a lot, especially highway or long-distance routes, or if paying for glass replacement yourself would be painful.',
+        '- **3. E-hailing (RM 2,000.00)** - only if this car is used for Grab, inDrive, or similar work.',
         bettermentLine,
       ].join('\n'),
       'You can still skip add-ons if you want the lowest total and none of those risks apply. Do you want **2 only**, **1 and 2**, **1, 2 and 8 (includes Betterment waiver RM 350.00)**, or **skip add-ons**?',
@@ -452,7 +452,22 @@ function buildAdvisorIntentFallback({ advisorIntent, state }) {
       return 'If this car is used for Grab, inDrive, or any e-hailing work, even part-time, treat **E-hailing (RM 2,000.00)** as required. If it is private use only, skip it. Are you using this car for e-hailing?';
     }
     if (topic === ADVISOR_TOPICS.BETTERMENT) {
-      return 'Betterment waiver helps reduce surprise repair charges when old damaged parts are replaced with new parts. Do you want to add Betterment waiver, or skip it?';
+      return 'Betterment waiver helps reduce surprise repair charges when old damaged parts are replaced with new parts. For everyday cars, treat it as nice-to-have if you want extra repair-cost comfort; it is more worth considering for older premium, continental, performance, luxury, or cars with expensive parts. Do you want to add Betterment waiver, or skip it?';
+    }
+    if (topic === ADVISOR_TOPICS.ADDON_SKIP_DECISION) {
+      return [
+        'Yes - you can skip add-ons if you want the lowest total and none of the main risks apply.',
+        [
+          'My practical minimum:',
+          '',
+          '- **2. Special Perils (RM 150.00)** - take this if your home, workplace, route, or parking can flood, or has landslide/landslip exposure.',
+          '- **1. Windscreen** - add this if you drive highways or long-distance often, or if glass replacement would hurt your budget.',
+          '- **3. E-hailing (RM 2,000.00)** - only if the car is used for Grab/inDrive or similar work.',
+          '- **8. Betterment waiver (RM 350.00)** - nice-to-have for everyday cars, and stronger for older premium, continental, performance, luxury, or expensive-parts cars.',
+        ].join('\n'),
+        'If none of those apply, I’m comfortable helping you skip add-ons and continue.',
+        'Do you want to **skip add-ons**, take **2. Special Perils only**, or take **1 and 2**?',
+      ].join('\n\n');
     }
     return buildNeedsGuidanceFallback(state);
   }

@@ -211,6 +211,50 @@ test('advisory fallback explains windscreen and resumes add-on decision', () => 
   assert.doesNotMatch(reply, /Step \d of 6/i);
 });
 
+test('advisory fallback answers add-on skip decision without generic paragraph', () => {
+  const state = makeQuoteState({
+    step: FLOW_STEPS.ADDONS,
+    selectedQuote: {
+      insurer: 'Tokio Marine Insurance',
+      priceAfter: 800,
+      priceBefore: 1000,
+      ncdPercent: 20,
+      sumInsured: 35000,
+      coverType: 'Comprehensive',
+    },
+    selectedAddOns: [],
+    addOnsConfirmed: false,
+  });
+
+  const reply = buildAdvisoryFallbackResponse({
+    error: makeRetryableRateLimitError(),
+    state,
+    intent: { intent: USER_INTENTS.ASK_QUESTION },
+    decision: {
+      mode: CONVERSATION_MODES.INSURANCE_QUESTION,
+      action: CONVERSATION_ACTIONS.ANSWER_THEN_RESUME,
+    },
+    turnPlan: {
+      responsePattern: TURN_RESPONSE_PATTERNS.ANSWER_THEN_RESUME,
+      advisorIntentContext: {
+        intent: ADVISOR_INTENTS.COVERAGE_RISK_ADVICE,
+        topic: ADVISOR_TOPICS.ADDON_SKIP_DECISION,
+        confidence: 0.9,
+      },
+    },
+    latestMessage: 'should i skip?',
+    productionTurnInstructions: {},
+  });
+
+  assert.match(reply, /^Yes - you can skip add-ons/i);
+  assert.match(reply, /My practical minimum/i);
+  assert.match(reply, /2\. Special Perils \(RM 150.00\)/i);
+  assert.match(reply, /1\. Windscreen/i);
+  assert.match(reply, /8\. Betterment waiver \(RM 350.00\)/i);
+  assert.doesNotMatch(reply, /Whether to skip add-ons entirely depends/i);
+  assert.doesNotMatch(reply, /Step \d of 6/i);
+});
+
 test('advisory fallback does not offer betterment selection before add-ons step', () => {
   const state = new ConversationState();
   Object.assign(state, {
@@ -241,7 +285,7 @@ test('advisory fallback does not offer betterment selection before add-ons step'
   });
 
   assert.match(reply, /Zero betterment helps reduce/i);
-  assert.match(reply, /should not show a price/i);
+  assert.match(reply, /actual add-on options/i);
   assert.match(reply, /vehicle plate/i);
   assert.match(reply, /owner identification number/i);
   assert.doesNotMatch(reply, /RM 350.00/i);
@@ -368,10 +412,12 @@ test('advisory fallback answers add-on needs guidance during OpenAI capacity err
   assert.match(reply, /landslide|landslip/i);
   assert.match(reply, /Windscreen/i);
   assert.match(reply, /Betterment waiver \(RM 350.00\)/i);
-  assert.match(reply, /\*\*My practical pick:\*\*\n\n- \*\*2 Special Perils\/Flood \(RM 150.00\)\*\*/i);
-  assert.match(reply, /\n- \*\*1 Windscreen\*\*/i);
-  assert.match(reply, /\n- \*\*3 E-hailing \(RM 2,000.00\)\*\*/i);
-  assert.match(reply, /\n- \*\*8 Betterment waiver \(RM 350.00\)\*\*/i);
+  assert.match(reply, /\*\*My practical pick:\*\*\n\n- \*\*2\. Special Perils\/Flood \(RM 150.00\)\*\*/i);
+  assert.match(reply, /\n- \*\*1\. Windscreen\*\*/i);
+  assert.match(reply, /\n- \*\*3\. E-hailing \(RM 2,000.00\)\*\*/i);
+  assert.match(reply, /\n- \*\*8\. Betterment waiver \(RM 350.00\)\*\*/i);
+  assert.match(reply, /nice-to-have/i);
+  assert.match(reply, /older premium, continental, performance, luxury, or cars with expensive parts/i);
   assert.match(reply, /1, 2 and 8 \(includes Betterment waiver RM 350.00\)|skip add-ons/i);
   assert.doesNotMatch(reply, /receiving many AI requests/i);
   assert.doesNotMatch(reply, /Step \d of 6/i);

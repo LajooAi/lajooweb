@@ -109,6 +109,22 @@ test('advisor intent detects concrete add-on advisor topics', () => {
     state,
     intent: { intent: USER_INTENTS.ASK_QUESTION, confidence: 0.9 },
   });
+  const casualMustTake = detectAdvisorIntent('must take anything ah?', {
+    state,
+    intent: { intent: USER_INTENTS.ASK_QUESTION, confidence: 0.9 },
+  });
+  const helpMeDecide = detectAdvisorIntent('help me decide', {
+    state,
+    intent: { intent: USER_INTENTS.ASK_QUESTION, confidence: 0.9 },
+  });
+  const shouldSkip = detectAdvisorIntent('should i skip?', {
+    state,
+    intent: { intent: USER_INTENTS.ASK_QUESTION, confidence: 0.9 },
+  });
+  const necessary = detectAdvisorIntent('what is necessary tho?', {
+    state,
+    intent: { intent: USER_INTENTS.ASK_QUESTION, confidence: 0.9 },
+  });
 
   assert.equal(allDrivers.intent, ADVISOR_INTENTS.ADDON_EXPLANATION);
   assert.equal(allDrivers.topic, ADVISOR_TOPICS.ALL_DRIVERS);
@@ -119,7 +135,15 @@ test('advisor intent detects concrete add-on advisor topics', () => {
   assert.equal(important.intent, ADVISOR_INTENTS.COVERAGE_RISK_ADVICE);
   assert.equal(important.topic, 'general_addon_recommendation');
   assert.equal(mustTake.intent, ADVISOR_INTENTS.COVERAGE_RISK_ADVICE);
-  assert.equal(mustTake.topic, 'general_addon_recommendation');
+  assert.equal(mustTake.topic, ADVISOR_TOPICS.ADDON_SKIP_DECISION);
+  assert.equal(casualMustTake.intent, ADVISOR_INTENTS.COVERAGE_RISK_ADVICE);
+  assert.equal(casualMustTake.topic, 'general_addon_recommendation');
+  assert.equal(helpMeDecide.intent, ADVISOR_INTENTS.COVERAGE_RISK_ADVICE);
+  assert.equal(helpMeDecide.topic, 'general_addon_recommendation');
+  assert.equal(shouldSkip.intent, ADVISOR_INTENTS.COVERAGE_RISK_ADVICE);
+  assert.equal(shouldSkip.topic, ADVISOR_TOPICS.ADDON_SKIP_DECISION);
+  assert.equal(necessary.intent, ADVISOR_INTENTS.COVERAGE_RISK_ADVICE);
+  assert.equal(necessary.topic, ADVISOR_TOPICS.ADDON_SKIP_DECISION);
   assert.equal(landslide.topic, ADVISOR_TOPICS.FLOOD);
 });
 
@@ -190,6 +214,12 @@ test('advisor intent does not block clear add-on or payment selections', () => {
   const addIntent = detectUserIntent('add all drivers', addOnState);
   const addAdvisor = detectAdvisorIntent('add all drivers', { state: addOnState, intent: addIntent });
   const addEffective = buildIntentFromAdvisorIntent(addIntent, addAdvisor);
+  const multiAddOnIntent = detectUserIntent('windscreen, special peril, all driver, and betterment', addOnState);
+  const multiAddOnAdvisor = detectAdvisorIntent('windscreen, special peril, all driver, and betterment', {
+    state: addOnState,
+    intent: multiAddOnIntent,
+  });
+  const multiAddOnEffective = buildIntentFromAdvisorIntent(multiAddOnIntent, multiAddOnAdvisor);
 
   const paymentState = stateAt(FLOW_STEPS.PAYMENT);
   const payIntent = detectUserIntent('pay now', paymentState);
@@ -199,6 +229,9 @@ test('advisor intent does not block clear add-on or payment selections', () => {
   assert.equal(addIntent.intent, USER_INTENTS.SELECT_ADDON);
   assert.equal(addAdvisor.intent, ADVISOR_INTENTS.NONE);
   assert.equal(addEffective.intent, USER_INTENTS.SELECT_ADDON);
+  assert.equal(multiAddOnIntent.intent, USER_INTENTS.SELECT_ADDON);
+  assert.equal(multiAddOnAdvisor.intent, ADVISOR_INTENTS.NONE);
+  assert.equal(multiAddOnEffective.intent, USER_INTENTS.SELECT_ADDON);
   assert.equal(payIntent.intent, USER_INTENTS.SELECT_PAYMENT);
   assert.equal(payAdvisor.intent, ADVISOR_INTENTS.NONE);
   assert.equal(payEffective.intent, USER_INTENTS.SELECT_PAYMENT);

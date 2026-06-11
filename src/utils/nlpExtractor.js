@@ -260,7 +260,7 @@ export function extractOwnerIdentification(text) {
 
   // 2) Label-based extraction to reduce false positives
   const labeledMatch = text.match(
-    /\b(passport|foreign id|foreign identification|army ic|police ic|company reg(?:istration)?|ssm|brn|roc|owner id|id number|id no)\b[\s:,-]*([a-z0-9\-\/]{5,24})/i
+    /\b(passport|passport no|foreign id|foreigner id|foreign identification|army ic|army id|military id|police ic|police id|company reg(?:istration)?|company no|company number|business reg(?:istration)?|ssm|brn|roc|owner id|id number|id no)\b[\s:,-]*([a-z0-9\-\/]{5,24})/i
   );
   if (labeledMatch) {
     const label = labeledMatch[1].toLowerCase();
@@ -269,9 +269,9 @@ export function extractOwnerIdentification(text) {
     if (value.length >= 5) {
       let type = 'other_id';
       if (/passport|foreign/.test(label)) type = 'foreign_id';
-      else if (/army/.test(label)) type = 'army_ic';
+      else if (/army|military/.test(label)) type = 'army_ic';
       else if (/police/.test(label)) type = 'police_ic';
-      else if (/company|ssm|brn|roc/.test(label)) type = 'company_reg';
+      else if (/company|business|ssm|brn|roc/.test(label)) type = 'company_reg';
       return { value, type };
     }
   }
@@ -299,10 +299,14 @@ export function extractOwnerIdentification(text) {
     }
   }
 
-  // 5) Conservative fallback: short message with clear alphanumeric ID token
+  // 5) Conservative fallback: short message with clear alphanumeric ID token.
+  // Scan every candidate so a combined input like "FID5566 A12345678" can use
+  // FID5566 as the plate and A12345678 as the owner ID.
   // Example: "A1234567", "P123456", "TNI-88421"
-  const alphaNumToken = text.match(/\b([A-Z]{1,4}[0-9]{4,12}|[0-9]{3,12}[A-Z]{1,4}[0-9]{1,8}|[A-Z0-9]{6,18})\b/i);
-  if (alphaNumToken) {
+  const alphaNumTokens = Array.from(
+    text.matchAll(/\b([A-Z]{1,4}[0-9]{4,12}|[0-9]{3,12}[A-Z]{1,4}[0-9]{1,8}|[A-Z0-9]{6,18})\b/gi)
+  );
+  for (const alphaNumToken of alphaNumTokens) {
     const token = alphaNumToken[1].toUpperCase();
     const extractedPlate = extractRegistrationNumber(text);
     const normalizedPlate = extractedPlate ? extractedPlate.replace(/\s+/g, '').toUpperCase() : null;
@@ -317,7 +321,7 @@ export function extractOwnerIdentification(text) {
       || token.length >= 8;
     const blocked = ['NCD', 'EMAIL', 'PHONE', 'ROADTAX', 'QUOTE', 'ADDON', 'IC'].includes(token);
     if (!blocked && !looksLikePlate && hasLetter && hasDigit && likelyIdContext) {
-      return { value: token, type: 'other_id' };
+      return { value: token, type: 'foreign_id' };
     }
   }
 

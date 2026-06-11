@@ -48,6 +48,12 @@
     "expectedIntent": "provide_info"
   },
   {
+    "name": "Provide plate plus unlabeled foreign id",
+    "message": "FID5566 A12345678",
+    "step": "start",
+    "expectedIntent": "provide_info"
+  },
+  {
     "name": "Provide plate plus company id",
     "message": "VEV8899 company reg SSM 202301234567",
     "step": "start",
@@ -327,6 +333,26 @@
     "addOnsConfirmed": true,
     "expectedIntent": "select_roadtax",
     "expectedDataContains": { "option": "12month-digital" }
+  },
+  {
+    "name": "Roadtax foreign owner bare yes asks which option",
+    "message": "yes",
+    "step": "roadtax",
+    "selectedQuote": true,
+    "addOnsConfirmed": true,
+    "ownerIdType": "foreign_id",
+    "expectedIntent": "ask_question",
+    "expectedDataContains": { "topic": "clarify_roadtax_option" }
+  },
+  {
+    "name": "Roadtax company owner ok renew asks which option",
+    "message": "ok renew road tax",
+    "step": "roadtax",
+    "selectedQuote": true,
+    "addOnsConfirmed": true,
+    "ownerIdType": "company_reg",
+    "expectedIntent": "ask_question",
+    "expectedDataContains": { "topic": "clarify_roadtax_option" }
   },
   {
     "name": "Roadtax elongated ok confirm",

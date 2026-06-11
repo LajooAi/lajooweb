@@ -37,6 +37,7 @@ export const ADVISOR_TOPICS = {
   BODY_PAINTING: 'body_painting',
   PERSONAL_ACCIDENT: 'personal_accident',
   ADDON_CHANGE_WINDOW: 'addon_change_window',
+  ADDON_SKIP_DECISION: 'addon_skip_decision',
   LOWEST_TOTAL: 'lowest_total',
   COMMERCIAL_BIAS: 'commercial_bias',
   QUOTE_PRICE_GAP: 'quote_price_gap',
@@ -47,6 +48,7 @@ export const ADVISOR_TOPICS = {
   DIGITAL_ROADTAX: 'digital_roadtax',
   ROADTAX_NEEDED: 'roadtax_needed',
   WHATSAPP_DOCUMENTS: 'whatsapp_documents',
+  DIRECT_INSURER_DISCOUNT: 'direct_insurer_discount',
 };
 
 const FLOW_ADVANCE_INTENTS = new Set([
@@ -167,6 +169,16 @@ function detectAddOnTopic(text) {
   if (/\bpersonal accident|pa cover\b/i.test(text)) {
     return ADVISOR_TOPICS.PERSONAL_ACCIDENT;
   }
+  if (
+    /\b(?:should|can|could)\s+i\s+skip\b/i.test(text) ||
+    /\b(?:is it|is this|would it be)\s+(?:ok|okay|fine|safe|alright)\s+to\s+skip\b/i.test(text) ||
+    /\bskip\b.{0,35}\b(?:ok|okay|fine|safe|can|should|worth|advisable)\b/i.test(text) ||
+    /\b(?:do i|should i)\s+(?:really\s+)?need\b.{0,45}\b(?:add[-\s]?ons?|addons?|this|any)\b/i.test(text) ||
+    /\b(?:what|which)\b.{0,45}\b(?:necessary|essential|minimum|must[-\s]?have|must\s+take|really\s+need)\b/i.test(text) ||
+    /\b(?:minimum|necessary|essentials?|must[-\s]?have)\b.{0,45}\b(?:only|add[-\s]?ons?|addons?|take|choose|pick|get)\b/i.test(text)
+  ) {
+    return ADVISOR_TOPICS.ADDON_SKIP_DECISION;
+  }
   if (/\btoo expensive|lowest total|make it cheapest|minimum total|save money|budget only|cheap only|dont need add[-\s]?ons|don't need add[-\s]?ons\b/i.test(text)) {
     return ADVISOR_TOPICS.LOWEST_TOTAL;
   }
@@ -176,9 +188,13 @@ function detectAddOnTopic(text) {
 function isAddOnAdviceRequest(text) {
   return /\b(which|what)\b.{0,40}\b(add[-\s]?ons?|need|choose|take|pick|recommend|skip)\b/i.test(text) ||
     /\b(do|should)\s+i\s+(need|take|choose)\b/i.test(text) ||
+    /\bhelp\s+me\b.{0,24}\b(decide|choose|pick|select)\b/i.test(text) ||
     /\b(?:what|which)\b.{0,70}\b(?:important|essential|must[-\s]?have|must\s+take|must\s+buy|must\s+add|priority|prioritise|prioritize|required|compulsory)\b/i.test(text) ||
     /\b(?:items?|add[-\s]?ons?|addons?|ones?)\b.{0,60}\b(?:important|essential|must[-\s]?have|must|priority|prioritise|prioritize|required|compulsory)\b/i.test(text) ||
     /\b(?:must|should)\s+i\s+(?:take|add|buy|choose|get)\b/i.test(text) ||
+    /\b(?:should|can|could)\s+i\s+skip\b/i.test(text) ||
+    /\b(?:is it|is this|would it be)\s+(?:ok|okay|fine|safe|alright)\s+to\s+skip\b/i.test(text) ||
+    /\bdo i\s+(?:really\s+)?need\b/i.test(text) ||
     /\b(?:must\s+take|must[-\s]?have|important\s+(?:items?|ones?|add[-\s]?ons?|addons?)|essential\s+(?:items?|ones?|add[-\s]?ons?|addons?))\b/i.test(text) ||
     /\b(just tell me what to take|you pick add[-\s]?ons?|recommend add[-\s]?ons?|can i skip add[-\s]?ons?)\b/i.test(text);
 }
@@ -220,6 +236,14 @@ function isQuotePriceGapQuestion(text) {
     /\b(?:why|how come|how|what about)\b.{0,90}\b(?:price|prices|premium|premiums|insurer|insurers|quote|quotes)\b.{0,90}\b(?:different|difference|vary|varies|gap|expensive|costly|high|higher|so much)\b/i.test(text) ||
     /\b(?:price|prices|premium|premiums)\b.{0,60}\b(?:different|difference|vary|varies|gap|so much|expensive|costly|high|higher)\b/i.test(text) ||
     /\b(?:some|one|other insurers?|generali|allianz|msig|lonpac)\b.{0,70}\b(?:so expensive|more expensive|costly|higher price|higher premium)\b/i.test(text)
+  );
+}
+
+function isDirectInsurerDiscountObjection(text) {
+  return (
+    /\b(?:direct|directly|from insurer|insurer direct|buy direct|go direct)\b.{0,80}\b(?:discount|cheaper|cheap|lower|save|10\s*%|ten\s*percent)\b/i.test(text) ||
+    /\b(?:discount|cheaper|cheap|lower|save|10\s*%|ten\s*percent)\b.{0,80}\b(?:direct|directly|from insurer|insurer direct|buy direct|go direct)\b/i.test(text) ||
+    /\bwhy\b.{0,60}\b(?:go with|use|choose|buy from)\b.{0,40}\b(?:you|lajoo)\b/i.test(text)
   );
 }
 
@@ -326,20 +350,21 @@ export function detectAdvisorIntent(message, { state = {}, intent = null } = {})
     });
   }
 
+  if (step === FLOW_STEPS.QUOTES && isDirectInsurerDiscountObjection(text)) {
+    return advisorResult(ADVISOR_INTENTS.QUOTE_OBJECTION, {
+      confidence: 0.92,
+      topic: ADVISOR_TOPICS.DIRECT_INSURER_DISCOUNT,
+      shouldPreventFlowAdvance: true,
+      reason: 'user_asked_why_use_lajoo_if_direct_insurer_discount_exists',
+    });
+  }
+
   if (step === FLOW_STEPS.QUOTES && isQuotePriceGapQuestion(text)) {
     return advisorResult(ADVISOR_INTENTS.QUOTE_PRICE_EXPLANATION, {
       confidence: 0.9,
       topic: ADVISOR_TOPICS.QUOTE_PRICE_GAP,
       shouldPreventFlowAdvance: true,
       reason: 'user_asked_why_quote_prices_differ',
-    });
-  }
-
-  if (isDelegateDecision(text)) {
-    return advisorResult(ADVISOR_INTENTS.DELEGATE_DECISION, {
-      confidence: 0.9,
-      shouldPreventFlowAdvance: FLOW_ADVANCE_INTENTS.has(intent?.intent),
-      reason: 'user_delegated_decision_to_lajoo',
     });
   }
 
@@ -350,9 +375,9 @@ export function detectAdvisorIntent(message, { state = {}, intent = null } = {})
   if (
     addonTopic &&
     !explicitAddOnSelection &&
-    (step === FLOW_STEPS.ADDONS || hasQuestionShape(text) || isAddOnAdviceRequest(text) || addonTopic === ADVISOR_TOPICS.LOWEST_TOTAL)
+    (step === FLOW_STEPS.ADDONS || hasQuestionShape(text) || isAddOnAdviceRequest(text) || [ADVISOR_TOPICS.LOWEST_TOTAL, ADVISOR_TOPICS.ADDON_SKIP_DECISION].includes(addonTopic))
   ) {
-    const isRiskAdvice = [ADVISOR_TOPICS.FLOOD, ADVISOR_TOPICS.E_HAILING, ADVISOR_TOPICS.BETTERMENT, ADVISOR_TOPICS.LOWEST_TOTAL].includes(addonTopic);
+    const isRiskAdvice = [ADVISOR_TOPICS.FLOOD, ADVISOR_TOPICS.E_HAILING, ADVISOR_TOPICS.BETTERMENT, ADVISOR_TOPICS.LOWEST_TOTAL, ADVISOR_TOPICS.ADDON_SKIP_DECISION].includes(addonTopic);
     return advisorResult(isRiskAdvice ? ADVISOR_INTENTS.COVERAGE_RISK_ADVICE : ADVISOR_INTENTS.ADDON_EXPLANATION, {
       confidence: 0.9,
       topic: addonTopic,
@@ -367,6 +392,14 @@ export function detectAdvisorIntent(message, { state = {}, intent = null } = {})
       topic: 'general_addon_recommendation',
       shouldPreventFlowAdvance: true,
       reason: 'user_asked_which_addons_are_needed',
+    });
+  }
+
+  if (isDelegateDecision(text)) {
+    return advisorResult(ADVISOR_INTENTS.DELEGATE_DECISION, {
+      confidence: 0.9,
+      shouldPreventFlowAdvance: FLOW_ADVANCE_INTENTS.has(intent?.intent),
+      reason: 'user_delegated_decision_to_lajoo',
     });
   }
 

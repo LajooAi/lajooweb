@@ -11,6 +11,7 @@ import {
   parseRecommendedInsurerFromAssistantMessage,
   isVehicleDetailsRejectionMessage,
   wasLastAssistantVehicleConfirmation,
+  canUseDeliveredRoadTaxByOwnerType,
 } from '../../lib/flowGuards.js';
 import { extractPersonalInfo } from '../../utils/nlpExtractor.js';
 import {
@@ -363,27 +364,45 @@ function formatVehicleName(state) {
   return parts.length > 0 ? parts.join(' ') : 'your car';
 }
 
+function isPremiumOrExpensiveVehicle(state) {
+  const vehicleLabel = [
+    state?.vehicleInfo?.make,
+    state?.vehicleInfo?.model,
+    state?.vehicleInfo?.variant,
+  ].filter(Boolean).join(' ');
+  const sumInsured = Number(
+    state?.selectedQuote?.sumInsured ||
+    state?.selectedQuote?.insuredAmount ||
+    state?.selectedQuote?.sum_insured ||
+    0
+  );
+
+  return sumInsured >= 80000 ||
+    /\b(bmw|mercedes|mercedes-benz|audi|porsche|volvo|lexus|mini|tesla|jaguar|land rover|range rover|maserati|bentley|ferrari|lamborghini)\b/i.test(vehicleLabel);
+}
+
 function buildQuoteStageBettermentAdvisorReply(state) {
   const vehicleAge = getVehicleAgeFromState(state);
   const vehicleName = formatVehicleName(state);
+  const premiumOrExpensiveVehicle = isPremiumOrExpensiveVehicle(state);
   const recommended = state?.lastRecommendedInsurer
     ? summarizeQuoteOption(quoteSelectionFromIntent(state, state.lastRecommendedInsurer))
     : pickBalancedQuoteForAdvisor(state);
-  const vehicleLine = vehicleAge !== null
-    ? `For your **${vehicleAge}-year-old ${vehicleName}**, I would treat it as **good-to-have**, not a must-buy. It matters more for older continental/performance cars or cars with very expensive parts.`
-    : `For **${vehicleName}**, I would treat it as useful if repair-cost surprises matter, but not automatically a must-buy.`;
+  const vehicleLine = premiumOrExpensiveVehicle
+    ? `For your **${vehicleAge !== null ? `${vehicleAge}-year-old ` : ''}${vehicleName}**, I would consider it more seriously because older premium, continental, performance, luxury, or cars with expensive parts can have bigger repair-cost surprises.`
+    : vehicleAge !== null
+      ? `For your **${vehicleAge}-year-old ${vehicleName}**, I would treat it as **nice-to-have** if you want extra repair-cost comfort. It matters more for older premium, continental, performance, luxury, or cars with expensive parts.`
+      : `For **${vehicleName}**, I would treat it as useful if repair-cost surprises matter. It matters more for older premium, continental, performance, luxury, or cars with expensive parts.`;
   const recommendationLine = recommended
-    ? `My earlier advice still stands: **${recommended.insurerName} - ${formatMoney(recommended.price)}** is the balanced pick. Choose the insurer first, then I’ll help you decide on Betterment waiver / zero-betterment in the add-ons step if it is available.`
-    : `Choose the insurer first, then I’ll help you decide on Betterment waiver / zero-betterment in the add-ons step if it is available.`;
+    ? `My earlier advice still stands: **${recommended.insurerName} - ${formatMoney(recommended.price)}** is the balanced pick. Choose the insurer first, then I’ll help you review Betterment waiver / zero-betterment in the add-ons step.`
+    : `Choose the insurer first, then I’ll help you review Betterment waiver / zero-betterment in the add-ons step.`;
   const closeLine = recommended
     ? `Shall I select **${recommended.insurerName} - ${formatMoney(recommended.price)}** first, then we review the Betterment waiver option at add-ons?`
     : `Would you like my recommendation now, or do you want to compare the available insurers first?`;
 
   return `Zero betterment helps reduce the extra amount you may need to pay when an older damaged part is replaced with a new part during an own-damage repair.
 
-Not every insurer/product should be treated as automatically having it. It may appear as an included product feature, an endorsement, a buyback, or a betterment-waiver add-on.
-
-If the selected insurer/product supports it, you can review **Betterment waiver / zero-betterment** in the add-ons step. I would not show a price before that step because the final availability and price can depend on the selected insurer, product, vehicle details, and sum insured.
+You can review **Betterment waiver / zero-betterment** in the add-ons step later. I won’t show the price here because it belongs with the actual add-on options after the insurer is selected.
 
 ${vehicleLine}
 
@@ -408,13 +427,16 @@ function buildPreAddOnsAdvisorReply(state, advisorIntent) {
   })();
 
   if (topic === ADVISOR_TOPICS.BETTERMENT) {
-    const ageLine = vehicleAge !== null
-      ? `For your **${vehicleAge}-year-old ${vehicleName}**, I would treat it as **good-to-have**, not an automatic must-buy. It becomes more important for older continental/performance cars, cars with expensive parts, or if surprise repair charges worry you.`
-      : `For **${vehicleName}**, I would treat it as useful if repair-cost surprises matter, but not automatically a must-buy.`;
+    const premiumOrExpensiveVehicle = isPremiumOrExpensiveVehicle(state);
+    const ageLine = premiumOrExpensiveVehicle
+      ? `For your **${vehicleAge !== null ? `${vehicleAge}-year-old ` : ''}${vehicleName}**, I would consider it more seriously because older premium, continental, performance, luxury, or cars with expensive parts can have bigger repair-cost surprises.`
+      : vehicleAge !== null
+        ? `For your **${vehicleAge}-year-old ${vehicleName}**, I would treat it as **nice-to-have** if you want extra repair-cost comfort. It becomes more important for older premium, continental, performance, luxury, or cars with expensive parts.`
+        : `For **${vehicleName}**, I would treat it as useful if repair-cost surprises matter. It matters more for older premium, continental, performance, luxury, or cars with expensive parts.`;
 
     return `Zero betterment helps reduce the extra amount you may need to pay when an older damaged part is replaced with a new part during an own-damage repair.
 
-It is normally reviewed as a product feature, endorsement, buyback, or Betterment waiver option. I should not show a price or ask you to add it until we reach the add-ons step, because availability and pricing depend on the selected insurer/product and vehicle details.
+You can review **Betterment waiver / zero-betterment** in the add-ons step later. I won’t show the price here because it belongs with the actual add-on options after the insurer is selected.
 
 ${ageLine}
 
@@ -523,6 +545,80 @@ ${rangeLine}${coverageLine} So a higher price does not automatically mean "bette
 ${practicalLine}${budgetLine}
 
 ${close}`;
+}
+
+function buildRoadTaxOptionClarificationReply(state) {
+  if (!canUseDeliveredRoadTaxByOwnerType(state?.ownerIdType)) {
+    return `For this renewal, I can add **12-month digital road tax (RM 90.00)** or proceed with **no road tax**.
+
+Which one would you like?`;
+  }
+
+  return `For this vehicle, both road tax options are available, so I need you to choose which one you want.
+
+- **12-month digital road tax (RM 90.00)** - updates in MYJPJ
+- **12-month physical + delivery (RM 100.00)** - MYJPJ plus delivered copy
+- **No road tax** - insurance only
+
+Which one should I add?`;
+}
+
+function formatDelta(value, { positive = 'higher', negative = 'lower', same = 'the same' } = {}) {
+  const numeric = Number(value || 0);
+  if (!Number.isFinite(numeric) || numeric === 0) return same;
+  return `${formatMoney(Math.abs(numeric))} ${numeric > 0 ? positive : negative}`;
+}
+
+function buildKnownInsurerExplorationReply(state, latestMessage) {
+  if (state?.step !== FLOW_STEPS.QUOTES || state?.selectedQuote) return null;
+
+  const text = String(latestMessage || '');
+  const mentionedKeys = getInsurerKeysFromText(text);
+  if (mentionedKeys.length !== 1) return null;
+  if (!/\b(look at|have a look|what about|how about|tell me|explain|details|compare|also|as well)\b/i.test(text)) {
+    return null;
+  }
+
+  const [mentionedKey] = mentionedKeys;
+  const quote = summarizeQuoteOption(quoteSelectionFromIntent(state, mentionedKey));
+  if (!quote) return null;
+
+  const rememberedRecommended = state?.lastRecommendedInsurer
+    ? summarizeQuoteOption(quoteSelectionFromIntent(state, state.lastRecommendedInsurer))
+    : null;
+  const balanced = rememberedRecommended || pickBalancedQuoteForAdvisor(state);
+  const cheapest = getQuoteOptionsForAdvisor(state).slice().sort((a, b) => a.price - b.price)[0] || null;
+
+  const comparisonLines = [];
+  if (balanced && balanced.key !== quote.key) {
+    comparisonLines.push(`Compared with my earlier balanced pick **${balanced.insurerName} - ${formatMoney(balanced.price)}**, **${quote.insurerName}** is **${formatDelta(quote.price - balanced.price)}** and gives **${formatDelta(quote.sumInsured - balanced.sumInsured)} sum insured**.`);
+  }
+  if (cheapest && cheapest.key !== quote.key && (!balanced || cheapest.key !== balanced.key)) {
+    comparisonLines.push(`Compared with the cheapest option **${cheapest.insurerName} - ${formatMoney(cheapest.price)}**, it is **${formatDelta(quote.price - cheapest.price)}** with **${formatDelta(quote.sumInsured - cheapest.sumInsured)} sum insured**.`);
+  }
+
+  const featureLine = quote.featureText
+    ? `The quote card signals: ${quote.featureText}.`
+    : 'I would judge it mainly by the current premium and sum insured shown here.';
+  const viewLine = balanced && balanced.key !== quote.key
+    ? `My view: **${quote.insurerName}** is worth considering if you specifically want the higher sum insured, but **${balanced.insurerName}** still looks like the cleaner balanced pick unless you prefer paying more for extra cover.`
+    : `My view: **${quote.insurerName}** is already the balanced option I would focus on from this quote set.`;
+  const cheapestClose = cheapest && cheapest.key !== quote.key
+    ? `, choose the cheapest **${cheapest.insurerName} - ${formatMoney(cheapest.price)}**`
+    : '';
+  const balancedClose = balanced
+    ? `keep **${balanced.insurerName} - ${formatMoney(balanced.price)}**`
+    : 'keep my balanced pick';
+
+  return `Sure - we can look at **${quote.insurerName}**, but I have **not selected it yet**.
+
+**${quote.insurerName}** is **${formatMoney(quote.price)}** with sum insured **${formatMoney(quote.sumInsured)}**. ${featureLine}
+
+${comparisonLines.join('\n\n')}
+
+${viewLine}
+
+Do you want to ${balancedClose}, choose **${quote.insurerName} - ${formatMoney(quote.price)}**${cheapestClose}, or compare all insurers?`;
 }
 
 function formatInsurerNames(keys = []) {
@@ -667,6 +763,8 @@ function addOnPriceLabel(id) {
 function buildAddOnAdvisorReply(state, advisorIntent) {
   const topic = advisorIntent?.topic || 'general_addon_recommendation';
   const vehicleAge = getVehicleAgeFromState(state);
+  const vehicleName = formatVehicleName(state);
+  const premiumOrExpensiveVehicle = isPremiumOrExpensiveVehicle(state);
   const selectedInsurer = state?.selectedQuote?.insurer || 'your selected insurer';
 
   if (topic === ADVISOR_TOPICS.ADDON_CHANGE_WINDOW) {
@@ -714,12 +812,14 @@ Do you want to add it, or skip it?`;
   }
 
   if (topic === ADVISOR_TOPICS.BETTERMENT) {
-    const ageLine = vehicleAge !== null
-      ? ` Your car is about **${vehicleAge} years old**, so betterment risk can matter if old damaged parts are replaced with new parts.`
-      : '';
+    const ageLine = premiumOrExpensiveVehicle
+      ? ` For your **${vehicleAge !== null ? `${vehicleAge}-year-old ` : ''}${vehicleName}**, I would consider it more seriously because older premium, continental, performance, luxury, or cars with expensive parts can have bigger repair-cost surprises.`
+      : vehicleAge !== null
+        ? ` For your **${vehicleAge}-year-old ${vehicleName}**, I would treat it as **nice-to-have** if you want extra repair-cost comfort.`
+        : '';
     return `**Betterment waiver (${addOnPriceLabel('betterment_waiver')})** helps reduce surprise betterment charges during own-damage repairs.${ageLine}
 
-I would consider it more strongly for older cars, continental/performance cars, or cars with expensive parts. If you want the lowest total, you can skip it; if you want fewer repair-cost surprises, it is worth considering.
+I would recommend it more strongly for older premium, continental, performance, luxury, or cars with expensive parts. If you want the lowest total, you can skip it; if you want extra repair-cost comfort, it is worth considering.
 
 Do you want to add **Betterment waiver**, or skip it?`;
   }
@@ -774,6 +874,27 @@ It is affordable, but it is separate from repairing the car. If your priority is
 Do you want to add personal accident, or skip it?`;
   }
 
+  if (topic === ADVISOR_TOPICS.ADDON_SKIP_DECISION) {
+    const bettermentAdvice = vehicleAge !== null && vehicleAge >= 5
+      ? premiumOrExpensiveVehicle
+        ? `- **8. Betterment waiver (${addOnPriceLabel('betterment_waiver')})** - more worth considering for your **${vehicleAge}-year-old ${vehicleName}** because premium, continental, performance, luxury, or expensive-parts cars can have bigger repair-cost surprises.`
+        : `- **8. Betterment waiver (${addOnPriceLabel('betterment_waiver')})** - for your **${vehicleAge}-year-old ${vehicleName}**, treat this as **nice-to-have**, not essential. It is more worth it for older premium, continental, performance, luxury, or expensive-parts cars.`
+      : `- **8. Betterment waiver (${addOnPriceLabel('betterment_waiver')})** - nice-to-have for repair-cost comfort, and stronger for older premium, continental, performance, luxury, or expensive-parts cars.`;
+
+    return `Yes - you can skip add-ons if you want the lowest total and none of the main risks apply.
+
+My practical minimum:
+
+- **2. Special Perils (${addOnPriceLabel('flood')})** - take this if your home, workplace, route, or parking can flood, or has landslide/landslip exposure.
+- **1. Windscreen** - add this if you drive highways or long-distance often, or if glass replacement would hurt your budget.
+- **3. E-hailing (${addOnPriceLabel('ehailing')})** - only if the car is used for Grab/inDrive or similar work.
+${bettermentAdvice}
+
+If none of those apply, I’m comfortable helping you skip add-ons and continue.
+
+Do you want to **skip add-ons**, take **2. Special Perils only**, or take **1 and 2**?`;
+  }
+
   if (topic === ADVISOR_TOPICS.LOWEST_TOTAL) {
     return `If your goal is the **lowest total**, the cleanest choice is to **skip optional add-ons**.
 
@@ -783,19 +904,21 @@ Do you want me to skip all add-ons and continue to road tax?`;
   }
 
   const bettermentLine = vehicleAge !== null && vehicleAge >= 5
-    ? `- **8 Betterment waiver (${addOnPriceLabel('betterment_waiver')})** - because your car is about **${vehicleAge} years old**, treat this as good-to-have if surprise repair charges worry you.`
-    : `- **8 Betterment waiver (${addOnPriceLabel('betterment_waiver')})** - more useful for older cars, continental/performance cars, or cars with expensive parts.`;
+    ? premiumOrExpensiveVehicle
+      ? `- **8. Betterment waiver (${addOnPriceLabel('betterment_waiver')})** - for your **${vehicleAge}-year-old ${vehicleName}**, I would consider this more seriously because older premium, continental, performance, luxury, or cars with expensive parts can have bigger repair-cost surprises.`
+      : `- **8. Betterment waiver (${addOnPriceLabel('betterment_waiver')})** - for your **${vehicleAge}-year-old ${vehicleName}**, treat this as **nice-to-have** if you want extra repair-cost comfort. It is more worth considering for older premium, continental, performance, luxury, or cars with expensive parts.`
+    : `- **8. Betterment waiver (${addOnPriceLabel('betterment_waiver')})** - more useful for older premium, continental, performance, luxury, or cars with expensive parts.`;
 
   return `You can skip add-ons, but my practical advice is not to buy everything - choose based on real risk.
 
 My usual shortlist:
 
-- **2 Special Perils (${addOnPriceLabel('flood')})** - if your area or parking can flood, or has landslide/landslip exposure.
-- **1 Windscreen** - if you drive a lot, especially highway or long-distance routes, or if glass replacement would hurt your budget.
-- **3 E-hailing (${addOnPriceLabel('ehailing')})** - only if the car is used for Grab/inDrive.
+- **2. Special Perils (${addOnPriceLabel('flood')})** - if your area or parking can flood, or has landslide/landslip exposure.
+- **1. Windscreen** - if you drive a lot, especially highway or long-distance routes, or if glass replacement would hurt your budget.
+- **3. E-hailing (${addOnPriceLabel('ehailing')})** - only if the car is used for Grab/inDrive.
 ${bettermentLine}
 
-What would you like: **2 Special Perils**, **1 Windscreen**, **1 and 2**, **8 Betterment waiver**, or **skip add-ons**?`;
+What would you like: **2. Special Perils**, **1. Windscreen**, **1 and 2**, **8. Betterment waiver**, or **skip add-ons**?`;
 }
 
 function buildPrivacyAdvisorReply(state, advisorIntent) {
@@ -1246,12 +1369,22 @@ Do NOT move to next step until insurer is selected.`);
     [FLOW_STEPS.QUOTES, FLOW_STEPS.ADDONS, FLOW_STEPS.ROADTAX].includes(state.step)
   ) {
     const mentionsUnavailablePreferredInsurer = UNAVAILABLE_INSURER_REGEX.test(String(latestMessage || ''));
-    if (
+    const quoteExplorationReply = state.step === FLOW_STEPS.QUOTES && !state.selectedQuote
+      ? buildKnownInsurerExplorationReply(state, latestMessage)
+      : null;
+    if (quoteExplorationReply) {
+      nextForcedAssistantResponse = quoteExplorationReply;
+    } else if (
       state.step === FLOW_STEPS.QUOTES &&
       !state.selectedQuote &&
       mentionsUnavailablePreferredInsurer
     ) {
       nextForcedAssistantResponse = buildUnavailablePreferredInsurerReply(state, latestMessage);
+    } else if (
+      state.step === FLOW_STEPS.ROADTAX &&
+      intent.data?.topic === 'clarify_roadtax_option'
+    ) {
+      nextForcedAssistantResponse = buildRoadTaxOptionClarificationReply(state);
     } else if (
       state.step === FLOW_STEPS.ROADTAX &&
       turnPlan?.questionGuidance === TURN_QUESTION_GUIDANCE.ROADTAX_ALTERNATIVE
