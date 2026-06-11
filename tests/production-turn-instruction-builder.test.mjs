@@ -17,6 +17,9 @@ import {
 import {
   buildProductionOpenAiMessages,
 } from '../src/server/ai/productionOpenAiMessageBuilder.js';
+import {
+  classifyAdvisorBrain,
+} from '../src/server/ai/advisorBrain.js';
 
 function makeQuoteState(overrides = {}) {
   const state = new ConversationState();
@@ -155,6 +158,30 @@ test('production turn builder uses grounded insurer facts for comparison questio
   assert.match(text, /Takaful Ikhlas betterment support/i);
   assert.match(text, /COMPARISON ANSWER CONTRACT/i);
   assert.match(text, /not found in current insurer database/i);
+});
+
+test('production turn builder includes advisor brain playbook when human meaning is classified', async () => {
+  const state = makeQuoteState({ lastRecommendedInsurer: 'tokio' });
+  const message = 'can we have a look at lonpac as well';
+  const { intent, decision, turnPlan, messages } = planTurn(message, state);
+  const advisorBrain = classifyAdvisorBrain(message, { state, rawIntent: intent });
+
+  const result = await buildProductionTurnInstructionMessages({
+    latestMessage: message,
+    messages,
+    state,
+    intent,
+    decision,
+    turnPlan,
+    advisorBrain,
+    questionKnowledgeMatches: [],
+  });
+  const text = joinedInstructionText(result);
+
+  assert.match(text, /ADVISOR BRAIN V2/i);
+  assert.match(text, /Detected human act: exploration/i);
+  assert.match(text, /The user is exploring, not selecting/i);
+  assert.match(text, /Do not move to add-ons/i);
 });
 
 test('step style instruction changes with current renewal stage', () => {

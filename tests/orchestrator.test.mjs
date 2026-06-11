@@ -316,3 +316,25 @@ test('quote recommendation instruction names cheapest alternative in next questi
   assert.doesNotMatch(instruction, /Want to go with this/i);
   assert.doesNotMatch(instruction, /\[cheapest insurer name\]/i);
 });
+
+test('quote recommendation instruction keeps soft good-question close focused', () => {
+  const state = {
+    step: FLOW_STEPS.QUOTES,
+  };
+  const decision = decide('which is good', state);
+  const quoteRecommendation = buildQuoteRecommendation({
+    quotes: getQuotes(),
+    state,
+    message: 'which is good',
+  });
+  const instruction = buildQuoteRecommendationInstruction(decision, {
+    quoteRecommendation,
+    state,
+    message: 'which is good',
+  });
+
+  assert.match(instruction, /Want me to select Tokio Marine Insurance - RM 800.00, or compare with another insurer/i);
+  assert.match(quoteRecommendation.question, /Want me to select Tokio Marine Insurance - RM 800.00, or compare with another insurer/i);
+  assert.doesNotMatch(instruction, /choose the cheapest option Takaful Ikhlas Insurance - RM 796.00/i);
+  assert.doesNotMatch(quoteRecommendation.question, /Takaful Ikhlas Insurance/i);
+});

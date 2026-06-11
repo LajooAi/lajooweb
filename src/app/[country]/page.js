@@ -385,7 +385,13 @@ function AssistantSummaryCard({ summary }) {
       <section className="assistant-summary-section">
         <h4>Road Tax</h4>
         <div className="assistant-summary-line">
-          <span className={!summary.roadTaxSelected ? "assistant-summary-not-selected" : undefined}>
+          <span
+            className={
+              !summary.roadTaxSelected
+                ? `assistant-summary-not-selected${summary.roadTaxConfirmed ? " is-muted" : ""}`
+                : undefined
+            }
+          >
             {summary.roadTaxDescription || "Not selected yet"}
           </span>
           <strong>RM {formatQuoteMoney(summary.roadTaxPrice)}</strong>

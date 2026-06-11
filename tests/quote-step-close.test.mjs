@@ -73,6 +73,33 @@ It gives a strong balance of price and coverage.`;
   assert.doesNotMatch(prompt, /choose one of these/i);
 });
 
+test('quote step close keeps soft good-question close focused on the recommendation', () => {
+  const response = `If you're looking for the best balance, **Tokio Marine Insurance at RM 800.00** is a solid choice.`;
+  const prompt = buildQuoteStepClosePrompt({
+    state: {
+      vehicleInfo: {
+        quoteOptions: getQuotes(),
+      },
+    },
+    context: {
+      quoteRecommendation: {
+        recommendedQuote: { insurerName: 'Tokio Marine Insurance', finalPremium: 800 },
+        scoredQuotes: [
+          { insurerName: 'Tokio Marine Insurance', finalPremium: 800 },
+          { insurerName: 'Takaful Ikhlas Insurance', finalPremium: 796 },
+        ],
+      },
+      messages: [{ role: 'user', content: 'which is good' }],
+    },
+    response,
+  });
+
+  assert.match(prompt, /Want me to select \*\*Tokio Marine Insurance - RM 800.00\*\*/i);
+  assert.match(prompt, /compare with another insurer/i);
+  assert.doesNotMatch(prompt, /Takaful Ikhlas Insurance/i);
+  assert.doesNotMatch(prompt, /cheapest option/i);
+});
+
 test('quote step close replaces generic recommendation close after advice was already given', () => {
   const response = `Here's my advice: **Tokio Marine Insurance** at **RM 800.00** is my top pick.
 

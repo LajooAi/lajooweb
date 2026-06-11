@@ -364,6 +364,13 @@ function formatVehicleName(state) {
   return parts.length > 0 ? parts.join(' ') : 'your car';
 }
 
+function formatVehicleReference(state) {
+  const vehicleName = formatVehicleName(state);
+  if (vehicleName === 'your car') return 'your car';
+  const vehicleAge = getVehicleAgeFromState(state);
+  return `${vehicleAge !== null ? `${vehicleAge}-year-old ` : ''}${vehicleName}`;
+}
+
 function isPremiumOrExpensiveVehicle(state) {
   const vehicleLabel = [
     state?.vehicleInfo?.make,
@@ -379,6 +386,14 @@ function isPremiumOrExpensiveVehicle(state) {
 
   return sumInsured >= 80000 ||
     /\b(bmw|mercedes|mercedes-benz|audi|porsche|volvo|lexus|mini|tesla|jaguar|land rover|range rover|maserati|bentley|ferrari|lamborghini)\b/i.test(vehicleLabel);
+}
+
+function buildWindscreenCoverageGuidance(state) {
+  const vehicleReference = formatVehicleReference(state);
+  if (isPremiumOrExpensiveVehicle(state)) {
+    return `For your **${vehicleReference}**, lean closer to **RM 2,000.00** or more if offered, because premium/continental cars, EVs, sensors, tint, and camera calibration can make glass replacement more expensive.`;
+  }
+  return `For your **${vehicleReference}**, **RM 1,000.00** is a sensible starting cover; choose **RM 2,000.00** if the windscreen has sensors, tint, camera calibration, or you want a bigger repair-cost cushion.`;
 }
 
 function buildQuoteStageBettermentAdvisorReply(state) {
@@ -438,6 +453,14 @@ ${stageClose}`;
     return `Windscreen cover helps with repair or replacement of the car glass, subject to the coverage amount selected later.
 
 I would consider it if you drive a lot, especially highways or long-distance routes, because stones and road debris can chip or crack glass. It is also more useful if the windscreen has sensors, tint, camera calibration, or would be painful to replace out-of-pocket.
+
+${stageClose}`;
+  }
+
+  if (topic === ADVISOR_TOPICS.DAILY_DRIVING) {
+    return `Daily driving mainly points to **Windscreen** because more time on the road means more exposure to stone chips, road debris, highway driving, and glass damage.
+
+If your home, workplace, route, or parking can flood, or has landslide/landslip exposure, also review **Special Perils**.
 
 ${stageClose}`;
   }
@@ -693,13 +716,13 @@ Which one would you like to proceed with?`;
 
 function buildQuoteObjectionAdvisorReply(state, advisorIntent) {
   if (advisorIntent?.topic === ADVISOR_TOPICS.DIRECT_INSURER_DISCOUNT) {
-    return `That is a fair question. If an insurer gives you a real **10% direct discount** for the same cover, same sum insured, and same add-ons, that saving matters.
+    return `Good question. A 10% direct discount can exist, but the headline discount is not the full renewal decision.
 
-The upside of using **LAJOO** is not only the premium. I can help you compare the quotes side by side, avoid missing important add-ons, handle road tax choices, keep the renewal steps organised, and let you ask coverage questions before paying.
+With **LAJOO**, you get guided quote comparison, add-on advice, road tax handling, and a cleaner renewal flow in one place before payment.
 
-So the practical way to decide is simple: if the direct insurer offer is clearly cheaper for the same protection, consider it. If you want convenience, comparison, and guided renewal support, continue here.
+I’ll help you avoid missing coverage details and choose confidently from the quotes already shown here.
 
-Would you like to continue with the LAJOO quote list, or compare your direct insurer offer against these quotes?`;
+Let’s continue with LAJOO. Want me to pick the best-fit insurer now and move this renewal forward?`;
   }
 
   const [mentionedKey] = advisorIntent?.entities?.insurerKeys || [];
@@ -830,9 +853,21 @@ Do you want to add **Betterment waiver**, or skip it?`;
     const coverage2000 = calculateWindscreenPremium(2000);
     return `For windscreen, the premium depends on the coverage amount. **RM 1,000.00 cover costs ${formatMoney(coverage1000)}**; **RM 2,000.00 cover costs ${formatMoney(coverage2000)}**.
 
-I would lean towards windscreen if you drive a lot, especially on highways or long-distance routes, because road stones and debris can chip or crack glass. For a normal daily car, **RM 1,000.00** is a reasonable starting point. Choose **RM 2,000.00** if the windscreen has sensors, tint, camera calibration, or you just want more buffer.
+I would lean towards windscreen if you drive a lot, especially on highways or long-distance routes, because road stones and debris can chip or crack glass. ${buildWindscreenCoverageGuidance(state)}
 
-What windscreen coverage amount should I use: **RM 1,000.00**, **RM 2,000.00**, or skip windscreen?`;
+If you want to add **Windscreen**, send the coverage amount you prefer. Otherwise, you can compare it with the other add-ons or skip it.`;
+  }
+
+  if (topic === ADVISOR_TOPICS.DAILY_DRIVING) {
+    return `Since you drive a lot daily, my practical advice is: **start with 1. Windscreen**.
+
+- **1. Windscreen** - daily driving means more exposure to stone chips, road debris, highway or long-distance glass damage. ${buildWindscreenCoverageGuidance(state)}
+- **2. Special Perils (${addOnPriceLabel('flood')})** - add this too if your home, workplace, route, or parking can flood, or has landslide/landslip exposure.
+- **3. E-hailing (${addOnPriceLabel('ehailing')})** - only if you use the car for Grab/inDrive.
+
+My pick for your situation: start with **1. Windscreen**. Add **2. Special Perils** if flood or landslide risk applies.
+
+Would you like to add **1. Windscreen**, add **1 and 2. Special Perils**, or skip add-ons?`;
   }
 
   if (topic === ADVISOR_TOPICS.FLOOD) {
@@ -1098,6 +1133,8 @@ function buildAdvisorForcedResponse({ state, latestMessage, advisorIntent }) {
       return buildRejectRecommendationAdvisorReply(state, advisorIntent);
     case ADVISOR_INTENTS.QUOTE_FILTER_PREFERENCE:
       return buildQuoteFilterAdvisorReply(state, advisorIntent);
+    case ADVISOR_INTENTS.QUOTE_EXPLORATION:
+      return buildKnownInsurerExplorationReply(state, latestMessage);
     case ADVISOR_INTENTS.QUOTE_OBJECTION:
       return buildQuoteObjectionAdvisorReply(state, advisorIntent);
     case ADVISOR_INTENTS.QUOTE_PRICE_EXPLANATION:
@@ -1131,6 +1168,13 @@ function buildAdvisorForcedResponse({ state, latestMessage, advisorIntent }) {
     default:
       return null;
   }
+}
+
+function shouldAwaitAddOnReviewConfirmation(state, advisorIntent, response) {
+  if (!state?.selectedQuote) return false;
+  if (![FLOW_STEPS.ROADTAX, FLOW_STEPS.PERSONAL_DETAILS, FLOW_STEPS.OTP, FLOW_STEPS.PAYMENT].includes(state?.step)) return false;
+  if (![ADVISOR_INTENTS.ADDON_EXPLANATION, ADVISOR_INTENTS.COVERAGE_RISK_ADVICE].includes(advisorIntent?.intent)) return false;
+  return /\bgo back to add-ons to review it\b/i.test(String(response || ''));
 }
 
 export function applyDeterministicFlowHandlers({
@@ -1191,6 +1235,13 @@ export function applyDeterministicFlowHandlers({
       latestMessage,
       advisorIntent: effectiveAdvisorIntent,
     });
+    if (shouldAwaitAddOnReviewConfirmation(state, effectiveAdvisorIntent, nextForcedAssistantResponse)) {
+      state.setPendingAction?.({
+        type: 'confirm_addon_review',
+        topic: effectiveAdvisorIntent?.topic || null,
+        previousStep: state.step,
+      });
+    }
   }
 
   // GLOBAL GUARD: no quotes or pricing before both vehicle identifiers.
@@ -1500,12 +1551,12 @@ Do NOT alter the summary. MUST include all 3 items to collect.`);
     nextForcedAssistantResponse = missing.length === 0
       ? `Thanks — here are the details I captured:
 
-- **Email:** ${canonicalDetails.email || '(provided)'}
-- **Phone:** ${canonicalDetails.phone || '(provided)'}
-- **Address:** ${canonicalDetails.address || '(provided)'}
+✓ **Email:** ${canonicalDetails.email || '(provided)'}<br />
+✓ **Phone:** ${canonicalDetails.phone || '(provided)'}<br />
+✓ **Address:** ${canonicalDetails.address || '(provided)'}
 
 Does everything look **correct** ?
-If yes, I will send the OTP now. If not, tell me what to change.
+If yes, I will send the **OTP** now. If not, tell me what to change.
 `
       : `Thanks — I’ve captured what you shared.
 

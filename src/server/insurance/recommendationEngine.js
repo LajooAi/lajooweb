@@ -738,9 +738,13 @@ export function buildQuoteRecommendation({
   const cheapestQuote = normalizedQuotes
     .slice()
     .sort((a, b) => a.finalPremium - b.finalPremium)[0] || null;
-  const cheapestQuestionChoice = cheapestQuote && cheapestQuote.insurerKey !== winner.quote.insurerKey
+  const softGoodQuestion = isSoftGoodRecommendationRequest(message);
+  const cheapestQuestionChoice = !softGoodQuestion && cheapestQuote && cheapestQuote.insurerKey !== winner.quote.insurerKey
     ? `, choose the cheapest option ${cheapestQuote.insurerName} - ${formatRm(cheapestQuote.finalPremium)}`
     : '';
+  const question = softGoodQuestion
+    ? `Want me to select ${winner.quote.insurerName} - ${formatRm(winner.quote.finalPremium)}, or compare with another insurer?`
+    : `Want to go with ${winner.quote.insurerName} - ${formatRm(winner.quote.finalPremium)}${cheapestQuestionChoice}, or explore other insurers?`;
 
   return {
     recommendedQuote: winner.quote,
@@ -771,14 +775,19 @@ export function buildQuoteRecommendation({
       : 0.62,
     priceLabel: formatRm(winner.quote.finalPremium),
     sumInsuredLabel: formatRm(winner.quote.sumInsured),
-    question: `Want to go with ${winner.quote.insurerName} - ${formatRm(winner.quote.finalPremium)}${cheapestQuestionChoice}, or explore other insurers?`,
+    question,
   };
 }
 
 function shouldGiveRecommendation(decision, message) {
   const text = normalizeText(message);
   if (decision?.mode === CONVERSATION_MODES.QUOTE_COMPARISON) return true;
-  return /\b(recommend|recommendation|which should|which one|best|better|choose for me|what do you think|your pick)\b/.test(text);
+  return /\b(recommend|recommendation|which should|which one|which is good|which good|which insurer.{0,40}good|good one|best|better|choose for me|what do you think|your pick)\b/.test(text);
+}
+
+function isSoftGoodRecommendationRequest(message) {
+  const text = normalizeText(message);
+  return /\b(which (?:one )?(?:is )?good|which good|which insurer.{0,40}good|what(?:'s| is) good|good one)\b/.test(text);
 }
 
 export function buildQuoteRecommendationInstruction(decision, context = {}) {
@@ -798,6 +807,10 @@ export function buildQuoteRecommendationInstruction(decision, context = {}) {
   const cheapestQuestionChoice = cheapestQuote?.insurerName && cheapestQuote.insurerName !== quote.insurerName
     ? `, choose the cheapest option ${cheapestQuote.insurerName} - ${formatRm(cheapestQuote.finalPremium)}`
     : '';
+  const softGoodQuestion = isSoftGoodRecommendationRequest(context.message || '');
+  const nextQuestionExample = softGoodQuestion
+    ? `Want me to select ${quote.insurerName} - ${formatRm(quote.finalPremium)}, or compare with another insurer?`
+    : `Want to go with ${quote.insurerName} - ${formatRm(quote.finalPremium)}${cheapestQuestionChoice}, or explore others?`;
   const factReasons = Array.isArray(recommendation.factReasons) && recommendation.factReasons.length > 0
     ? recommendation.factReasons.join('; ')
     : null;
@@ -837,8 +850,9 @@ Response rules:
 
   **Trade-off:** One honest tradeoff versus the cheapest, highest-sum-insured, or closest alternative.
 
-  **Next:** One clear choice question that names the options with premiums, such as "Want to go with ${quote.insurerName} - ${formatRm(quote.finalPremium)}${cheapestQuestionChoice}, or explore others?"
+  **Next:** One clear choice question that names the options with premiums, such as "${nextQuestionExample}"
 - Bold insurer names, final premiums, sum insured amounts, and important decision words.
+- If the user only asks which insurer is "good", keep the close focused on the recommended insurer and comparison. Do not introduce the cheapest insurer as a second suggested path unless it was already explained as the trade-off.
 - Keep this structure only for quote recommendation/comparison moments. Do not force it onto normal insurance explanations.
 - Include the exact insurer name "${quote.insurerName}" in the My pick line so the system can remember the recommendation.
 - Use approved fact-backed reasons only as written above. Do not expand them into extra benefits, limits, or eligibility promises.

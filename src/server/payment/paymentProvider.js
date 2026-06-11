@@ -95,6 +95,21 @@ function envFlag(env, key) {
   return String(env?.[key] || "").trim().toLowerCase() === "true";
 }
 
+function isStagingEwalletMockEnabled(env = process.env) {
+  if (envFlag(env, "LAJOO_DISABLE_STAGING_EWALLET_MOCK")) return false;
+  if (envFlag(env, "LAJOO_ENABLE_STAGING_EWALLET_MOCK")) return true;
+
+  const vercelEnv = String(env?.VERCEL_ENV || "").trim().toLowerCase();
+  if (vercelEnv === "production") return false;
+  if (vercelEnv === "preview" || vercelEnv === "development") return true;
+
+  return String(env?.NODE_ENV || "").trim().toLowerCase() !== "production";
+}
+
+function canUseStagingEwalletMock(method, env = process.env) {
+  return method === "ewallet" && isStagingEwalletMockEnabled(env);
+}
+
 function normalizeProvider(value) {
   const provider = String(value || "").trim().toLowerCase();
   if (!provider) return PAYMENT_PROVIDER_KEYS.MOCK;
@@ -360,14 +375,28 @@ const mockPaymentAdapter = {
     return buildConfigForProvider(PAYMENT_PROVIDER_KEYS.MOCK, env);
   },
   createPaymentIntent(payload, options = {}) {
-    return createProviderIntentFromConfig(payload, this.getConfig(options.env || process.env));
+    const env = options.env || process.env;
+    const method = normalizePaymentMethod(payload.paymentMethod);
+    const baseConfig = this.getConfig(env);
+    const stagingEwalletEnabled = !baseConfig.mockConfirmationEnabled && canUseStagingEwalletMock(method, env);
+    const config = stagingEwalletEnabled
+      ? {
+          ...baseConfig,
+          paymentAvailable: true,
+          mockConfirmationEnabled: true,
+          message: "E-wallet mock payment is enabled for staging testing only.",
+        }
+      : baseConfig;
+
+    return createProviderIntentFromConfig(payload, config);
   },
   confirmPaymentIntent(payment = {}, payload = {}, options = {}) {
     const env = options.env || process.env;
     const config = this.getConfig(env);
     const method = normalizePaymentMethod(payload.paymentMethod || payment.paymentMethod);
+    const stagingEwalletEnabled = !config.mockConfirmationEnabled && canUseStagingEwalletMock(method, env);
 
-    if (!config.mockConfirmationEnabled) {
+    if (!config.mockConfirmationEnabled && !stagingEwalletEnabled) {
       throw new PaymentProviderError("Mock payment confirmation is disabled.", {
         code: "MOCK_PAYMENT_DISABLED",
         status: 403,

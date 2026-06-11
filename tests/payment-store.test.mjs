@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
+  confirmPayment,
   PAYMENT_STATUS,
   createPayment,
   getPayment,
@@ -8,6 +9,7 @@ import {
   updatePaymentStatus,
 } from '../src/lib/paymentStore.js';
 import {
+  confirmProviderPaymentIntent,
   createProviderPaymentIntent,
 } from '../src/server/payment/paymentProvider.js';
 
@@ -121,4 +123,61 @@ test('payment status updates preserve locked financial breakdown', async () => {
   assert.equal(updated.insurance, 420);
   assert.equal(updated.tax, 80);
   assert.equal(updated.providerPaymentIntentId, 'mock_pi_test');
+});
+
+test('staging e-wallet mock can confirm a server-owned payment snapshot', async () => {
+  await createPayment({
+    paymentId: 'PAY-ewallet-mock-confirm-test',
+    sessionId: 'chat-ewallet-mock-confirm-test',
+    total: 1068.4,
+    insurer: 'Tokio Marine Insurance',
+    plate: 'JRT9289',
+    insurance: 800,
+    addons: 180,
+    tax: 88.4,
+    roadtax: 0,
+    status: PAYMENT_STATUS.REQUIRES_PROVIDER,
+  });
+
+  const snapshot = await getPayment('PAY-ewallet-mock-confirm-test');
+  const providerIntent = createProviderPaymentIntent({
+    paymentId: snapshot.paymentId,
+    provider: snapshot.provider,
+    total: snapshot.total,
+    insurer: snapshot.insurer,
+    plate: snapshot.plate,
+    insurance: snapshot.insurance,
+    addons: snapshot.addons,
+    tax: snapshot.tax,
+    roadtax: snapshot.roadtax,
+    paymentMethod: 'ewallet',
+    sessionId: snapshot.sessionId,
+  }, { env: { NODE_ENV: 'development' } });
+
+  assert.equal(providerIntent.paymentAvailable, true);
+  assert.equal(Boolean(providerIntent.clientConfirmationToken), true);
+
+  const pending = await updatePaymentStatus(snapshot.paymentId, PAYMENT_STATUS.PENDING, {
+    transactionRef: providerIntent.providerPaymentIntentId,
+    provider: providerIntent.provider,
+    providerMode: providerIntent.mode,
+    providerPaymentIntentId: providerIntent.providerPaymentIntentId,
+    clientConfirmationToken: providerIntent.clientConfirmationToken,
+    paymentAvailable: providerIntent.paymentAvailable,
+    paymentMethod: providerIntent.paymentMethod,
+    breakdown: providerIntent.breakdown,
+  });
+
+  const providerConfirmation = confirmProviderPaymentIntent(pending, {
+    paymentMethod: 'ewallet',
+    clientConfirmationToken: providerIntent.clientConfirmationToken,
+  }, { env: { NODE_ENV: 'development' } });
+
+  const confirmed = await confirmPayment(snapshot.paymentId, providerConfirmation.transactionRef);
+
+  assert.equal(providerConfirmation.isMock, true);
+  assert.equal(confirmed.status, PAYMENT_STATUS.CONFIRMED);
+  assert.equal(confirmed.paymentMethod, 'ewallet');
+  assert.equal(confirmed.total, 1068.4);
+  assert.equal(confirmed.transactionRef, providerConfirmation.transactionRef);
 });

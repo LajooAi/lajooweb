@@ -53,9 +53,13 @@ import {
 } from "@/server/ai/advisoryFallbacks";
 import {
   ADVISOR_INTENTS,
+  ADVISOR_TOPICS,
   buildIntentFromAdvisorIntent,
   detectAdvisorIntent,
 } from "@/server/ai/advisorIntent";
+import {
+  classifyAdvisorBrain,
+} from "@/server/ai/advisorBrain";
 import {
   appendKnowledgeSourceTraceToMetadata,
   logKnowledgeSourceTrace,
@@ -853,9 +857,10 @@ function buildSummaryCardData(state) {
     addOnsConfirmed: !!state.addOnsConfirmed,
     taxDescription: `SST (8%) + Stamp Duty (RM ${formatMoneyTwoDecimals(STAMP_DUTY_AMOUNT)})`,
     taxPrice: amounts.tax,
+    roadTaxConfirmed: !!selectedRoadTax,
     roadTaxSelected: !!selectedRoadTax && Number(selectedRoadTax?.price || 0) > 0,
     roadTaxDescription: selectedRoadTax
-      ? getRoadTaxDisplayName(selectedRoadTax)
+      ? getRoadTaxDisplayName(selectedRoadTax, 'Not selected')
       : 'Not selected yet',
     roadTaxPrice: amounts.roadTax,
     total: amounts.total,
@@ -1026,7 +1031,7 @@ function buildSummaryBox(state) {
 
   const roadTaxLine = state.selectedRoadTax && state.selectedRoadTax.price > 0
     ? `${getRoadTaxDisplayName(state.selectedRoadTax)} - RM ${formatMoneyTwoDecimals(state.selectedRoadTax.price)}`
-    : state.selectedRoadTax ? `${getRoadTaxDisplayName(state.selectedRoadTax)} - RM 0.00` : 'Not selected yet — RM 0.00';
+    : state.selectedRoadTax ? `${getRoadTaxDisplayName(state.selectedRoadTax, 'Not selected')} - RM 0.00` : 'Not selected yet — RM 0.00';
 
 return `<span style="font-size:1.12em;display:block">**✓ Renewal Summary** (${plateDisplay})</span>
 
@@ -1383,7 +1388,7 @@ ${buildPaymentStepBlock(buildSummaryBox(state), options.paymentLink)}`;
   if (state.step === FLOW_STEPS.OTP && hasCompletePersonalDetails(state.personalDetails)) {
     continuation = `${formatStepLine(5, 'Your Details')}
 
-Does everything look correct? If yes, I’ll send a fresh OTP and bring you back to payment with the updated total. If not, tell me what to change.`;
+Does everything look correct? If yes, I’ll send a fresh **OTP** and bring you back to payment with the updated total. If not, tell me what to change.`;
   } else if (state.step === FLOW_STEPS.PERSONAL_DETAILS) {
     continuation = `${formatStepLine(5, 'Your Details')}
 
@@ -1417,6 +1422,22 @@ Optional protection (add-ons):
 ${buildAddOnsMenu()}
 
 ${ADDONS_CLOSE_QUESTION}`;
+}
+
+function buildConfirmedAddOnReviewReply(state, options = {}) {
+  const topic = options.topic || null;
+  const reviewLine = topic === ADVISOR_TOPICS.BETTERMENT
+    ? `Sure — let’s review **Betterment waiver / zero-betterment** before the **OTP** step. It is option **8** in the add-ons list.`
+    : `Sure — let’s review the add-ons before the **OTP** step.`;
+  const preservationLine = hasCompletePersonalDetails(state.personalDetails)
+    ? `I’ve kept your insurer, road tax choice, and contact details for now. If you change add-ons, I’ll refresh the total before OTP/payment.`
+    : `I’ve kept your insurer and current choices for now. If you change add-ons, I’ll refresh the total before you continue.`;
+
+  return `${reviewLine}
+
+${preservationLine}
+
+${buildAddOnsStepBlock(buildSummaryBox(state))}`;
 }
 
 function findQuoteOptionByInsurerKey(state, insurerKey) {
@@ -1610,12 +1631,24 @@ ${buildPersonalDetailExampleList(missing)}`;
 
 Here are the details I captured:
 
-- **Email:** ${details.email}
-- **Phone:** ${details.phone}
-- **Address:** ${details.address}
+✓ **Email:** ${details.email}<br />
+✓ **Phone:** ${details.phone}<br />
+✓ **Address:** ${details.address}
 
 Does everything look **correct**?
-If yes, I will send the OTP again. If not, tell me what to change.`;
+If yes, I will send the **OTP** again. If not, tell me what to change.`;
+}
+
+function buildPersonalDetailCorrectionValueRequestReply(field) {
+  const fieldLabel = {
+    email: 'email address',
+    phone: 'phone number',
+    address: 'address',
+  }[field] || 'detail';
+
+  return `Sure — let’s fix the **${fieldLabel}** first.
+
+Please send the correct **${fieldLabel}**.`;
 }
 
 function buildInvalidPersonalDetailCorrectionReply(field) {
@@ -2091,15 +2124,15 @@ function getStepCloseRule(state, context = {}) {
       mentionRegex: /(email|phone|address|address)/i,
       prompt: missingDetails.length > 0
         ? `Please share your **${missingDetails.join('**, **')}** to continue.`
-        : 'Please confirm your details are correct so I can send the OTP.',
+        : 'Please confirm your details are correct so I can send the **OTP**.',
       alternatives: missingDetails.length > 0
         ? [
           `Please share your **${missingDetails.join('**, **')}** to continue.`,
           `I just need your **${missingDetails.join('**, **')}** to proceed.`,
         ]
         : [
-          'Please confirm your details are correct so I can send the OTP.',
-          'If these details look correct, reply **yes** and I’ll send the OTP.',
+          'Please confirm your details are correct so I can send the **OTP**.',
+          'If these details look correct, reply **yes** and I’ll send the **OTP**.',
         ],
     };
   }
@@ -3244,7 +3277,8 @@ export async function POST(request) {
     const stepBeforeMutation = state.step;
     const latestMessage = messages[messages.length - 1]?.content || "";
     const rawIntent = detectUserIntent(latestMessage, state);
-    const advisorIntent = detectAdvisorIntent(latestMessage, { state, intent: rawIntent });
+    const advisorBrain = classifyAdvisorBrain(latestMessage, { state, rawIntent });
+    const advisorIntent = detectAdvisorIntent(latestMessage, { state, intent: rawIntent, advisorBrain });
     const intent = buildIntentFromAdvisorIntent(rawIntent, advisorIntent);
     const promptVariant = resolvePromptVariant(state, messages);
     ensureExperimentState(state, promptVariant);
@@ -3268,6 +3302,10 @@ export async function POST(request) {
       advisorIntent: advisorIntent.intent,
       advisorTopic: advisorIntent.topic,
       advisorConfidence: advisorIntent.confidence,
+      advisorBrainDomain: advisorBrain.domain,
+      advisorBrainAct: advisorBrain.act,
+      advisorBrainPlaybook: advisorBrain.playbook,
+      advisorBrainTopic: advisorBrain.topic,
       hasPendingAction: !!state.pendingAction,
       promptVariant: state?.experiment?.promptVariant || 'A',
       experimentMode: state?.experiment?.experimentMode || 'off',
@@ -3323,7 +3361,13 @@ export async function POST(request) {
 
     if (intent.intent === USER_INTENTS.CHANGE_PERSONAL_DETAILS && !forcedAssistantResponse) {
       const { field, value, valid } = intent.data || {};
-      if (!valid || !field || !value) {
+      if (intent.data?.needsValue && field) {
+        state.setPendingAction({
+          type: 'collect_personal_detail_correction',
+          field,
+        });
+        forcedAssistantResponse = buildPersonalDetailCorrectionValueRequestReply(field);
+      } else if (!valid || !field || !value) {
         forcedAssistantResponse = buildInvalidPersonalDetailCorrectionReply(field);
       } else {
         const existing = (state.personalDetails && typeof state.personalDetails === 'object') ? state.personalDetails : {};
@@ -3348,7 +3392,7 @@ export async function POST(request) {
           policyStatus: null,
           lastError: null,
         };
-        state.pendingAction = null;
+        state.setPendingAction(null);
         state.step = state._determineStep();
         forcedAssistantResponse = buildPersonalDetailCorrectionReply(state, field);
       }
@@ -3483,6 +3527,20 @@ ${buildQuoteSelectionReply(state)}`;
       state.setPendingAction(null);
     }
 
+    if (
+      intent.data?.clearPendingAction &&
+      state.pendingAction?.type === intent.data.pendingActionType &&
+      !forcedAssistantResponse
+    ) {
+      const clearedType = state.pendingAction.type;
+      state.setPendingAction(null);
+      if (clearedType === 'confirm_addon_review') {
+        forcedAssistantResponse = `No problem — we’ll keep your add-ons unchanged for now.
+
+Does everything look **correct**? If yes, I will send the **OTP** now. If not, tell me what to change.`;
+      }
+    }
+
     if (intent.intent === USER_INTENTS.CHANGE_ADDONS) {
       const previousContext = {
         previousAddOns: Array.isArray(state.selectedAddOns) ? state.selectedAddOns.map((addOn) => ({ ...addOn })) : [],
@@ -3500,9 +3558,18 @@ ${buildQuoteSelectionReply(state)}`;
           state.otpVerified === true &&
           hasCompletePersonalDetails(state.personalDetails),
       };
+      const pendingAddOnReview = state.pendingAction?.type === 'confirm_addon_review'
+        ? state.pendingAction
+        : null;
       const addOnChange = resolveAddOnChangeFromText(latestMessage, state);
 
-      if (addOnChange?.requiresWindscreenCoverage) {
+      if (intent.data?.reason === 'confirmed_addon_review') {
+        state.setPendingAction(null);
+        state.step = FLOW_STEPS.ADDONS;
+        forcedAssistantResponse = buildConfirmedAddOnReviewReply(state, {
+          topic: intent.data?.reviewTopic || pendingAddOnReview?.topic || null,
+        });
+      } else if (addOnChange?.requiresWindscreenCoverage) {
         state.setPendingAction({
           type: 'collect_windscreen_coverage',
           addOnIds: addOnChange.addOnIds,
@@ -3759,6 +3826,7 @@ Please re-enter your **vehicle plate** and **owner identification number** to co
       turnPlan,
       intent,
       advisorIntent,
+      advisorBrain,
       vehicleProfile,
       promptVariant,
       buildSystemPrompt,
@@ -3884,8 +3952,10 @@ This summary box must appear in EVERY response from now on until payment is comp
     // ========================================================================
     let aiResponse = "";
     let functionCalls = [];
+    let aiResponseSource = 'openai';
 
     if (forcedAssistantResponse) {
+      aiResponseSource = 'forced';
       aiResponse = forcedAssistantResponse;
     } else {
       try {
@@ -3954,6 +4024,7 @@ This summary box must appear in EVERY response from now on until payment is comp
           '[ai-advisory-fallback] Used deterministic advisory fallback after OpenAI capacity error.',
           openAiError?.code || openAiError?.message
         );
+        aiResponseSource = 'advisory_fallback';
         aiResponse = advisoryFallbackResponse;
       }
     }
@@ -4037,6 +4108,22 @@ This summary box must appear in EVERY response from now on until payment is comp
     aiResponse = normalizeStructuredRecommendationParagraphs(aiResponse);
     aiResponse = normalizePriceFormatSpacing(aiResponse);
 
+    console.log('[AI_RESPONSE_TRACE]', JSON.stringify({
+      sessionId,
+      step: state.step,
+      responseSource: aiResponseSource,
+      forced: !!forcedAssistantResponse,
+      intent: intent.intent,
+      rawIntent: rawIntent.intent,
+      advisorIntent: advisorIntent.intent,
+      advisorTopic: advisorIntent.topic,
+      advisorBrainDomain: advisorBrain.domain,
+      advisorBrainAct: advisorBrain.act,
+      advisorBrainPlaybook: advisorBrain.playbook,
+      advisorBrainTopic: advisorBrain.topic,
+      timestamp: new Date().toISOString(),
+    }));
+
     updateLastRecommendedInsurerMemory(state, aiResponse);
     const summaryCard = state.selectedQuote && SUMMARY_SECTION_REGEX.test(aiResponse)
       ? buildSummaryCardData(state)
@@ -4086,6 +4173,13 @@ This summary box must appear in EVERY response from now on until payment is comp
         step: state.step,
         conversationMode: conversationDecision.mode,
         turnPlan: turnPlan.responsePattern,
+        responseSource: aiResponseSource,
+        advisorBrain: {
+          domain: advisorBrain.domain,
+          act: advisorBrain.act,
+          playbook: advisorBrain.playbook,
+          topic: advisorBrain.topic,
+        },
         promptVariant: state?.experiment?.promptVariant || 'A',
       }
     );

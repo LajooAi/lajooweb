@@ -3,6 +3,11 @@ import {
   AVAILABLE_INSURERS,
   getInsurerKeysFromText,
 } from '../../lib/insurerCatalog.js';
+import {
+  ADVISOR_BRAIN_ACTS,
+  ADVISOR_BRAIN_DOMAINS,
+  classifyAdvisorBrain,
+} from './advisorBrain.js';
 
 export const ADVISOR_INTENTS = {
   NONE: 'none',
@@ -11,6 +16,7 @@ export const ADVISOR_INTENTS = {
   HUMAN_HANDOFF: 'human_handoff',
   REJECT_RECOMMENDATION: 'reject_recommendation',
   QUOTE_FILTER_PREFERENCE: 'quote_filter_preference',
+  QUOTE_EXPLORATION: 'quote_exploration',
   QUOTE_OBJECTION: 'quote_objection',
   QUOTE_PRICE_EXPLANATION: 'quote_price_explanation',
   DELEGATE_DECISION: 'delegate_decision',
@@ -31,6 +37,7 @@ export const ADVISOR_TOPICS = {
   BETTERMENT: 'betterment_waiver',
   WINDSCREEN_AMOUNT: 'windscreen_amount',
   WINDSCREEN: 'windscreen',
+  DAILY_DRIVING: 'daily_driving',
   FLOOD: 'flood',
   E_HAILING: 'ehailing',
   NCD_RELIEF: 'ncd_relief',
@@ -77,6 +84,7 @@ function advisorResult(intent, options = {}) {
     confidence: Number(options.confidence || 0.85),
     topic: options.topic || null,
     entities: options.entities || {},
+    brain: options.brain || null,
     shouldAnswerFirst: options.shouldAnswerFirst !== false,
     shouldPreventFlowAdvance: !!options.shouldPreventFlowAdvance,
     reason: options.reason || intent,
@@ -153,6 +161,9 @@ function detectAddOnTopic(text) {
   }
   if (/\bwindscreen|wind screen|glass\b/i.test(text)) {
     return ADVISOR_TOPICS.WINDSCREEN;
+  }
+  if (/\b(?:drive|driving|commute|use)\b.{0,45}\b(?:daily|every\s*day|everyday|a lot|alot|often|frequent|frequently|long[-\s]?distance|highway|mileage)\b|\b(?:daily|every\s*day|everyday|a lot|alot|often|frequent|frequently|long[-\s]?distance|highway|mileage)\b.{0,45}\b(?:drive|driving|commute|use)\b/i.test(text)) {
+    return ADVISOR_TOPICS.DAILY_DRIVING;
   }
   if (/\bflood|special perils?|natural disaster|landslide|landslip|storm|basement|low[-\s]?lying|klang|shah alam|parking basement|banjir\b/i.test(text)) {
     return ADVISOR_TOPICS.FLOOD;
@@ -264,111 +275,127 @@ export function buildIntentFromAdvisorIntent(rawIntent, advisorIntent) {
       advisorIntent: advisorIntent.intent,
       advisorTopic: advisorIntent.topic || null,
       advisorEntities: advisorIntent.entities || {},
+      advisorBrain: advisorIntent.brain || null,
       blockedOriginalIntent: rawIntent?.intent || null,
     },
   };
 }
 
-export function detectAdvisorIntent(message, { state = {}, intent = null } = {}) {
+export function detectAdvisorIntent(message, { state = {}, intent = null, advisorBrain = null } = {}) {
   const text = normalizeText(message);
   if (!text) return noneResult();
 
   const step = state?.step || null;
+  const brain = advisorBrain || classifyAdvisorBrain(message, { state, rawIntent: intent });
+  const withBrain = (result) => ({ ...result, brain });
 
   if (/\b(human|agent|real person|person|staff|customer service|call me|whatsapp me|speak to someone|talk to someone|live chat)\b/i.test(text)) {
-    return advisorResult(ADVISOR_INTENTS.HUMAN_HANDOFF, {
+    return withBrain(advisorResult(ADVISOR_INTENTS.HUMAN_HANDOFF, {
       confidence: 0.95,
       shouldPreventFlowAdvance: true,
       reason: 'user_requested_human_handoff',
-    });
+    }));
   }
 
   if (/\b(whatsapp|wa)\b.{0,60}\b(policy|document|docs|receipt|cover note)\b|\b(policy|document|docs|receipt|cover note)\b.{0,60}\b(whatsapp|wa)\b/i.test(text)) {
-    return advisorResult(ADVISOR_INTENTS.DOCUMENT_DELIVERY, {
+    return withBrain(advisorResult(ADVISOR_INTENTS.DOCUMENT_DELIVERY, {
       confidence: 0.9,
       topic: ADVISOR_TOPICS.WHATSAPP_DOCUMENTS,
       shouldPreventFlowAdvance: true,
       reason: 'user_asked_for_whatsapp_document_delivery',
-    });
+    }));
   }
 
   if (/\b(?:old|previous|last)\s+(?:policy\s+)?address\b|\baddress\s+from\s+(?:old|previous|last)\s+policy\b/i.test(text)) {
-    return advisorResult(ADVISOR_INTENTS.PRIVACY_CONCERN, {
+    return withBrain(advisorResult(ADVISOR_INTENTS.PRIVACY_CONCERN, {
       confidence: 0.88,
       topic: ADVISOR_TOPICS.ADDRESS_PRIVACY,
       shouldPreventFlowAdvance: true,
       reason: 'user_asked_to_use_previous_policy_address',
-    });
+    }));
   }
 
   if (isPrivacyConcern(text)) {
-    return advisorResult(ADVISOR_INTENTS.PRIVACY_CONCERN, {
+    return withBrain(advisorResult(ADVISOR_INTENTS.PRIVACY_CONCERN, {
       confidence: 0.94,
       topic: privacyTopic(text),
       shouldPreventFlowAdvance: true,
       reason: 'user_has_privacy_or_data_collection_concern',
-    });
+    }));
   }
 
   if (/\b(sponsor|sponsored|commission|paid|pay you|kickback|biased|bias|pushing|promote|advertis(?:e|ing)|partner ranking|hidden ranking)\b/i.test(text)) {
-    return advisorResult(ADVISOR_INTENTS.COMMERCIAL_BIAS_CHALLENGE, {
+    return withBrain(advisorResult(ADVISOR_INTENTS.COMMERCIAL_BIAS_CHALLENGE, {
       confidence: 0.95,
       topic: ADVISOR_TOPICS.COMMERCIAL_BIAS,
       shouldPreventFlowAdvance: true,
       reason: 'user_challenged_recommendation_fairness',
-    });
+    }));
   }
 
   if (detectsConventionalOnlyPreference(text)) {
-    return advisorResult(ADVISOR_INTENTS.QUOTE_FILTER_PREFERENCE, {
+    return withBrain(advisorResult(ADVISOR_INTENTS.QUOTE_FILTER_PREFERENCE, {
       confidence: 0.93,
       entities: { excludedInsurerKeys: ['takaful'], conventionalOnly: true },
       shouldPreventFlowAdvance: true,
       reason: 'user_requested_conventional_only_quote_filter',
-    });
+    }));
   }
 
   const rejectedInsurers = detectsInsurerRejection(text);
   if (rejectedInsurers) {
-    return advisorResult(ADVISOR_INTENTS.REJECT_RECOMMENDATION, {
+    return withBrain(advisorResult(ADVISOR_INTENTS.REJECT_RECOMMENDATION, {
       confidence: 0.94,
       entities: { excludedInsurerKeys: rejectedInsurers },
       shouldPreventFlowAdvance: true,
       reason: 'user_rejected_specific_insurer',
-    });
+    }));
+  }
+
+  if (
+    step === FLOW_STEPS.QUOTES &&
+    brain.domain === ADVISOR_BRAIN_DOMAINS.QUOTES &&
+    brain.act === ADVISOR_BRAIN_ACTS.EXPLORATION
+  ) {
+    return withBrain(advisorResult(ADVISOR_INTENTS.QUOTE_EXPLORATION, {
+      confidence: 0.9,
+      entities: { insurerKeys: getInsurerKeysFromText(text) },
+      shouldPreventFlowAdvance: true,
+      reason: 'user_is_exploring_quote_not_selecting',
+    }));
   }
 
   if (
     step === FLOW_STEPS.QUOTES &&
     /\b(my dad|my father|my wife|my husband|friend|mechanic|workshop|someone)\b.{0,80}\b(says?|said|told)\b.{0,80}\b(better|good|bad|avoid|trust)\b/i.test(text)
   ) {
-    return advisorResult(ADVISOR_INTENTS.QUOTE_OBJECTION, {
+    return withBrain(advisorResult(ADVISOR_INTENTS.QUOTE_OBJECTION, {
       confidence: 0.87,
       entities: { insurerKeys: getInsurerKeysFromText(text) },
       shouldPreventFlowAdvance: true,
       reason: 'user_has_social_or_trust_objection_about_quote',
-    });
+    }));
   }
 
   if (step === FLOW_STEPS.QUOTES && isDirectInsurerDiscountObjection(text)) {
-    return advisorResult(ADVISOR_INTENTS.QUOTE_OBJECTION, {
+    return withBrain(advisorResult(ADVISOR_INTENTS.QUOTE_OBJECTION, {
       confidence: 0.92,
       topic: ADVISOR_TOPICS.DIRECT_INSURER_DISCOUNT,
       shouldPreventFlowAdvance: true,
       reason: 'user_asked_why_use_lajoo_if_direct_insurer_discount_exists',
-    });
+    }));
   }
 
   if (step === FLOW_STEPS.QUOTES && isQuotePriceGapQuestion(text)) {
-    return advisorResult(ADVISOR_INTENTS.QUOTE_PRICE_EXPLANATION, {
+    return withBrain(advisorResult(ADVISOR_INTENTS.QUOTE_PRICE_EXPLANATION, {
       confidence: 0.9,
       topic: ADVISOR_TOPICS.QUOTE_PRICE_GAP,
       shouldPreventFlowAdvance: true,
       reason: 'user_asked_why_quote_prices_differ',
-    });
+    }));
   }
 
-  const addonTopic = detectAddOnTopic(text);
+  const addonTopic = detectAddOnTopic(text) || brain.topic;
   const explicitAddOnSelection = intent?.intent === USER_INTENTS.SELECT_ADDON &&
     !hasQuestionShape(text) &&
     !/\b(explain|what is|what's|why|need|should|recommend|worth|important|necessary|how does|meaning)\b/i.test(text);
@@ -377,38 +404,38 @@ export function detectAdvisorIntent(message, { state = {}, intent = null } = {})
     !explicitAddOnSelection &&
     (step === FLOW_STEPS.ADDONS || hasQuestionShape(text) || isAddOnAdviceRequest(text) || [ADVISOR_TOPICS.LOWEST_TOTAL, ADVISOR_TOPICS.ADDON_SKIP_DECISION].includes(addonTopic))
   ) {
-    const isRiskAdvice = [ADVISOR_TOPICS.FLOOD, ADVISOR_TOPICS.E_HAILING, ADVISOR_TOPICS.BETTERMENT, ADVISOR_TOPICS.LOWEST_TOTAL, ADVISOR_TOPICS.ADDON_SKIP_DECISION].includes(addonTopic);
-    return advisorResult(isRiskAdvice ? ADVISOR_INTENTS.COVERAGE_RISK_ADVICE : ADVISOR_INTENTS.ADDON_EXPLANATION, {
+    const isRiskAdvice = [ADVISOR_TOPICS.DAILY_DRIVING, ADVISOR_TOPICS.FLOOD, ADVISOR_TOPICS.E_HAILING, ADVISOR_TOPICS.BETTERMENT, ADVISOR_TOPICS.LOWEST_TOTAL, ADVISOR_TOPICS.ADDON_SKIP_DECISION].includes(addonTopic);
+    return withBrain(advisorResult(isRiskAdvice ? ADVISOR_INTENTS.COVERAGE_RISK_ADVICE : ADVISOR_INTENTS.ADDON_EXPLANATION, {
       confidence: 0.9,
       topic: addonTopic,
       shouldPreventFlowAdvance: true,
       reason: `user_needs_addon_advice_${addonTopic}`,
-    });
+    }));
   }
 
   if (step === FLOW_STEPS.ADDONS && isAddOnAdviceRequest(text)) {
-    return advisorResult(ADVISOR_INTENTS.COVERAGE_RISK_ADVICE, {
+    return withBrain(advisorResult(ADVISOR_INTENTS.COVERAGE_RISK_ADVICE, {
       confidence: 0.9,
       topic: 'general_addon_recommendation',
       shouldPreventFlowAdvance: true,
       reason: 'user_asked_which_addons_are_needed',
-    });
+    }));
   }
 
   if (isDelegateDecision(text)) {
-    return advisorResult(ADVISOR_INTENTS.DELEGATE_DECISION, {
+    return withBrain(advisorResult(ADVISOR_INTENTS.DELEGATE_DECISION, {
       confidence: 0.9,
       shouldPreventFlowAdvance: FLOW_ADVANCE_INTENTS.has(intent?.intent),
       reason: 'user_delegated_decision_to_lajoo',
-    });
+    }));
   }
 
   if (/\b(already|done|settled|renewed)\b.{0,40}\b(road\s*tax|roadtax)\b|\b(road\s*tax|roadtax)\b.{0,40}\b(already|done|settled|renewed)\b/i.test(text)) {
-    return advisorResult(ADVISOR_INTENTS.ROADTAX_ALREADY_RENEWED, {
+    return withBrain(advisorResult(ADVISOR_INTENTS.ROADTAX_ALREADY_RENEWED, {
       confidence: 0.93,
       shouldPreventFlowAdvance: true,
       reason: 'user_says_roadtax_already_renewed',
-    });
+    }));
   }
 
   const asksOnlyDigitalRoadTax =
@@ -423,33 +450,33 @@ export function detectAdvisorIntent(message, { state = {}, intent = null } = {})
     asksSixMonthRoadTax ||
     /\b(police|jpj|digital enough|digital roadtax enough|why need road\s*tax|why roadtax|insurance enough|road\s*tax.*need|need road\s*tax)\b/i.test(text)
   ) {
-    return advisorResult(ADVISOR_INTENTS.ROADTAX_LEGALITY, {
+    return withBrain(advisorResult(ADVISOR_INTENTS.ROADTAX_LEGALITY, {
       confidence: asksOnlyDigitalRoadTax ? 0.93 : 0.88,
       topic: (asksOnlyDigitalRoadTax || /police|digital enough/i.test(text)) ? ADVISOR_TOPICS.DIGITAL_ROADTAX : ADVISOR_TOPICS.ROADTAX_NEEDED,
       entities: { asksSixMonthRoadTax, asksOnlyDigitalRoadTax },
       shouldPreventFlowAdvance: true,
       reason: 'user_asked_roadtax_legality_or_practicality',
-    });
+    }));
   }
 
   if (isPaymentConcern(text)) {
-    return advisorResult(ADVISOR_INTENTS.PAYMENT_CONCERN, {
+    return withBrain(advisorResult(ADVISOR_INTENTS.PAYMENT_CONCERN, {
       confidence: 0.9,
       topic: paymentTopic(text),
       shouldPreventFlowAdvance: true,
       reason: 'user_has_payment_or_issuance_question',
-    });
+    }));
   }
 
   if (detectsConfusion(text)) {
-    return advisorResult(ADVISOR_INTENTS.CONFUSED_USER, {
+    return withBrain(advisorResult(ADVISOR_INTENTS.CONFUSED_USER, {
       confidence: 0.82,
       shouldPreventFlowAdvance: true,
       reason: 'user_is_confused_or_lost',
-    });
+    }));
   }
 
-  return noneResult();
+  return withBrain(noneResult());
 }
 
 export default detectAdvisorIntent;

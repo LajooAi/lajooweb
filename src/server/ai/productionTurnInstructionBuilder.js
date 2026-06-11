@@ -8,6 +8,7 @@ import {
 import {
   buildAdvisorResponsePolicyInstruction,
 } from './responsePolicy.js';
+import { buildAdvisorBrainInstruction } from './advisorBrain.js';
 import { buildAdvisorStrategyInstruction } from './advisorStrategies.js';
 import {
   buildInsuranceConceptInstruction,
@@ -97,6 +98,8 @@ export async function buildProductionTurnInstructionMessages({
   intent,
   decision,
   turnPlan,
+  advisorIntent = null,
+  advisorBrain = null,
   vehicleProfile = null,
   questionKnowledgeMatches = [],
   buildStepContractInstruction = null,
@@ -147,6 +150,16 @@ export async function buildProductionTurnInstructionMessages({
       turnPlan,
       latestMessage,
     }),
+  });
+
+  addTurnInstruction(turnInstructionStack, {
+    id: 'advisor-brain-v2',
+    category: 'advisor',
+    priority: TURN_INSTRUCTION_PRIORITY.ADVISOR,
+    content: buildAdvisorBrainInstruction(
+      advisorBrain || advisorIntent?.brain || intent?.data?.advisorBrain,
+      state
+    ),
   });
 
   addTurnInstruction(turnInstructionStack, {

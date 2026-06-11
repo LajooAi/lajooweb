@@ -114,7 +114,7 @@ function asksBetterment(text) {
 function asksQuoteRecommendation(text) {
   return textMatches(
     text,
-    /recommend|advice|advise|which (one|should)|which is better|what(?:'s| is) better|better one|best one|what.*(suggest|think|pick)|help me (choose|decide|pick)|your (pick|choice|suggestion|advice)/i
+    /recommend|advice|advise|which (one|should)|which (?:one )?(?:is )?(?:good|better|best)|which insurer.{0,40}good|what(?:'s| is) (?:good|better|best)|good one|better one|best one|what.*(suggest|think|pick)|help me (choose|decide|pick)|your (pick|choice|suggestion|advice)/i
   );
 }
 
@@ -473,6 +473,11 @@ function formatAdvisorIntentInstruction(turnPlan) {
     [ADVISOR_INTENTS.QUOTE_FILTER_PREFERENCE]: [
       'Respect the filter preference, such as conventional-only or excluding takaful.',
       'Recommend from matching available insurers only and ask which to proceed with.',
+    ],
+    [ADVISOR_INTENTS.QUOTE_EXPLORATION]: [
+      'The user is exploring one insurer, not selecting it yet.',
+      'Explain that insurer using current quote data, compare it against the current recommendation when available, and ask whether to keep the recommendation, choose that insurer, or compare all.',
+      'Do not move to add-ons or say "Great choice" unless the user clearly confirms the insurer.',
     ],
     [ADVISOR_INTENTS.QUOTE_OBJECTION]: [
       'Treat advice from family/workshop/friends as a trust signal, not noise.',

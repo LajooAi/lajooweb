@@ -1811,6 +1811,10 @@ body.home-route .mobile-header {
   font-weight: 400;
 }
 
+.assistant-summary-line .assistant-summary-not-selected.is-muted {
+  color: #6b7280;
+}
+
 .assistant-summary-divider-total {
   margin: 10px 0 8px;
 }
@@ -2166,6 +2170,12 @@ body.home-route .mobile-header {
 .assistant-roadtax-option.is-active {
   border-color: #0062ff;
   background: #0062ff;
+  color: #ffffff;
+}
+
+.assistant-roadtax-option.is-active .assistant-roadtax-title,
+.assistant-roadtax-option.is-active .assistant-roadtax-description,
+.assistant-roadtax-option.is-active .assistant-roadtax-copy {
   color: #ffffff;
 }
 

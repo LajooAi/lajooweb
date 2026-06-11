@@ -137,6 +137,11 @@ function latestUserMessageFromContext(context = {}) {
   return String(context.latestMessage || context.message || latest || '');
 }
 
+function isSoftGoodRecommendationRequest(context = {}) {
+  const latestUserMessage = latestUserMessageFromContext(context);
+  return /\b(which (?:one )?(?:is )?good|which good|which insurer.{0,40}good|what(?:'s| is) good|good one)\b/i.test(latestUserMessage);
+}
+
 function isDirectAdviceClose({ context = {}, response = '' } = {}) {
   const latestUserMessage = latestUserMessageFromContext(context);
   return (
@@ -175,7 +180,7 @@ export function buildQuoteStepClosePrompt({ state = {}, context = {}, response =
   const cheapestLabel = formatQuoteChoiceLabel(cheapest);
 
   if (recommendedName) {
-    if (isDirectAdviceClose({ context, response })) {
+    if (isDirectAdviceClose({ context, response }) || isSoftGoodRecommendationRequest(context)) {
       return `Want me to select **${recommendedLabel || recommendedName}**, or compare with another insurer?`;
     }
 

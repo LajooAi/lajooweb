@@ -185,9 +185,11 @@ test('planner owns quote recommendation guidance', () => {
   const turnPlan = planTurn('which insurer do you recommend?', state);
   const instruction = buildTurnQuestionInstruction(turnPlan, { state });
   const adviceTurnPlan = planTurn('what is your advice?', state);
+  const goodTurnPlan = planTurn('which is good', state);
 
   assert.equal(turnPlan.questionGuidance, TURN_QUESTION_GUIDANCE.QUOTE_RECOMMENDATION);
   assert.equal(adviceTurnPlan.questionGuidance, TURN_QUESTION_GUIDANCE.QUOTE_RECOMMENDATION);
+  assert.equal(goodTurnPlan.questionGuidance, TURN_QUESTION_GUIDANCE.QUOTE_RECOMMENDATION);
   assert.match(instruction, /Pick ONE insurer confidently/i);
   assert.match(instruction, /Current lowest quote/i);
 });

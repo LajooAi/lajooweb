@@ -615,6 +615,21 @@ test('otp step detects personal detail corrections and invalid email', () => {
   const address = detectUserIntent('no, my address is 3a, elitis maya, valencia, sungai buloh, 47000 selangor', state);
   const naturalPhone = detectUserIntent('actually my phone is 0198887777', state);
   const naturalEmail = detectUserIntent('sorry email is ali@example.com', state);
+  const phoneWrong = detectUserIntent('phone number is wrong', {
+    ...state,
+    personalDetails: {
+      email: 'ali@example.com',
+      phone: '0123456789',
+      address: 'No 1 Jalan Test, 47000 Shah Alam',
+    },
+  });
+  const pendingPhone = detectUserIntent('0126420803', {
+    ...state,
+    pendingAction: {
+      type: 'collect_personal_detail_correction',
+      field: 'phone',
+    },
+  });
 
   assert.equal(phone.intent, 'change_personal_details');
   assert.equal(phone.data.field, 'phone');
@@ -631,6 +646,13 @@ test('otp step detects personal detail corrections and invalid email', () => {
   assert.equal(naturalEmail.intent, 'change_personal_details');
   assert.equal(naturalEmail.data.field, 'email');
   assert.equal(naturalEmail.data.value, 'ali@example.com');
+  assert.equal(phoneWrong.intent, 'change_personal_details');
+  assert.equal(phoneWrong.data.field, 'phone');
+  assert.equal(phoneWrong.data.needsValue, true);
+  assert.equal(pendingPhone.intent, 'change_personal_details');
+  assert.equal(pendingPhone.data.field, 'phone');
+  assert.equal(pendingPhone.data.value, '0126420803');
+  assert.equal(pendingPhone.data.pendingCorrection, true);
 });
 
 test('quotes step should treat "which is better" as ask_question', () => {
@@ -641,6 +663,30 @@ test('quotes step should treat "which is better" as ask_question', () => {
   };
   const intent = detectUserIntent('which is better', state);
   assert.equal(intent.intent, 'ask_question');
+});
+
+test('otp step confirms pending add-on review before sending OTP', () => {
+  const state = {
+    step: FLOW_STEPS.OTP,
+    selectedQuote: { insurer: 'Tokio Marine Insurance' },
+    selectedRoadTax: { name: 'No Road Tax', price: 0 },
+    personalDetails: {
+      email: 'ali@example.com',
+      phone: '0123456789',
+      address: 'No 1 Jalan Test, 47000 Shah Alam',
+    },
+    pendingAction: {
+      type: 'confirm_addon_review',
+      topic: 'betterment_waiver',
+      previousStep: FLOW_STEPS.OTP,
+    },
+  };
+
+  const intent = detectUserIntent('yes sure', state);
+
+  assert.equal(intent.intent, 'change_addons');
+  assert.equal(intent.data.reason, 'confirmed_addon_review');
+  assert.equal(intent.data.reviewTopic, 'betterment_waiver');
 });
 
 test('quotes step should treat exploratory insurer mentions as ask_question', () => {

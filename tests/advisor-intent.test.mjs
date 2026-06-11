@@ -12,6 +12,11 @@ import {
   buildIntentFromAdvisorIntent,
   detectAdvisorIntent,
 } from '../src/server/ai/advisorIntent.js';
+import {
+  ADVISOR_BRAIN_ACTS,
+  ADVISOR_BRAIN_DOMAINS,
+  ADVISOR_PLAYBOOKS,
+} from '../src/server/ai/advisorBrain.js';
 
 function stateAt(step) {
   const state = new ConversationState();
@@ -65,6 +70,26 @@ test('advisor intent detects quote price-gap questions', () => {
   assert.equal(advisorIntent.intent, ADVISOR_INTENTS.QUOTE_PRICE_EXPLANATION);
   assert.equal(advisorIntent.topic, ADVISOR_TOPICS.QUOTE_PRICE_GAP);
   assert.equal(advisorIntent.shouldPreventFlowAdvance, true);
+});
+
+test('advisor brain separates quote exploration from quote selection', () => {
+  const state = stateAt(FLOW_STEPS.QUOTES);
+  state.lastRecommendedInsurer = 'tokio';
+  const rawIntent = detectUserIntent('can we have a look at lonpac as well', state);
+  const advisorIntent = detectAdvisorIntent('can we have a look at lonpac as well', {
+    state,
+    intent: rawIntent,
+  });
+  const effectiveIntent = buildIntentFromAdvisorIntent(rawIntent, advisorIntent);
+
+  assert.equal(rawIntent.intent, USER_INTENTS.ASK_QUESTION);
+  assert.equal(advisorIntent.intent, ADVISOR_INTENTS.QUOTE_EXPLORATION);
+  assert.deepEqual(advisorIntent.entities.insurerKeys, ['lonpac']);
+  assert.equal(advisorIntent.brain.domain, ADVISOR_BRAIN_DOMAINS.QUOTES);
+  assert.equal(advisorIntent.brain.act, ADVISOR_BRAIN_ACTS.EXPLORATION);
+  assert.equal(advisorIntent.brain.playbook, ADVISOR_PLAYBOOKS.EXPLORE_OPTION);
+  assert.equal(effectiveIntent.intent, USER_INTENTS.ASK_QUESTION);
+  assert.equal(effectiveIntent.data.advisorBrain.act, ADVISOR_BRAIN_ACTS.EXPLORATION);
 });
 
 test('advisor intent detects direct-insurer discount objections without recommendation routing', () => {
@@ -137,6 +162,10 @@ test('advisor intent detects concrete add-on advisor topics', () => {
     state,
     intent: { intent: USER_INTENTS.ASK_QUESTION, confidence: 0.9 },
   });
+  const dailyDriving = detectAdvisorIntent('i drive my car a lot daily', {
+    state,
+    intent: { intent: USER_INTENTS.OTHER, confidence: 0.5 },
+  });
 
   assert.equal(allDrivers.intent, ADVISOR_INTENTS.ADDON_EXPLANATION);
   assert.equal(allDrivers.topic, ADVISOR_TOPICS.ALL_DRIVERS);
@@ -156,6 +185,8 @@ test('advisor intent detects concrete add-on advisor topics', () => {
   assert.equal(shouldSkip.topic, ADVISOR_TOPICS.ADDON_SKIP_DECISION);
   assert.equal(necessary.intent, ADVISOR_INTENTS.COVERAGE_RISK_ADVICE);
   assert.equal(necessary.topic, ADVISOR_TOPICS.ADDON_SKIP_DECISION);
+  assert.equal(dailyDriving.intent, ADVISOR_INTENTS.COVERAGE_RISK_ADVICE);
+  assert.equal(dailyDriving.topic, ADVISOR_TOPICS.DAILY_DRIVING);
   assert.equal(landslide.topic, ADVISOR_TOPICS.FLOOD);
 });
 

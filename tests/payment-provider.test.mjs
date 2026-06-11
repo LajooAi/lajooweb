@@ -88,6 +88,53 @@ test('mock confirmation stays disabled without explicit flag', () => {
   );
 });
 
+test('staging mock allows e-wallet success while other methods remain blocked', () => {
+  const env = { NODE_ENV: 'development' };
+  const ewalletIntent = createProviderPaymentIntent({
+    ...basePayload,
+    paymentMethod: 'ewallet',
+  }, { env });
+
+  assert.equal(ewalletIntent.status, PAYMENT_PROVIDER_STATUSES.PENDING);
+  assert.equal(ewalletIntent.paymentAvailable, true);
+  assert.equal(Boolean(ewalletIntent.clientConfirmationToken), true);
+  assert.match(ewalletIntent.message, /E-wallet mock payment/i);
+
+  const confirmation = confirmProviderPaymentIntent(ewalletIntent, {
+    paymentMethod: 'ewallet',
+    clientConfirmationToken: ewalletIntent.clientConfirmationToken,
+  }, { env });
+
+  assert.equal(confirmation.status, PAYMENT_PROVIDER_STATUSES.SUCCEEDED);
+  assert.equal(confirmation.paymentMethod, 'ewallet');
+  assert.equal(confirmation.isMock, true);
+
+  const fpxIntent = createProviderPaymentIntent(basePayload, { env });
+  assert.equal(fpxIntent.status, PAYMENT_PROVIDER_STATUSES.REQUIRES_PROVIDER);
+  assert.equal(fpxIntent.paymentAvailable, false);
+  assert.equal(fpxIntent.clientConfirmationToken, null);
+
+  assert.throws(
+    () => confirmProviderPaymentIntent(fpxIntent, {
+      paymentMethod: 'fpx',
+      clientConfirmationToken: 'anything',
+    }, { env }),
+    (error) => error instanceof PaymentProviderError && error.code === 'MOCK_PAYMENT_DISABLED'
+  );
+});
+
+test('staging e-wallet mock is disabled in production by default', () => {
+  const env = { NODE_ENV: 'production', VERCEL_ENV: 'production' };
+  const intent = createProviderPaymentIntent({
+    ...basePayload,
+    paymentMethod: 'ewallet',
+  }, { env });
+
+  assert.equal(intent.status, PAYMENT_PROVIDER_STATUSES.REQUIRES_PROVIDER);
+  assert.equal(intent.paymentAvailable, false);
+  assert.equal(intent.clientConfirmationToken, null);
+});
+
 test('provider-specific external shell remains disabled but adapter contract is stable', () => {
   const env = { LAJOO_PAYMENT_PROVIDER: 'billplz' };
   const config = getPaymentProviderConfig(env);

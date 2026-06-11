@@ -1213,6 +1213,45 @@ function detectPersonalDetailCorrectionIntent(msg, currentState) {
   }
 
   const text = String(msg || '').trim();
+  const normalizeField = (value) => {
+    const fieldText = String(value || '').toLowerCase();
+    if (/email|e-mail/.test(fieldText)) return 'email';
+    if (/phone|mobile|contact/.test(fieldText)) return 'phone';
+    if (/address|addr/.test(fieldText)) return 'address';
+    return null;
+  };
+  const extractValueForField = (field, rawValue) => {
+    const valueText = String(rawValue || '').trim();
+    const extracted = extractPersonalInfo(valueText);
+    let value = extracted[field] || null;
+    let valid = true;
+
+    if (field === 'email') {
+      const looksLikeEmailAttempt = /@|\bat\b|\bdot\b|\.[a-z]{2,}/i.test(valueText);
+      if (!value && looksLikeEmailAttempt) valid = false;
+    } else if (field === 'phone') {
+      const digitCount = valueText.replace(/\D/g, '').length;
+      if (!value && digitCount >= 7) valid = false;
+    } else if (field === 'address') {
+      value = valueText.length >= 8 ? valueText : null;
+      if (!value) valid = false;
+    }
+
+    return { value, valid };
+  };
+
+  if (currentState.pendingAction?.type === 'collect_personal_detail_correction') {
+    const field = normalizeField(currentState.pendingAction.field);
+    if (field) {
+      const { value, valid } = extractValueForField(field, text);
+      return {
+        intent: USER_INTENTS.CHANGE_PERSONAL_DETAILS,
+        confidence: 0.96,
+        data: { field, value, rawValue: text, valid, pendingCorrection: true },
+      };
+    }
+  }
+
   const explicitCorrectionMatch = text.match(/\b(?:change|update|correct|replace|edit)\s+(email|e-mail|phone|mobile|contact|address|addr)\s*(?:to|as|:)?\s+(.+)$/i);
   const existingDetails = currentState?.personalDetails && typeof currentState.personalDetails === 'object'
     ? currentState.personalDetails
@@ -1230,30 +1269,30 @@ function detectPersonalDetailCorrectionIntent(msg, currentState) {
   const naturalCorrectionMatch = (hasExistingDetails || isLateDetailsStep)
     ? text.match(/^(?:no|nope|nah|sorry|wait|actually|correction|wrong|not\s+that|i\s+mean|i\s+meant)?[\s,.-]*(?:my|the)?\s*(email|e-mail|phone|mobile|contact|address|addr)\s*(?:should\s+be|is\s+actually|is|=|:)\s+(.+)$/i)
     : null;
+  const fieldFirstWrongMatch = (hasExistingDetails || isLateDetailsStep)
+    ? text.match(/\b(email|e-mail|phone(?:\s+number)?|mobile|contact|address|addr)\b(?:\s+number)?[^.!?]{0,40}\b(wrong|incorrect|not\s+correct|mistake|typo|invalid)\b/i)
+    : null;
+  const wrongFirstFieldMatch = (hasExistingDetails || isLateDetailsStep)
+    ? text.match(/\b(wrong|incorrect|not\s+correct|mistake|typo|invalid)\b[^.!?]{0,40}\b(email|e-mail|phone(?:\s+number)?|mobile|contact|address|addr)\b/i)
+    : null;
+  if ((fieldFirstWrongMatch || wrongFirstFieldMatch) && !naturalCorrectionMatch && !explicitCorrectionMatch) {
+    const requestedField = fieldFirstWrongMatch?.[1] || wrongFirstFieldMatch?.[2];
+    const field = normalizeField(requestedField);
+    if (field) {
+      return {
+        intent: USER_INTENTS.CHANGE_PERSONAL_DETAILS,
+        confidence: 0.92,
+        data: { field, value: null, rawValue: text, valid: false, needsValue: true },
+      };
+    }
+  }
   const correctionMatch = explicitCorrectionMatch || naturalCorrectionMatch;
   if (!correctionMatch) return null;
 
   const requestedField = correctionMatch[1].toLowerCase();
   const rawValue = correctionMatch[2].trim();
-  const extracted = extractPersonalInfo(rawValue);
-  const field = /email|e-mail/.test(requestedField)
-    ? 'email'
-    : /phone|mobile|contact/.test(requestedField)
-      ? 'phone'
-      : 'address';
-  let value = extracted[field] || null;
-  let valid = true;
-
-  if (field === 'email') {
-    const looksLikeEmailAttempt = /@|\bat\b|\bdot\b|\.[a-z]{2,}/i.test(rawValue);
-    if (!value && looksLikeEmailAttempt) valid = false;
-  } else if (field === 'phone') {
-    const digitCount = rawValue.replace(/\D/g, '').length;
-    if (!value && digitCount >= 7) valid = false;
-  } else if (field === 'address') {
-    value = rawValue.length >= 8 ? rawValue : null;
-    if (!value) valid = false;
-  }
+  const field = normalizeField(requestedField);
+  const { value, valid } = extractValueForField(field, rawValue);
 
   return {
     intent: USER_INTENTS.CHANGE_PERSONAL_DETAILS,
@@ -1342,6 +1381,29 @@ export function detectUserIntent(message, currentState) {
     }
     if (cancelsPendingSwitch) {
       return { intent: USER_INTENTS.OTHER, confidence: 0.9, data: { cancelPendingAction: true } };
+    }
+  }
+
+  if (currentState.pendingAction?.type === 'confirm_addon_review') {
+    if (isSimpleAffirmative(msg) || hasAffirmativePrefix(msg)) {
+      return {
+        intent: USER_INTENTS.CHANGE_ADDONS,
+        confidence: 0.95,
+        data: {
+          reason: 'confirmed_addon_review',
+          reviewTopic: currentState.pendingAction?.topic || null,
+        },
+      };
+    }
+    if (isSimpleNegative(msg)) {
+      return {
+        intent: USER_INTENTS.OTHER,
+        confidence: 0.9,
+        data: {
+          clearPendingAction: true,
+          pendingActionType: 'confirm_addon_review',
+        },
+      };
     }
   }
 

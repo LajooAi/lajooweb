@@ -174,6 +174,57 @@ test('advisor forced response does not auto-recommend insurer for quote-stage be
   assert.equal(openAiMessages.length, 0);
 });
 
+test('advisor forced response stores pending add-on review before OTP', () => {
+  const state = new ConversationState();
+  Object.assign(state, {
+    step: FLOW_STEPS.OTP,
+    plateNumber: 'JRT9289',
+    nricNumber: '951018145405',
+    vehicleInfo: {
+      make: 'Perodua',
+      model: 'Myvi',
+      variant: '1.5L',
+      year: 2019,
+    },
+    selectedQuote: {
+      insurer: 'Tokio Marine Insurance',
+      priceAfter: 800,
+      sumInsured: 35000,
+    },
+    selectedRoadTax: { name: 'No Road Tax', price: 0 },
+    personalDetails: {
+      email: 'ali@example.com',
+      phone: '0123456789',
+      address: 'No 1 Jalan Test, 47000 Shah Alam',
+    },
+  });
+  const openAiMessages = [];
+
+  const result = applyDeterministicFlowHandlers({
+    openAiMessages,
+    state,
+    intent: { intent: USER_INTENTS.ASK_QUESTION, confidence: 0.9 },
+    advisorIntent: {
+      intent: ADVISOR_INTENTS.COVERAGE_RISK_ADVICE,
+      topic: ADVISOR_TOPICS.BETTERMENT,
+      confidence: 0.9,
+      shouldAnswerFirst: true,
+      shouldPreventFlowAdvance: true,
+    },
+    turnPlan: {},
+    messages: [{ role: 'user', content: 'what is zero betterment' }],
+    latestMessage: 'what is zero betterment',
+    callbacks: makeCallbacks(),
+  });
+
+  assert.match(result.forcedAssistantResponse, /Do you want me to go back to add-ons to review it/i);
+  assert.equal(state.step, FLOW_STEPS.OTP);
+  assert.equal(state.pendingAction?.type, 'confirm_addon_review');
+  assert.equal(state.pendingAction?.topic, ADVISOR_TOPICS.BETTERMENT);
+  assert.equal(state.pendingAction?.previousStep, FLOW_STEPS.OTP);
+  assert.equal(openAiMessages.length, 0);
+});
+
 test('flow handler clarifies weak acknowledgement after insurer recommendation', () => {
   const state = new ConversationState();
   Object.assign(state, {
@@ -770,9 +821,13 @@ test('flow handler captures personal details without model dependency', () => {
     callbacks: makeCallbacks(),
   });
 
-  assert.match(result.forcedAssistantResponse, /ali@example\.com/);
-  assert.match(result.forcedAssistantResponse, /0123456789/);
+  assert.match(result.forcedAssistantResponse, /✓ \*\*Email:\*\* ali@example\.com<br \/>/);
+  assert.match(result.forcedAssistantResponse, /✓ \*\*Phone:\*\* 0123456789<br \/>/);
+  assert.match(result.forcedAssistantResponse, /✓ \*\*Address:\*\* No 1 Jalan Test, 47000 Shah Alam/);
+  assert.doesNotMatch(result.forcedAssistantResponse, /- \*\*Email:\*\*/);
   assert.match(result.forcedAssistantResponse, /Does everything look \*\*correct\*\*/);
+  assert.match(result.forcedAssistantResponse, /send the \*\*OTP\*\* now/);
+  assert.doesNotMatch(result.forcedAssistantResponse, /send the OTP now/);
   assert.equal(openAiMessages.length, 0);
 });
 
@@ -1003,11 +1058,17 @@ test('advisor forced response answers direct-insurer discount objection without 
     callbacks: makeCallbacks(),
   });
 
-  assert.match(result.forcedAssistantResponse, /real \*\*10% direct discount\*\*/i);
-  assert.match(result.forcedAssistantResponse, /same cover, same sum insured, and same add-ons/i);
-  assert.match(result.forcedAssistantResponse, /upside of using \*\*LAJOO\*\*/i);
-  assert.match(result.forcedAssistantResponse, /compare the quotes side by side/i);
-  assert.match(result.forcedAssistantResponse, /compare your direct insurer offer against these quotes/i);
+  assert.match(result.forcedAssistantResponse, /A 10% direct discount can exist/i);
+  assert.match(result.forcedAssistantResponse, /headline discount is not the full renewal decision/i);
+  assert.match(result.forcedAssistantResponse, /With \*\*LAJOO\*\*/i);
+  assert.match(result.forcedAssistantResponse, /guided quote comparison, add-on advice, road tax handling, and a cleaner renewal flow/i);
+  assert.match(result.forcedAssistantResponse, /avoid missing coverage details/i);
+  assert.match(result.forcedAssistantResponse, /Let’s continue with LAJOO/i);
+  assert.match(result.forcedAssistantResponse, /best-fit insurer now/i);
+  assert.doesNotMatch(result.forcedAssistantResponse, /saving matters/i);
+  assert.doesNotMatch(result.forcedAssistantResponse, /consider it/i);
+  assert.doesNotMatch(result.forcedAssistantResponse, /compare (?:the )?direct offer/i);
+  assert.doesNotMatch(result.forcedAssistantResponse, /apples-to-apples/i);
   assert.doesNotMatch(result.forcedAssistantResponse, /Tokio Marine Insurance - RM 800.00/i);
   assert.doesNotMatch(result.forcedAssistantResponse, /Takaful Ikhlas Insurance - RM 796.00/i);
   assert.doesNotMatch(result.forcedAssistantResponse, /Back to your renewal/i);
@@ -1094,6 +1155,106 @@ test('advisor forced response formats general add-on shortlist as readable list'
   assert.match(result.forcedAssistantResponse, /7-year-old Perodua Myvi/i);
   assert.match(result.forcedAssistantResponse, /nice-to-have/i);
   assert.match(result.forcedAssistantResponse, /older premium, continental, performance, luxury, or cars with expensive parts/i);
+  assert.equal(state.step, FLOW_STEPS.ADDONS);
+  assert.equal(state.selectedAddOns.length, 0);
+  assert.equal(openAiMessages.length, 0);
+});
+
+test('advisor forced response gives daily-driving add-on recommendation', () => {
+  const state = new ConversationState();
+  Object.assign(state, {
+    step: FLOW_STEPS.ADDONS,
+    plateNumber: 'JRT9289',
+    nricNumber: '951018145405',
+    vehicleInfo: {
+      make: 'Perodua',
+      model: 'Myvi',
+      year: 2019,
+    },
+    selectedQuote: {
+      insurer: 'Tokio Marine Insurance',
+      priceAfter: 800,
+      sumInsured: 35000,
+    },
+  });
+  const openAiMessages = [];
+
+  const result = applyDeterministicFlowHandlers({
+    openAiMessages,
+    state,
+    intent: { intent: USER_INTENTS.ASK_QUESTION, confidence: 0.9 },
+    advisorIntent: {
+      intent: ADVISOR_INTENTS.COVERAGE_RISK_ADVICE,
+      topic: ADVISOR_TOPICS.DAILY_DRIVING,
+      confidence: 0.9,
+      shouldAnswerFirst: true,
+      shouldPreventFlowAdvance: true,
+    },
+    turnPlan: {},
+    messages: [{ role: 'user', content: 'i drive my car a lot daily' }],
+    latestMessage: 'i drive my car a lot daily',
+    callbacks: makeCallbacks(),
+  });
+
+  assert.match(result.forcedAssistantResponse, /Since you drive a lot daily/i);
+  assert.match(result.forcedAssistantResponse, /start with 1\. Windscreen/i);
+  assert.match(result.forcedAssistantResponse, /stone chips|road debris/i);
+  assert.match(result.forcedAssistantResponse, /7-year-old Perodua Myvi/i);
+  assert.match(result.forcedAssistantResponse, /RM 1,000.00.*sensible starting cover/i);
+  assert.match(result.forcedAssistantResponse, /Special Perils \(RM 150.00\)/i);
+  assert.match(result.forcedAssistantResponse, /flood or landslide risk applies/i);
+  assert.match(result.forcedAssistantResponse, /RM 1,000.00/i);
+  assert.match(result.forcedAssistantResponse, /RM 2,000.00/i);
+  assert.match(result.forcedAssistantResponse, /Would you like to add \*\*1\. Windscreen\*\*/i);
+  assert.doesNotMatch(result.forcedAssistantResponse, /Since you drive daily, would you like/i);
+  assert.doesNotMatch(result.forcedAssistantResponse, /Windscreen, Special Perils, E-hailing, or skip add-ons/i);
+  assert.doesNotMatch(result.forcedAssistantResponse, /What windscreen coverage should I use/i);
+  assert.equal(state.step, FLOW_STEPS.ADDONS);
+  assert.equal(state.selectedAddOns.length, 0);
+  assert.equal(openAiMessages.length, 0);
+});
+
+test('advisor forced daily-driving response adjusts windscreen guidance for premium vehicles', () => {
+  const state = new ConversationState();
+  Object.assign(state, {
+    step: FLOW_STEPS.ADDONS,
+    plateNumber: 'ABC911',
+    nricNumber: '951018145405',
+    vehicleInfo: {
+      make: 'Porsche',
+      model: '911',
+      year: 2018,
+    },
+    selectedQuote: {
+      insurer: 'Tokio Marine Insurance',
+      priceAfter: 3000,
+      sumInsured: 320000,
+    },
+  });
+  const openAiMessages = [];
+
+  const result = applyDeterministicFlowHandlers({
+    openAiMessages,
+    state,
+    intent: { intent: USER_INTENTS.ASK_QUESTION, confidence: 0.9 },
+    advisorIntent: {
+      intent: ADVISOR_INTENTS.COVERAGE_RISK_ADVICE,
+      topic: ADVISOR_TOPICS.DAILY_DRIVING,
+      confidence: 0.9,
+      shouldAnswerFirst: true,
+      shouldPreventFlowAdvance: true,
+    },
+    turnPlan: {},
+    messages: [{ role: 'user', content: 'i drive my car a lot daily' }],
+    latestMessage: 'i drive my car a lot daily',
+    callbacks: makeCallbacks(),
+  });
+
+  assert.match(result.forcedAssistantResponse, /8-year-old Porsche 911/i);
+  assert.match(result.forcedAssistantResponse, /lean closer to \*\*RM 2,000.00\*\* or more/i);
+  assert.match(result.forcedAssistantResponse, /premium\/continental cars, EVs, sensors, tint, and camera calibration/i);
+  assert.match(result.forcedAssistantResponse, /Would you like to add \*\*1\. Windscreen\*\*/i);
+  assert.doesNotMatch(result.forcedAssistantResponse, /What windscreen coverage should I use/i);
   assert.equal(state.step, FLOW_STEPS.ADDONS);
   assert.equal(state.selectedAddOns.length, 0);
   assert.equal(openAiMessages.length, 0);
