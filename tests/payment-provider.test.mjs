@@ -137,6 +137,61 @@ test('staging e-wallet mock is disabled in production by default', () => {
   assert.equal(intent.clientConfirmationToken, null);
 });
 
+test('demo Buy Now, Pay Later payment succeeds while unrelated methods stay blocked', () => {
+  const env = { NODE_ENV: 'development' };
+  const bnplIntent = createProviderPaymentIntent({
+    ...basePayload,
+    paymentMethod: 'bnpl',
+  }, { env });
+
+  assert.equal(bnplIntent.status, PAYMENT_PROVIDER_STATUSES.PENDING);
+  assert.equal(bnplIntent.paymentAvailable, true);
+  assert.equal(Boolean(bnplIntent.clientConfirmationToken), true);
+  assert.match(bnplIntent.message, /Buy Now, Pay Later demo payment/i);
+
+  const confirmation = confirmProviderPaymentIntent(bnplIntent, {
+    paymentMethod: 'bnpl',
+    clientConfirmationToken: bnplIntent.clientConfirmationToken,
+  }, { env });
+
+  assert.equal(confirmation.status, PAYMENT_PROVIDER_STATUSES.SUCCEEDED);
+  assert.equal(confirmation.paymentMethod, 'bnpl');
+  assert.equal(confirmation.isMock, true);
+
+  const cardIntent = createProviderPaymentIntent({
+    ...basePayload,
+    paymentMethod: 'card',
+  }, { env });
+  assert.equal(cardIntent.status, PAYMENT_PROVIDER_STATUSES.REQUIRES_PROVIDER);
+  assert.equal(cardIntent.paymentAvailable, false);
+  assert.equal(cardIntent.clientConfirmationToken, null);
+});
+
+test('demo Buy Now, Pay Later payment is disabled in production unless explicitly enabled', () => {
+  const productionEnv = { NODE_ENV: 'production', VERCEL_ENV: 'production' };
+  const blockedIntent = createProviderPaymentIntent({
+    ...basePayload,
+    paymentMethod: 'bnpl',
+  }, { env: productionEnv });
+
+  assert.equal(blockedIntent.status, PAYMENT_PROVIDER_STATUSES.REQUIRES_PROVIDER);
+  assert.equal(blockedIntent.paymentAvailable, false);
+  assert.equal(blockedIntent.clientConfirmationToken, null);
+
+  const enabledEnv = {
+    ...productionEnv,
+    LAJOO_ENABLE_DEMO_BNPL_MOCK: 'true',
+  };
+  const enabledIntent = createProviderPaymentIntent({
+    ...basePayload,
+    paymentMethod: 'bnpl',
+  }, { env: enabledEnv });
+
+  assert.equal(enabledIntent.status, PAYMENT_PROVIDER_STATUSES.PENDING);
+  assert.equal(enabledIntent.paymentAvailable, true);
+  assert.equal(Boolean(enabledIntent.clientConfirmationToken), true);
+});
+
 test('provider-specific external shell remains disabled but adapter contract is stable', () => {
   const env = { LAJOO_PAYMENT_PROVIDER: 'billplz' };
   const config = getPaymentProviderConfig(env);
