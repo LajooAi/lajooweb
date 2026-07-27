@@ -29,7 +29,7 @@ function errorResponse(error, fallback = 'Unable to load conversations.') {
 }
 
 export async function GET(request) {
-  if (!isAdminAuthorized(request)) return unauthorizedResponse();
+  if (!(await isAdminAuthorized(request))) return unauthorizedResponse();
   if (!process.env.DATABASE_URL) return dbUnavailableResponse();
 
   const { searchParams } = new URL(request.url);
@@ -46,7 +46,7 @@ export async function GET(request) {
 }
 
 export async function PATCH(request) {
-  if (!isAdminAuthorized(request)) return unauthorizedResponse();
+  if (!(await isAdminAuthorized(request))) return unauthorizedResponse();
   if (!process.env.DATABASE_URL) return dbUnavailableResponse();
 
   try {

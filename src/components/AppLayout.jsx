@@ -9,6 +9,7 @@ import RoundedCloseIcon from "./RoundedCloseIcon";
 export default function AppLayout({ children }) {
   const [open, setOpen] = useState(false);
   const pathname = usePathname();
+  const isAdminRoute = pathname?.startsWith("/admin");
   const params = useParams();
   const country = (params?.country || "").toLowerCase() || "my"; // fallback
   const router = useRouter();
@@ -19,8 +20,12 @@ export default function AppLayout({ children }) {
 
   const isActive = (href) => (pathname === href ? "active" : "");
 
-  useEffect(() => { setOpen(false); }, [pathname]);        // close drawer on route change
   useEffect(() => {
+    if (isAdminRoute) return;
+    setOpen(false);
+  }, [isAdminRoute, pathname]);        // close drawer on route change
+  useEffect(() => {
+    if (isAdminRoute) return;
     if (!pathname) return;
     const homePath = `/${country}`;
     if (pathname === homePath) return;
@@ -39,19 +44,23 @@ export default function AppLayout({ children }) {
     });
 
     return () => cancelAnimationFrame(firstFrame);
-  }, [pathname, country]);
+  }, [pathname, country, isAdminRoute]);
   useEffect(() => {
+    if (isAdminRoute) return undefined;
     const onKey = (e) => e.key === "Escape" && setOpen(false);
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, []);
+  }, [isAdminRoute]);
   useEffect(() => {
+    if (isAdminRoute) return undefined;
     const prev = document.body.style.overflow;
     document.body.style.overflow = open ? "hidden" : prev || "";
     return () => { document.body.style.overflow = prev; };
-  }, [open]);
+  }, [open, isAdminRoute]);
 
   const current = COUNTRIES.find(c => c.code === country) || COUNTRIES[0];
+
+  if (isAdminRoute) return children;
 
   return (
     <div className="app-frame">

@@ -277,6 +277,12 @@ export default function PaymentPage() {
         return;
       }
 
+      if (processData.checkoutUrl) {
+        setPaymentNotice("Redirecting to secure provider checkout. LAJOO will confirm payment after the provider webhook is verified.");
+        window.location.href = processData.checkoutUrl;
+        return;
+      }
+
       if (!processData.clientConfirmationToken) {
         setPaymentNotice("Payment intent created. Waiting for payment provider confirmation.");
         return;

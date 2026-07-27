@@ -1,4 +1,5 @@
 import { createHash, createHmac, randomBytes, timingSafeEqual } from "node:crypto";
+import Stripe from "stripe";
 
 export const PAYMENT_PROVIDER_KEYS = {
   MOCK: "mock",
@@ -38,6 +39,11 @@ const KNOWN_EXTERNAL_PROVIDERS = new Set([
   PAYMENT_PROVIDER_KEYS.TOYYIBPAY,
 ]);
 
+const STRIPE_MIN_FPX_AMOUNT_MYR = 2;
+const STRIPE_MAX_FPX_AMOUNT_MYR = 30000;
+const STRIPE_API_VERSION = "2025-10-29.clover";
+const stripeClientCache = new Map();
+
 export const PAYMENT_PROVIDER_SHELLS = {
   [PAYMENT_PROVIDER_KEYS.BILLPLZ]: {
     provider: PAYMENT_PROVIDER_KEYS.BILLPLZ,
@@ -55,9 +61,9 @@ export const PAYMENT_PROVIDER_SHELLS = {
     country: "GLOBAL",
     requiredEnv: ["STRIPE_SECRET_KEY", "STRIPE_WEBHOOK_SECRET"],
     enableEnv: ["LAJOO_LIVE_PAYMENTS_ENABLED", "LAJOO_PAYMENT_PROVIDER_STRIPE_ENABLED"],
-    supportedPaymentMethods: ["card", "fpx", "ewallet"],
+    supportedPaymentMethods: ["card", "fpx"],
     webhookHeaders: ["stripe-signature"],
-    note: "Stripe shell. Real Checkout Session creation and Stripe SDK webhook verification must be implemented before enabling.",
+    note: "Stripe Checkout is implemented for card and FPX behind explicit launch flags. Policy issuance remains blocked until verified payment and insurer handoff are enabled.",
   },
   [PAYMENT_PROVIDER_KEYS.IPAY88]: {
     provider: PAYMENT_PROVIDER_KEYS.IPAY88,
@@ -147,6 +153,80 @@ function getExternalProviderEnablement(provider, env = process.env) {
     globalEnabled,
     providerEnabled,
     enabled: globalEnabled && providerEnabled,
+  };
+}
+
+function inferStripeMode(env = process.env) {
+  const explicit = String(env.STRIPE_MODE || env.STRIPE_ENVIRONMENT || "").trim().toLowerCase();
+  if (["test", "sandbox", "development"].includes(explicit)) return "test";
+  if (["live", "production"].includes(explicit)) return "live";
+
+  const secretKey = String(env.STRIPE_SECRET_KEY || "").trim();
+  if (secretKey.startsWith("sk_live_")) return "live";
+  if (secretKey.startsWith("sk_test_")) return "test";
+  return String(env.VERCEL_ENV || env.NODE_ENV || "development").toLowerCase() === "production"
+    ? "live"
+    : "test";
+}
+
+function getStripeClient(env = process.env, overrideClient = null) {
+  if (overrideClient) return overrideClient;
+  const secretKey = String(env.STRIPE_SECRET_KEY || "").trim();
+  if (!secretKey) {
+    throw new PaymentProviderError("Stripe API key is not configured.", {
+      code: "STRIPE_SECRET_KEY_MISSING",
+      status: 503,
+    });
+  }
+
+  const cacheKey = createHash("sha256").update(secretKey).digest("hex");
+  if (!stripeClientCache.has(cacheKey)) {
+    stripeClientCache.set(cacheKey, new Stripe(secretKey, {
+      apiVersion: env.STRIPE_API_VERSION || STRIPE_API_VERSION,
+      appInfo: {
+        name: "LAJOO Admin Operating System",
+        version: "phase15",
+      },
+    }));
+  }
+  return stripeClientCache.get(cacheKey);
+}
+
+function buildStripeConfig(env = process.env) {
+  const shell = getProviderShell(PAYMENT_PROVIDER_KEYS.STRIPE);
+  const enablement = getExternalProviderEnablement(PAYMENT_PROVIDER_KEYS.STRIPE, env);
+  const missingEnv = getMissingEnv(shell.requiredEnv, env);
+  const hasRequiredConfig = missingEnv.length === 0;
+  const stripeMode = inferStripeMode(env);
+  const paymentAvailable = enablement.enabled && hasRequiredConfig;
+
+  return {
+    provider: PAYMENT_PROVIDER_KEYS.STRIPE,
+    label: shell.label,
+    mode: stripeMode === "live" ? "stripe_checkout_live" : "stripe_checkout_sandbox",
+    implemented: true,
+    paymentAvailable,
+    livePaymentsEnabled: enablement.enabled,
+    livePaymentGlobalEnabled: enablement.globalEnabled,
+    livePaymentProviderEnabled: enablement.providerEnabled,
+    enableEnv: shell.enableEnv,
+    requiredEnv: shell.requiredEnv,
+    missingEnv,
+    hasRequiredConfig,
+    supportedPaymentMethods: shell.supportedPaymentMethods,
+    webhookHeaders: shell.webhookHeaders,
+    mockConfirmationEnabled: false,
+    canIssuePolicy: false,
+    stripeMode,
+    sandbox: stripeMode !== "live",
+    checkoutMode: "hosted_checkout",
+    refundsEnabled: envFlag(env, "LAJOO_STRIPE_REFUNDS_ENABLED"),
+    message: paymentAvailable
+      ? `Stripe Checkout is ready in ${stripeMode === "live" ? "live" : "sandbox"} mode. Policy issuance remains blocked until insurer handoff is enabled.`
+      : hasRequiredConfig
+        ? "Stripe Checkout is implemented, but live payment flags are disabled."
+        : "Stripe Checkout is implemented, but Stripe API key or webhook secret is missing.",
+    note: shell.note,
   };
 }
 
@@ -284,6 +364,10 @@ function buildConfigForProvider(provider, env = process.env) {
     };
   }
 
+  if (provider === PAYMENT_PROVIDER_KEYS.STRIPE) {
+    return buildStripeConfig(env);
+  }
+
   if (shell) {
     const enablement = getExternalProviderEnablement(provider, env);
     const missingEnv = getMissingEnv(shell.requiredEnv, env);
@@ -368,6 +452,300 @@ function createProviderIntentFromConfig(payload = {}, config) {
     message: config.message,
   };
 }
+
+function buildStripeReturnUrls(payload = {}, options = {}) {
+  const env = options.env || process.env;
+  const configuredOrigin = String(options.origin || env.NEXT_PUBLIC_APP_URL || "").trim();
+  const fallbackOrigin = env.VERCEL_URL ? `https://${env.VERCEL_URL}` : "http://localhost:3000";
+  const origin = (configuredOrigin || fallbackOrigin).replace(/\/$/, "");
+  const country = String(payload.country || env.LAJOO_PAYMENT_COUNTRY || "my").trim().toLowerCase() || "my";
+  const paymentPath = `/${encodeURIComponent(country)}/payment/${encodeURIComponent(payload.paymentId)}`;
+  const successUrl = String(env.STRIPE_SUCCESS_URL || "")
+    .replace("{PAYMENT_ID}", encodeURIComponent(payload.paymentId))
+    .replace("{CHECKOUT_SESSION_ID}", "{CHECKOUT_SESSION_ID}");
+  const cancelUrl = String(env.STRIPE_CANCEL_URL || "")
+    .replace("{PAYMENT_ID}", encodeURIComponent(payload.paymentId))
+    .replace("{CHECKOUT_SESSION_ID}", "{CHECKOUT_SESSION_ID}");
+
+  return {
+    successUrl: successUrl || `${origin}${paymentPath}?payment_status=stripe_success&stripe_session_id={CHECKOUT_SESSION_ID}`,
+    cancelUrl: cancelUrl || `${origin}${paymentPath}?payment_status=stripe_cancelled`,
+  };
+}
+
+function getStripePaymentMethodTypes(method) {
+  if (method === "card") return ["card"];
+  if (method === "fpx") return ["fpx"];
+  throw new PaymentProviderError("Stripe Checkout is currently enabled only for card and FPX.", {
+    code: "PAYMENT_METHOD_NOT_SUPPORTED_BY_PROVIDER",
+    status: 400,
+  });
+}
+
+function assertStripeAmount(method, breakdown = {}) {
+  const amount = Number(breakdown.total);
+  if (!Number.isFinite(amount) || amount <= 0) {
+    throw new PaymentProviderError("Stripe payment amount must be greater than zero.", {
+      code: "INVALID_PAYMENT_AMOUNT",
+      status: 400,
+    });
+  }
+  if (method === "fpx" && (amount < STRIPE_MIN_FPX_AMOUNT_MYR || amount > STRIPE_MAX_FPX_AMOUNT_MYR)) {
+    throw new PaymentProviderError("Stripe FPX payments must be between RM2 and RM30,000.", {
+      code: "STRIPE_FPX_AMOUNT_OUT_OF_RANGE",
+      status: 400,
+    });
+  }
+  return Math.round(amount * 100);
+}
+
+function safeStripeProductName(payload = {}) {
+  const suffix = String(payload.insurer || "").trim();
+  return suffix
+    ? `LAJOO motor insurance renewal - ${suffix}`.slice(0, 120)
+    : "LAJOO motor insurance renewal";
+}
+
+function buildStripeCheckoutParams(payload = {}, breakdown = {}, method, options = {}) {
+  const { successUrl, cancelUrl } = buildStripeReturnUrls(payload, options);
+  const unitAmount = assertStripeAmount(method, breakdown);
+  const metadata = {
+    lajooPaymentId: String(payload.paymentId || ""),
+    lajooProvider: PAYMENT_PROVIDER_KEYS.STRIPE,
+    lajooSource: "payment_process",
+  };
+
+  return {
+    mode: "payment",
+    client_reference_id: String(payload.paymentId || ""),
+    payment_method_types: getStripePaymentMethodTypes(method),
+    line_items: [
+      {
+        quantity: 1,
+        price_data: {
+          currency: String(payload.currency || "MYR").trim().toLowerCase() || "myr",
+          unit_amount: unitAmount,
+          product_data: {
+            name: safeStripeProductName(payload),
+            metadata,
+          },
+        },
+      },
+    ],
+    payment_intent_data: {
+      metadata,
+    },
+    metadata,
+    success_url: successUrl,
+    cancel_url: cancelUrl,
+  };
+}
+
+function normalizeStripePaymentIntentId(value) {
+  if (!value) return null;
+  if (typeof value === "string") return value;
+  return value.id || null;
+}
+
+function stripeAmountToMoney(value) {
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric)) return null;
+  return Math.round((numeric / 100) * 100) / 100;
+}
+
+function mapStripeWebhookEventType(stripeEvent = {}, stripeObject = {}) {
+  const type = String(stripeEvent.type || "").trim();
+  const status = String(stripeObject.payment_status || stripeObject.status || "").trim().toLowerCase();
+
+  if (
+    type === "checkout.session.completed" ||
+    type === "checkout.session.async_payment_succeeded" ||
+    type === "payment_intent.succeeded" ||
+    status === "paid" ||
+    status === "succeeded"
+  ) {
+    return PAYMENT_WEBHOOK_EVENT_TYPES.PAYMENT_SUCCEEDED;
+  }
+
+  if (
+    type === "checkout.session.async_payment_failed" ||
+    type === "payment_intent.payment_failed" ||
+    ["failed", "canceled", "cancelled", "requires_payment_method"].includes(status)
+  ) {
+    return PAYMENT_WEBHOOK_EVENT_TYPES.PAYMENT_FAILED;
+  }
+
+  if (["processing", "requires_action", "requires_confirmation", "requires_capture", "open", "unpaid"].includes(status)) {
+    return PAYMENT_WEBHOOK_EVENT_TYPES.PAYMENT_PENDING;
+  }
+
+  return PAYMENT_WEBHOOK_EVENT_TYPES.PAYMENT_UNKNOWN;
+}
+
+function normalizeStripeWebhookEvent(stripeEvent = {}, rawBody = "") {
+  const stripeObject = stripeEvent.data?.object || {};
+  const metadata = stripeObject.metadata || {};
+  const paymentId = String(
+    stripeObject.client_reference_id ||
+    metadata.lajooPaymentId ||
+    metadata.paymentId ||
+    ""
+  ).trim();
+
+  if (!paymentId) {
+    throw new PaymentProviderError("Stripe webhook event does not include a LAJOO payment reference.", {
+      code: "WEBHOOK_PAYMENT_ID_MISSING",
+      status: 400,
+    });
+  }
+
+  const providerPaymentIntentId = normalizeStripePaymentIntentId(stripeObject.payment_intent) ||
+    (stripeObject.object === "payment_intent" ? stripeObject.id : null);
+  const amount = stripeAmountToMoney(stripeObject.amount_total ?? stripeObject.amount_received ?? stripeObject.amount);
+  const currency = String(stripeObject.currency || "myr").trim().toUpperCase();
+  const safePayload = {
+    provider: PAYMENT_PROVIDER_KEYS.STRIPE,
+    stripeEventType: stripeEvent.type || null,
+    stripeObject: stripeObject.object || null,
+    checkoutSessionId: stripeObject.object === "checkout.session" ? stripeObject.id : null,
+    paymentIntentId: providerPaymentIntentId,
+    paymentStatus: stripeObject.payment_status || stripeObject.status || null,
+    livemode: Boolean(stripeEvent.livemode),
+    amount,
+    currency,
+  };
+
+  return {
+    provider: PAYMENT_PROVIDER_KEYS.STRIPE,
+    eventType: mapStripeWebhookEventType(stripeEvent, stripeObject),
+    providerEventId: stripeEvent.id || null,
+    providerPaymentIntentId,
+    paymentId,
+    paymentMethod: stripeObject.payment_method_types?.[0] || stripeObject.payment_method || null,
+    transactionRef: providerPaymentIntentId || stripeObject.id || stripeEvent.id || null,
+    failureReason: stripeObject.last_payment_error?.code || stripeObject.status || null,
+    amount,
+    currency,
+    rawBodyHash: hashWebhookBody(rawBody),
+    payload: safePayload,
+    canIssuePolicy: false,
+  };
+}
+
+const stripePaymentAdapter = {
+  key: PAYMENT_PROVIDER_KEYS.STRIPE,
+  getConfig(env) {
+    return buildConfigForProvider(PAYMENT_PROVIDER_KEYS.STRIPE, env);
+  },
+  createPaymentIntent(payload, options = {}) {
+    return createProviderIntentFromConfig(payload, this.getConfig(options.env || process.env));
+  },
+  async createPaymentIntentAsync(payload, options = {}) {
+    const env = options.env || process.env;
+    const config = this.getConfig(env);
+    if (!config.paymentAvailable) {
+      return createProviderIntentFromConfig(payload, config);
+    }
+
+    const method = normalizePaymentMethod(payload.paymentMethod);
+    if (!config.supportedPaymentMethods.includes(method)) {
+      throw new PaymentProviderError("Stripe Checkout is currently enabled only for card and FPX.", {
+        code: "PAYMENT_METHOD_NOT_SUPPORTED_BY_PROVIDER",
+        status: 400,
+      });
+    }
+
+    const breakdown = validatePaymentBreakdown(payload);
+    if (!breakdown.ok) {
+      throw new PaymentProviderError("Payment total does not match the itemized breakdown.", {
+        code: "PAYMENT_TOTAL_MISMATCH",
+        status: 400,
+      });
+    }
+
+    const stripe = getStripeClient(env, options.stripeClient);
+    let session;
+    try {
+      session = await stripe.checkout.sessions.create(buildStripeCheckoutParams(payload, breakdown, method, { ...options, env }));
+    } catch (error) {
+      throw new PaymentProviderError("Stripe Checkout Session could not be created.", {
+        code: "STRIPE_CHECKOUT_CREATE_FAILED",
+        status: 502,
+        retryable: true,
+        cause: error,
+      });
+    }
+
+    return {
+      provider: PAYMENT_PROVIDER_KEYS.STRIPE,
+      mode: config.mode,
+      paymentAvailable: true,
+      canIssuePolicy: false,
+      providerPaymentIntentId: normalizeStripePaymentIntentId(session.payment_intent) || session.id,
+      providerCheckoutSessionId: session.id,
+      checkoutUrl: session.url || null,
+      clientConfirmationToken: null,
+      status: PAYMENT_PROVIDER_STATUSES.PENDING,
+      paymentMethod: method,
+      amount: breakdown.total,
+      breakdown,
+      checkoutData: {
+        provider: PAYMENT_PROVIDER_KEYS.STRIPE,
+        checkoutSessionId: session.id,
+        checkoutUrl: session.url || null,
+        stripeMode: config.stripeMode,
+      },
+      message: "Redirecting to Stripe Checkout. LAJOO will wait for a verified Stripe webhook before marking payment confirmed.",
+    };
+  },
+  confirmPaymentIntent() {
+    throw new PaymentProviderError("Stripe payments must be confirmed by signed Stripe webhooks, not client confirmation.", {
+      code: "STRIPE_CLIENT_CONFIRMATION_DISABLED",
+      status: 403,
+    });
+  },
+  verifyWebhook(rawBody, headers, options = {}) {
+    const env = options.env || process.env;
+    const config = this.getConfig(env);
+    if (!config.livePaymentsEnabled) {
+      throw new PaymentProviderError("Stripe webhook is disabled until live payment flags are enabled.", {
+        code: "PAYMENT_PROVIDER_DISABLED",
+        status: 403,
+      });
+    }
+    if (!config.hasRequiredConfig) {
+      throw new PaymentProviderError("Stripe webhook configuration is incomplete.", {
+        code: "PAYMENT_PROVIDER_CONFIG_INCOMPLETE",
+        status: 503,
+      });
+    }
+
+    const signature = getHeader(headers, "stripe-signature");
+    if (!signature) {
+      throw new PaymentProviderError("Stripe webhook signature is missing.", {
+        code: "WEBHOOK_SIGNATURE_MISSING",
+        status: 401,
+      });
+    }
+
+    const stripe = getStripeClient(env, options.stripeClient);
+    let stripeEvent;
+    try {
+      stripeEvent = stripe.webhooks.constructEvent(
+        String(rawBody || ""),
+        signature,
+        String(env.STRIPE_WEBHOOK_SECRET || "").trim()
+      );
+    } catch {
+      throw new PaymentProviderError("Stripe webhook signature is invalid.", {
+        code: "WEBHOOK_SIGNATURE_INVALID",
+        status: 401,
+      });
+    }
+
+    return normalizeStripeWebhookEvent(stripeEvent, rawBody);
+  },
+};
 
 const mockPaymentAdapter = {
   key: PAYMENT_PROVIDER_KEYS.MOCK,
@@ -542,6 +920,7 @@ function createUnavailableAdapter(provider) {
 export function getPaymentProvider(providerKey, options = {}) {
   const provider = normalizeProvider(providerKey || options.env?.LAJOO_PAYMENT_PROVIDER || options.env?.PAYMENT_PROVIDER);
   if (provider === PAYMENT_PROVIDER_KEYS.MOCK) return mockPaymentAdapter;
+  if (provider === PAYMENT_PROVIDER_KEYS.STRIPE) return stripePaymentAdapter;
   if (getProviderShell(provider)) return createExternalProviderShellAdapter(provider);
   return createUnavailableAdapter(provider);
 }
@@ -633,16 +1012,25 @@ export function createProviderPaymentIntent(payload = {}, options = {}) {
   return provider.createPaymentIntent(payload, { env });
 }
 
+export async function createProviderPaymentIntentAsync(payload = {}, options = {}) {
+  const env = options.env || process.env;
+  const provider = getPaymentProvider(payload.provider || env.LAJOO_PAYMENT_PROVIDER || env.PAYMENT_PROVIDER, { env });
+  if (typeof provider.createPaymentIntentAsync === "function") {
+    return provider.createPaymentIntentAsync(payload, { ...options, env });
+  }
+  return provider.createPaymentIntent(payload, { ...options, env });
+}
+
 export function confirmProviderPaymentIntent(payment = {}, payload = {}, options = {}) {
   const env = options.env || process.env;
   const provider = getPaymentProvider(payment.provider || env.LAJOO_PAYMENT_PROVIDER || env.PAYMENT_PROVIDER, { env });
-  return provider.confirmPaymentIntent(payment, payload, { env });
+  return provider.confirmPaymentIntent(payment, payload, { ...options, env });
 }
 
 export function verifyProviderWebhook(providerKey, rawBody, headers, options = {}) {
   const env = options.env || process.env;
   const provider = getPaymentProvider(providerKey, { env });
-  const event = provider.verifyWebhook(rawBody, headers, { env });
+  const event = provider.verifyWebhook(rawBody, headers, { ...options, env });
   return {
     ok: true,
     provider: provider.key,

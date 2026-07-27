@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { InsurerGatewayError } from "../../insurerGateway.js";
+import { recordAdminInsurerAdapterLog } from "../../../server/admin/adminTechLogs.js";
 
 const DEFAULT_TIMEOUT_MS = 12000;
 
@@ -180,6 +181,7 @@ export function createDirectInsurerAdapter({
     body = null,
     query = null,
     contentType = "application/json",
+    operation = endpoint,
   } = {}) {
     if (!cfg.baseUrl) {
       throw new InsurerGatewayError(
@@ -198,6 +200,8 @@ export function createDirectInsurerAdapter({
 
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), cfg.timeoutMs);
+    const startedAt = Date.now();
+    const requestId = headers["X-Correlation-Id"] || headers["x-correlation-id"] || makeCorrelationId("adapter");
 
     try {
       const response = await fetch(buildUrl(cfg.baseUrl, endpoint, query), {
@@ -226,9 +230,41 @@ export function createDirectInsurerAdapter({
         );
       }
 
+      recordAdminInsurerAdapterLog({
+        insurerCode: cfg.key,
+        adapterName: cfg.name,
+        operation,
+        status: "success",
+        latencyMs: Date.now() - startedAt,
+        requestId,
+        providerEnvironment: cfg.environment || cfg.mode || process.env.NODE_ENV || "unknown",
+        adapterVersion: cfg.adapterVersion || cfg.version || "direct-adapter-v1",
+        retryCount: 0,
+        source: cfg.mode === "mock" ? "mock" : "system",
+      }).catch(() => null);
+
       return parsed;
     } catch (error) {
-      throw toGatewayError(error, endpoint);
+      const gatewayError = toGatewayError(error, endpoint);
+      recordAdminInsurerAdapterLog({
+        insurerCode: cfg.key,
+        adapterName: cfg.name,
+        operation,
+        status: "failed",
+        latencyMs: Date.now() - startedAt,
+        requestId,
+        errorCode: gatewayError.code || "ADAPTER_REQUEST_FAILED",
+        errorMessage: gatewayError.message,
+        providerEnvironment: cfg.environment || cfg.mode || process.env.NODE_ENV || "unknown",
+        adapterVersion: cfg.adapterVersion || cfg.version || "direct-adapter-v1",
+        retryCount: 0,
+        metadata: {
+          endpoint,
+          httpStatus: gatewayError.status || null,
+        },
+        source: "system",
+      }).catch(() => null);
+      throw gatewayError;
     } finally {
       clearTimeout(timer);
     }
@@ -280,6 +316,7 @@ export function createDirectInsurerAdapter({
       method: "POST",
       body: tokenRequestBody,
       contentType: cfg.tokenContentType,
+      operation: "getToken",
     });
 
     const tokenResponse = invokeHook(cfg.hooks, "getToken", "response", response, {
@@ -360,6 +397,7 @@ export function createDirectInsurerAdapter({
         body: payload,
         query,
         contentType,
+        operation,
       });
       return invokeHook(cfg.hooks, operation, "response", response, {
         adapter: cfg,
@@ -386,6 +424,7 @@ export function createDirectInsurerAdapter({
         body: payload,
         query,
         contentType,
+        operation,
       });
       return invokeHook(cfg.hooks, operation, "response", retryResponse, {
         adapter: cfg,
@@ -412,6 +451,7 @@ export function createDirectInsurerAdapter({
       const endpoint = endpointFor(cfg, "health");
       return requestRaw(cfg, endpoint, {
         method: "GET",
+        operation: "health",
       });
     },
 

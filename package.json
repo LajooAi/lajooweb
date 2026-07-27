@@ -25,7 +25,7 @@
     "knowledge:review-brand-programs": "node scripts/review-generated-brand-program-facts.mjs",
     "knowledge:strict-readiness": "node scripts/audit-knowledge-strict-readiness.mjs",
     "knowledge:strict-readiness:ci": "node scripts/audit-knowledge-strict-readiness.mjs --fail-on-not-ready",
-    "test:assistant": "node --test tests/assistant-intent.test.mjs tests/flow-guards.test.mjs tests/orchestrator.test.mjs tests/turn-planner.test.mjs tests/quote-step-close.test.mjs tests/turn-knowledge-context.test.mjs tests/turn-instruction-stack.test.mjs tests/source-trace.test.mjs tests/conversation-audit-admin.test.mjs tests/ai-conversation-simulations.test.mjs tests/ai-response-quality-golden.test.mjs tests/advisory-fallbacks.test.mjs tests/approved-facts.test.mjs tests/insurance-engines.test.mjs tests/sandbox-vehicle-gateway.test.mjs tests/production-chat-parity.test.mjs tests/production-turn-instruction-builder.test.mjs tests/flow-handlers.test.mjs tests/pdpa-consent.test.mjs tests/pii-masking.test.mjs tests/pdpa-consent-audit-store.test.mjs tests/chat-session-store.test.mjs tests/pdf-import-metadata.test.mjs tests/document-dating.test.mjs tests/fact-extraction.test.mjs tests/database-fact-store.test.mjs tests/semantic-knowledge-search.test.mjs tests/admin-knowledge-facts.test.mjs tests/strict-readiness.test.mjs tests/payment-provider.test.mjs tests/payment-store.test.mjs tests/payment-audit-store.test.mjs",
+    "test:assistant": "node --test tests/assistant-intent.test.mjs tests/flow-guards.test.mjs tests/orchestrator.test.mjs tests/turn-planner.test.mjs tests/quote-step-close.test.mjs tests/turn-knowledge-context.test.mjs tests/turn-instruction-stack.test.mjs tests/source-trace.test.mjs tests/conversation-audit-admin.test.mjs tests/admin-persistence.test.mjs tests/admin-renewal-ops.test.mjs tests/admin-compliance-gate.test.mjs tests/admin-customer-launch-qa.test.mjs tests/ai-conversation-simulations.test.mjs tests/ai-response-quality-golden.test.mjs tests/advisory-fallbacks.test.mjs tests/approved-facts.test.mjs tests/insurance-engines.test.mjs tests/sandbox-vehicle-gateway.test.mjs tests/production-chat-parity.test.mjs tests/production-turn-instruction-builder.test.mjs tests/flow-handlers.test.mjs tests/pdpa-consent.test.mjs tests/pii-masking.test.mjs tests/pdpa-consent-audit-store.test.mjs tests/chat-session-store.test.mjs tests/pdf-import-metadata.test.mjs tests/document-dating.test.mjs tests/fact-extraction.test.mjs tests/database-fact-store.test.mjs tests/semantic-knowledge-search.test.mjs tests/admin-knowledge-facts.test.mjs tests/strict-readiness.test.mjs tests/payment-provider.test.mjs tests/payment-store.test.mjs tests/payment-audit-store.test.mjs tests/payment-launch-readiness.test.mjs",
     "eval:intent": "node scripts/run-intent-eval.mjs",
     "eval:chaos": "node scripts/run-chaos-conversation-eval.mjs --runs 400 --seed 42",
     "eval:chaos:quick": "node scripts/run-chaos-conversation-eval.mjs --runs 150 --seed 42",
@@ -46,26 +46,31 @@
     "test:insurer:contract:batch": "node scripts/run-insurer-contract-batch.mjs"
   },
   "dependencies": {
-    "@anthropic-ai/claude-code": "^2.0.55",
-    "@prisma/client": "^6.19.2",
+    "@anthropic-ai/claude-code": "^2.1.170",
+    "@prisma/client": "^6.19.3",
     "@upstash/ratelimit": "^2.0.8",
     "@upstash/redis": "^1.36.1",
     "g": "^2.0.1",
-    "next": "^15.5.7",
+    "next": "^15.5.19",
     "openai": "^6.9.0",
     "pdf-parse": "^2.4.5",
+    "qrcode": "^1.5.4",
     "react": "^19.1.2",
     "react-dom": "^19.1.2",
     "react-markdown": "^10.1.0",
     "rehype-raw": "^7.0.0",
     "rehype-sanitize": "^6.0.0",
     "remark-gfm": "^4.0.1",
+    "stripe": "^22.2.2",
     "zod": "^4.3.5"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",
     "eslint": "^9",
-    "eslint-config-next": "15.5.5",
-    "prisma": "^6.19.2"
+    "eslint-config-next": "15.5.19",
+    "prisma": "^6.19.3"
+  },
+  "overrides": {
+    "postcss": "8.5.10"
   }
 }

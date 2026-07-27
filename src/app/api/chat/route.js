@@ -126,10 +126,16 @@ import {
 } from "@/server/chat/sessionStore";
 import { createPayment, PAYMENT_STATUS } from "@/lib/paymentStore";
 import { getPaymentProviderConfig } from "@/server/payment/paymentProvider";
+import { assertPolicyIssuanceAllowed } from "@/server/payment/paymentLaunchReadiness";
+import { recordAdminOpenAiUsageLog } from "@/server/admin/adminTechLogs";
 
 // ============================================================================
 // DETERMINISTIC BLOCK BUILDERS — code-generated markdown the AI must include
 // ============================================================================
+
+function safeRecordOpenAiUsage(event) {
+  recordAdminOpenAiUsageLog(event).catch(() => null);
+}
 
 function formatPlateNumberForDisplay(plate) {
   if (!plate) return '-';
@@ -486,6 +492,13 @@ async function processPaymentAndIssuePolicyInGateway(state, method) {
       payment_method: normalizeGatewayPaymentMethod(method),
     });
     tx.paymentStatus = confirmResponse?.data?.status || 'PAID';
+
+    assertPolicyIssuanceAllowed({
+      paymentStatus: tx.paymentStatus,
+      paymentIntentId: paymentIntentResult.paymentIntentId,
+      providerPaymentIntentId: confirmResponse?.data?.payment_intent_id || paymentIntentResult.paymentIntentId,
+      transactionRef: confirmResponse?.data?.transaction_ref || confirmResponse?.data?.reference || null,
+    });
 
     const policyResponse = await issuePolicy({
       proposal_id: tx.proposalId,
@@ -2779,6 +2792,7 @@ ${repeatedSentenceInstruction}
 Return only the final rewritten assistant message.`;
 
   try {
+    const rewriteStartedAt = Date.now();
     const completion = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
       headers: {
@@ -2795,8 +2809,29 @@ Return only the final rewritten assistant message.`;
       }),
     });
 
-    if (!completion.ok) return originalResponse;
+    if (!completion.ok) {
+      safeRecordOpenAiUsage({
+        model,
+        operation: "quality_rewrite",
+        status: "failed",
+        errorCode: `HTTP_${completion.status}`,
+        errorMessage: "OpenAI quality rewrite failed.",
+        latencyMs: Date.now() - rewriteStartedAt,
+        source: "system",
+      });
+      return originalResponse;
+    }
     const data = await completion.json();
+    safeRecordOpenAiUsage({
+      model,
+      operation: "quality_rewrite",
+      status: "success",
+      promptTokens: data?.usage?.prompt_tokens,
+      completionTokens: data?.usage?.completion_tokens,
+      totalTokens: data?.usage?.total_tokens,
+      latencyMs: Date.now() - rewriteStartedAt,
+      source: "system",
+    });
     const rewritten = data?.choices?.[0]?.message?.content;
     if (!rewritten || typeof rewritten !== 'string') return originalResponse;
     return rewritten.trim();
@@ -3961,6 +3996,7 @@ This summary box must appear in EVERY response from now on until payment is comp
       try {
         const MAX_ITERATIONS = 5;
         for (let i = 0; i < MAX_ITERATIONS; i++) {
+          const completionStartedAt = Date.now();
           const completion = await fetch("https://api.openai.com/v1/chat/completions", {
             method: "POST",
             headers: {
@@ -3978,10 +4014,38 @@ This summary box must appear in EVERY response from now on until payment is comp
 
           if (!completion.ok) {
             const errorText = await completion.text();
+            safeRecordOpenAiUsage({
+              model: process.env.OPENAI_MODEL || "gpt-4o",
+              operation: "chat_completion",
+              status: "failed",
+              errorCode: `HTTP_${completion.status}`,
+              errorMessage: errorText.slice(0, 240),
+              latencyMs: Date.now() - completionStartedAt,
+              metadata: {
+                iteration: i + 1,
+                messageCount: openAiMessages.length,
+              },
+              source: "system",
+            });
             throw createOpenAiApiError(completion, errorText);
           }
 
           const data = await completion.json();
+          safeRecordOpenAiUsage({
+            model: process.env.OPENAI_MODEL || "gpt-4o",
+            operation: "chat_completion",
+            status: "success",
+            promptTokens: data?.usage?.prompt_tokens,
+            completionTokens: data?.usage?.completion_tokens,
+            totalTokens: data?.usage?.total_tokens,
+            latencyMs: Date.now() - completionStartedAt,
+            metadata: {
+              iteration: i + 1,
+              messageCount: openAiMessages.length,
+              hasFunctionCall: Boolean(data?.choices?.[0]?.message?.function_call),
+            },
+            source: "system",
+          });
           const message = data.choices[0].message;
           openAiMessages.push(message);
 

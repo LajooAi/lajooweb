@@ -17,7 +17,7 @@ import {
 import { getPayment, updatePaymentStatus, PAYMENT_STATUS } from "@/lib/paymentStore";
 import {
   PaymentProviderError,
-  createProviderPaymentIntent,
+  createProviderPaymentIntentAsync,
 } from "@/server/payment/paymentProvider";
 
 // Payment request validation
@@ -42,6 +42,15 @@ async function safeRecordPaymentAuditEvent(event) {
     console.warn("[payment-process] Unable to write payment audit event.", error?.message || error);
     return null;
   }
+}
+
+function getRequestOrigin(request) {
+  const origin = request.headers.get("origin");
+  if (origin) return origin;
+  const host = request.headers.get("host");
+  if (!host) return process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+  const protocol = request.headers.get("x-forwarded-proto") || (host.includes("localhost") ? "http" : "https");
+  return `${protocol}://${host}`;
 }
 
 export async function POST(request) {
@@ -126,7 +135,9 @@ export async function POST(request) {
       paymentMethod: requestData.paymentMethod,
       sessionId: requestData.sessionId || existingSnapshot.sessionId || null,
     };
-    const providerIntent = createProviderPaymentIntent(paymentData);
+    const providerIntent = await createProviderPaymentIntentAsync(paymentData, {
+      origin: getRequestOrigin(request),
+    });
 
     const payment = await updatePaymentStatus(requestData.paymentId, providerIntent.paymentAvailable
       ? PAYMENT_STATUS.PENDING
@@ -143,6 +154,10 @@ export async function POST(request) {
       canIssuePolicy: providerIntent.canIssuePolicy,
       paymentMethod: providerIntent.paymentMethod,
       breakdown: providerIntent.breakdown,
+      checkoutData: {
+        ...(existingSnapshot.checkoutData || {}),
+        ...(providerIntent.checkoutData || {}),
+      },
     });
 
     if (!payment) {
@@ -170,6 +185,7 @@ export async function POST(request) {
         amount: providerIntent.amount,
         providerMode: providerIntent.mode,
         paymentAvailable: providerIntent.paymentAvailable,
+        checkoutUrlCreated: Boolean(providerIntent.checkoutUrl),
         canIssuePolicy: false,
       },
     });
@@ -181,6 +197,8 @@ export async function POST(request) {
       provider: payment.provider,
       providerMode: payment.providerMode,
       paymentAvailable: payment.paymentAvailable,
+      checkoutUrl: providerIntent.checkoutUrl || undefined,
+      providerCheckoutSessionId: providerIntent.providerCheckoutSessionId || undefined,
       clientConfirmationToken: payment.clientConfirmationToken || undefined,
       status: payment.status,
       canIssuePolicy: false,

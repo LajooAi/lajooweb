@@ -2157,10 +2157,17 @@ export default function Home() {
   };
 
   const handleKeyDown = (e) => {
-    if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault();
-      handleSend();
+    if (
+      e.key !== "Enter" ||
+      e.shiftKey ||
+      e.nativeEvent?.isComposing ||
+      window.matchMedia("(pointer: coarse)").matches
+    ) {
+      return;
     }
+
+    e.preventDefault();
+    handleSend();
   };
 
   const handleQuickStart = (text) => {
@@ -2919,6 +2926,7 @@ export default function Home() {
                     e.target.style.height = Math.min(e.target.scrollHeight, 120) + 'px';
                   }}
                   onKeyDown={handleKeyDown}
+                  enterKeyHint="enter"
                   onBlur={() => {
                     if (!hasMessages) {
                       setTimeout(() => {

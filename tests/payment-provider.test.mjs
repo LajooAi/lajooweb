@@ -1,11 +1,13 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import Stripe from 'stripe';
 import {
   PaymentProviderError,
   PAYMENT_PROVIDER_STATUSES,
   PAYMENT_WEBHOOK_EVENT_TYPES,
   confirmProviderPaymentIntent,
   createProviderPaymentIntent,
+  createProviderPaymentIntentAsync,
   createWebhookSignature,
   getPaymentProviderConfig,
   listPaymentProviderShells,
@@ -216,8 +218,130 @@ test('provider shells expose safe readiness metadata without secrets', () => {
   assert.deepEqual(stripe.missingEnv, ['STRIPE_WEBHOOK_SECRET']);
   assert.equal(stripe.hasRequiredConfig, false);
   assert.equal(stripe.paymentAvailable, false);
+  assert.equal(stripe.implemented, true);
   assert.equal(billplz.country, 'MY');
   assert.equal(Object.values(stripe).some((value) => String(value).includes('secret')), false);
+});
+
+test('stripe config is implemented but disabled until launch flags and env are ready', async () => {
+  const env = {
+    LAJOO_PAYMENT_PROVIDER: 'stripe',
+    STRIPE_SECRET_KEY: 'sk_test_do_not_show',
+    STRIPE_WEBHOOK_SECRET: 'whsec_do_not_show',
+  };
+  const config = getPaymentProviderConfig(env);
+  const intent = await createProviderPaymentIntentAsync(basePayload, { env });
+
+  assert.equal(config.provider, 'stripe');
+  assert.equal(config.implemented, true);
+  assert.equal(config.paymentAvailable, false);
+  assert.equal(config.livePaymentsEnabled, false);
+  assert.equal(config.mode, 'stripe_checkout_sandbox');
+  assert.equal(intent.status, PAYMENT_PROVIDER_STATUSES.REQUIRES_PROVIDER);
+  assert.equal(intent.clientConfirmationToken, null);
+  assert.doesNotMatch(JSON.stringify(config), /sk_test_do_not_show|whsec_do_not_show/);
+});
+
+test('stripe checkout creation returns hosted checkout URL and never enables policy issuance', async () => {
+  const calls = [];
+  const env = {
+    LAJOO_PAYMENT_PROVIDER: 'stripe',
+    LAJOO_LIVE_PAYMENTS_ENABLED: 'true',
+    LAJOO_PAYMENT_PROVIDER_STRIPE_ENABLED: 'true',
+    STRIPE_SECRET_KEY: 'sk_test_do_not_show',
+    STRIPE_WEBHOOK_SECRET: 'whsec_do_not_show',
+    STRIPE_MODE: 'test',
+  };
+  const stripeClient = {
+    checkout: {
+      sessions: {
+        create: async (params) => {
+          calls.push(params);
+          return {
+            id: 'cs_test_lajoo',
+            url: 'https://checkout.stripe.test/c/pay/cs_test_lajoo',
+            payment_intent: 'pi_test_lajoo',
+          };
+        },
+      },
+    },
+  };
+
+  const intent = await createProviderPaymentIntentAsync(basePayload, {
+    env,
+    origin: 'https://lajoo.test',
+    stripeClient,
+  });
+
+  assert.equal(intent.provider, 'stripe');
+  assert.equal(intent.paymentAvailable, true);
+  assert.equal(intent.canIssuePolicy, false);
+  assert.equal(intent.checkoutUrl, 'https://checkout.stripe.test/c/pay/cs_test_lajoo');
+  assert.equal(intent.clientConfirmationToken, null);
+  assert.equal(intent.providerPaymentIntentId, 'pi_test_lajoo');
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0].client_reference_id, 'PAY-test');
+  assert.deepEqual(calls[0].payment_method_types, ['fpx']);
+  assert.equal(calls[0].line_items[0].price_data.unit_amount, 98600);
+  assert.match(calls[0].success_url, /\/my\/payment\/PAY-test/);
+  assert.match(calls[0].success_url, /\{CHECKOUT_SESSION_ID\}/);
+  assert.doesNotMatch(JSON.stringify(calls[0].metadata), /JRT9289|Takaful Ikhlas/);
+});
+
+test('stripe webhook verification uses signed raw body and sanitized event payload', () => {
+  const secret = 'whsec_phase15_test';
+  const env = {
+    LAJOO_PAYMENT_PROVIDER: 'stripe',
+    LAJOO_LIVE_PAYMENTS_ENABLED: 'true',
+    LAJOO_PAYMENT_PROVIDER_STRIPE_ENABLED: 'true',
+    STRIPE_SECRET_KEY: 'sk_test_do_not_show',
+    STRIPE_WEBHOOK_SECRET: secret,
+  };
+  const stripe = new Stripe('sk_test_do_not_show');
+  const rawBody = JSON.stringify({
+    id: 'evt_stripe_phase15',
+    object: 'event',
+    type: 'checkout.session.completed',
+    livemode: false,
+    data: {
+      object: {
+        id: 'cs_test_phase15',
+        object: 'checkout.session',
+        client_reference_id: 'PAY-stripe-webhook',
+        payment_intent: 'pi_test_phase15',
+        amount_total: 98600,
+        currency: 'myr',
+        payment_status: 'paid',
+        metadata: { lajooPaymentId: 'PAY-stripe-webhook' },
+        customer_details: { email: 'customer@example.com' },
+      },
+    },
+  });
+  const signature = stripe.webhooks.generateTestHeaderString({
+    payload: rawBody,
+    secret,
+  });
+
+  const verified = verifyProviderWebhook('stripe', rawBody, {
+    'stripe-signature': signature,
+  }, { env });
+
+  assert.equal(verified.ok, true);
+  assert.equal(verified.provider, 'stripe');
+  assert.equal(verified.event.paymentId, 'PAY-stripe-webhook');
+  assert.equal(verified.event.providerEventId, 'evt_stripe_phase15');
+  assert.equal(verified.event.providerPaymentIntentId, 'pi_test_phase15');
+  assert.equal(verified.event.eventType, PAYMENT_WEBHOOK_EVENT_TYPES.PAYMENT_SUCCEEDED);
+  assert.equal(verified.event.amount, 986);
+  assert.equal(verified.event.currency, 'MYR');
+  assert.doesNotMatch(JSON.stringify(verified.event.payload), /customer@example.com|customer_details/);
+
+  assert.throws(
+    () => verifyProviderWebhook('stripe', rawBody, {
+      'stripe-signature': 'bad-signature',
+    }, { env }),
+    (error) => error instanceof PaymentProviderError && error.code === 'WEBHOOK_SIGNATURE_INVALID'
+  );
 });
 
 test('provider-specific shell rejects unsupported payment methods early', () => {

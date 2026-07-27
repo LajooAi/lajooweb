@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import { recordAdminInsurerAdapterLog } from '../server/admin/adminTechLogs.js';
 
 const DEFAULT_BASE_URL = 'http://localhost:4001/v1';
 const DEFAULT_TIMEOUT_MS = 12000;
@@ -75,6 +76,8 @@ function makeIdempotencyKey(prefix = 'idem') {
 async function rawRequest(endpoint, { method = 'GET', headers = {}, body = null, query = null } = {}) {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), getTimeoutMs());
+  const startedAt = Date.now();
+  const requestId = headers['X-Correlation-Id'] || headers['x-correlation-id'] || makeCorrelationId('adapter');
 
   try {
     const response = await fetch(buildUrl(endpoint, query), {
@@ -103,8 +106,41 @@ async function rawRequest(endpoint, { method = 'GET', headers = {}, body = null,
       );
     }
 
+    recordAdminInsurerAdapterLog({
+      insurerCode: 'legacy_gateway',
+      adapterName: 'LegacyInsurerGateway',
+      operation: endpoint,
+      status: 'success',
+      latencyMs: Date.now() - startedAt,
+      requestId,
+      providerEnvironment: process.env.INSURER_API_ENVIRONMENT || process.env.NODE_ENV || 'unknown',
+      adapterVersion: 'legacy-gateway-v1',
+      retryCount: 0,
+      source: 'system',
+    }).catch(() => null);
+
     return payload;
   } catch (error) {
+    const normalizedError = error?.name === 'AbortError'
+      ? new InsurerGatewayError(`Request timed out: ${endpoint}`, { endpoint, code: 'DOWNSTREAM_TIMEOUT' })
+      : error instanceof InsurerGatewayError
+        ? error
+        : new InsurerGatewayError(error?.message || `Request failed: ${endpoint}`, { endpoint });
+    recordAdminInsurerAdapterLog({
+      insurerCode: 'legacy_gateway',
+      adapterName: 'LegacyInsurerGateway',
+      operation: endpoint,
+      status: 'failed',
+      latencyMs: Date.now() - startedAt,
+      requestId,
+      errorCode: normalizedError.code || 'ADAPTER_REQUEST_FAILED',
+      errorMessage: normalizedError.message,
+      providerEnvironment: process.env.INSURER_API_ENVIRONMENT || process.env.NODE_ENV || 'unknown',
+      adapterVersion: 'legacy-gateway-v1',
+      retryCount: 0,
+      metadata: { endpoint, httpStatus: normalizedError.status || null },
+      source: 'system',
+    }).catch(() => null);
     if (error?.name === 'AbortError') {
       throw new InsurerGatewayError(`Request timed out: ${endpoint}`, { endpoint });
     }

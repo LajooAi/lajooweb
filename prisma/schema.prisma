@@ -262,3 +262,1650 @@ model PdpaConsentAuditEvent {
   @@index([acceptedAt])
   @@index([createdAt])
 }
+
+model AdminUser {
+  id                            String                              @id @default(cuid())
+  email                         String                              @unique
+  name                          String
+  passwordHash                  String?
+  status                        String                              @default("active")
+  mfaStatus                     String                              @default("not_configured")
+  mfaSecretEncrypted            String?
+  mfaEnabledAt                  DateTime?
+  mfaSecretUpdatedAt            DateTime?
+  invitedAt                     DateTime?
+  suspendedAt                   DateTime?
+  bootstrapSource               String?
+  createdAt                     DateTime                            @default(now())
+  updatedAt                     DateTime                            @updatedAt
+  lastActiveAt                  DateTime?
+  roleAssignments               AdminRoleAssignment[]               @relation("AdminUserRoleAssignments")
+  grantedRoleAssignments        AdminRoleAssignment[]               @relation("AdminRoleGrantedBy")
+  sessions                      AdminSession[]
+  inviteTokens                  AdminInviteToken[]                  @relation("AdminUserInviteTokens")
+  createdInviteTokens           AdminInviteToken[]                  @relation("AdminInviteCreatedBy")
+  inviteEmailEvents             AdminInviteEmailEvent[]             @relation("AdminInviteEmailEventActor")
+  resendWebhookStatusChecks     AdminResendWebhookStatusCheck[]     @relation("AdminResendWebhookStatusCheckActor")
+  webhookMonitoringAlerts       AdminWebhookMonitoringAlert[]       @relation("AdminWebhookMonitoringAlertActor")
+  assignedWebhookMonitoringAlerts AdminWebhookMonitoringAlert[]      @relation("AdminWebhookMonitoringAlertAssignedTo")
+  resolvedWebhookMonitoringAlerts AdminWebhookMonitoringAlert[]      @relation("AdminWebhookMonitoringAlertResolvedBy")
+  webhookMonitoringAlertEvents   AdminWebhookMonitoringAlertEvent[]  @relation("AdminWebhookMonitoringAlertEventActor")
+  webhookMonitoringAlertNotifications AdminWebhookMonitoringAlertNotification[] @relation("AdminWebhookMonitoringAlertNotificationRecipient")
+  notificationPreferences       AdminNotificationPreference[]
+  notificationDigests           AdminNotificationDigestEvent[]      @relation("AdminNotificationDigestUser")
+  sentNotificationDigests       AdminNotificationDigestEvent[]      @relation("AdminNotificationDigestActor")
+  notificationDigestJobAttempts AdminNotificationDigestJobAttempt[] @relation("AdminNotificationDigestJobAttemptActor")
+  mfaChallenges                 AdminMfaChallenge[]
+  requestedMfaRecoveries        AdminMfaRecoveryRequest[]           @relation("AdminMfaRecoveryRequester")
+  targetedMfaRecoveries         AdminMfaRecoveryRequest[]           @relation("AdminMfaRecoveryTarget")
+  approvedMfaRecoveries         AdminMfaRecoveryRequest[]           @relation("AdminMfaRecoveryApprover")
+  mfaReminderEvents             AdminMfaRecoveryReminderEvent[]     @relation("AdminMfaRecoveryReminderActor")
+  auditLogs                     AdminAuditLog[]                     @relation("AdminAuditActor")
+  reviewedAuditLogs             AdminAuditLog[]                     @relation("AdminAuditReviewedBy")
+  assignedAuditLogs             AdminAuditLog[]                     @relation("AdminAuditAssignedTo")
+  auditAssignmentEvents         AdminAuditAssignmentEvent[]         @relation("AdminAuditAssignmentActor")
+  piiRevealEvents               PiiRevealEvent[]
+  exportEvents                  AdminExportEvent[]
+  exportArtifactPolicies        AdminExportArtifactPolicy[]         @relation("AdminExportArtifactPolicyChangedBy")
+  artifactAccesses              AdminExportArtifactAccess[]
+  revokedArtifactAccesses       AdminExportArtifactAccess[]         @relation("AdminExportArtifactRevokedBy")
+  scheduledJobAttempts          AdminScheduledJobAttempt[]          @relation("AdminScheduledJobAttemptActor")
+  cronExecutionAlerts           AdminCronExecutionAlert[]           @relation("AdminCronExecutionAlertActor")
+  assignedCronExecutionAlerts   AdminCronExecutionAlert[]           @relation("AdminCronExecutionAlertAssignedTo")
+  resolvedCronExecutionAlerts   AdminCronExecutionAlert[]           @relation("AdminCronExecutionAlertResolvedBy")
+  cronExecutionAlertEvents      AdminCronExecutionAlertEvent[]      @relation("AdminCronExecutionAlertEventActor")
+  cronExecutionAlertNotifications AdminCronExecutionAlertNotification[] @relation("AdminCronExecutionAlertNotificationRecipient")
+  paymentWebhookVerificationEvents AdminPaymentWebhookVerificationEvent[] @relation("AdminPaymentWebhookVerificationActor")
+  assignedPaymentReconciliationItems AdminPaymentReconciliationItem[] @relation("AdminPaymentReconciliationAssignedTo")
+  reviewedPaymentReconciliationItems AdminPaymentReconciliationItem[] @relation("AdminPaymentReconciliationReviewedBy")
+  paymentReconciliationEvents AdminPaymentReconciliationEvent[] @relation("AdminPaymentReconciliationEventActor")
+  createdPaymentExceptions AdminPaymentException[] @relation("AdminPaymentExceptionCreatedBy")
+  assignedPaymentExceptions AdminPaymentException[] @relation("AdminPaymentExceptionAssignedTo")
+  resolvedPaymentExceptions AdminPaymentException[] @relation("AdminPaymentExceptionResolvedBy")
+  paymentExceptionEvents AdminPaymentExceptionEvent[] @relation("AdminPaymentExceptionEventActor")
+  ownedRenewalOpsCases AdminRenewalOpsCase[] @relation("AdminRenewalOpsOwner")
+  createdRenewalOpsCases AdminRenewalOpsCase[] @relation("AdminRenewalOpsCreatedBy")
+  updatedRenewalOpsCases AdminRenewalOpsCase[] @relation("AdminRenewalOpsUpdatedBy")
+  renewalOpsStatusEvents AdminRenewalOpsStatusEvent[] @relation("AdminRenewalOpsStatusActor")
+  renewalQuoteLifecycleEvents AdminRenewalQuoteLifecycleEvent[] @relation("AdminRenewalQuoteLifecycleActor")
+  insurerPartnerSubmissions AdminInsurerPartnerSubmission[] @relation("AdminInsurerPartnerSubmissionActor")
+  manualIssuanceTasks AdminManualIssuanceTask[] @relation("AdminManualIssuanceTaskActor")
+  assignedManualIssuanceTasks AdminManualIssuanceTask[] @relation("AdminManualIssuanceTaskAssignedTo")
+  policyDocumentUploads AdminPolicyDocumentVerification[] @relation("AdminPolicyDocumentUploadedBy")
+  policyDocumentReviews AdminPolicyDocumentVerification[] @relation("AdminPolicyDocumentReviewedBy")
+
+  @@index([status])
+  @@index([mfaStatus])
+  @@index([lastActiveAt])
+}
+
+model AdminInviteToken {
+  id                String                  @id @default(cuid())
+  userId            String
+  user              AdminUser               @relation("AdminUserInviteTokens", fields: [userId], references: [id], onDelete: Cascade)
+  email             String
+  role              String
+  tokenHash         String                  @unique
+  status            String                  @default("pending")
+  expiresAt         DateTime
+  acceptedAt        DateTime?
+  revokedAt         DateTime?
+  createdByUserId   String?
+  createdBy         AdminUser?              @relation("AdminInviteCreatedBy", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  createdReason     String?
+  deliveryStatus    String                  @default("manual_required")
+  deliveryProvider  String?
+  deliveryMessageId String?
+  deliveryError     String?
+  deliverySentAt    DateTime?
+  ipAddress         String?
+  userAgent         String?
+  createdAt         DateTime                @default(now())
+  emailEvents       AdminInviteEmailEvent[]
+
+  @@index([userId])
+  @@index([email])
+  @@index([status])
+  @@index([expiresAt])
+  @@index([createdByUserId])
+  @@index([deliveryStatus])
+}
+
+model AdminInviteEmailEvent {
+  id                  String                   @id @default(cuid())
+  inviteTokenId       String?
+  inviteToken         AdminInviteToken?        @relation(fields: [inviteTokenId], references: [id], onDelete: SetNull)
+  actorUserId         String?
+  actorUser           AdminUser?               @relation("AdminInviteEmailEventActor", fields: [actorUserId], references: [id], onDelete: SetNull)
+  email               String
+  provider            String
+  status              String
+  errorClass          String?
+  errorMessage        String?
+  messageId           String?
+  domain              String?
+  providerEnvironment String?
+  metadata            Json?
+  ipAddress           String?
+  userAgent           String?
+  createdAt           DateTime                 @default(now())
+  webhookEvents       AdminEmailWebhookEvent[]
+
+  @@index([inviteTokenId])
+  @@index([actorUserId])
+  @@index([provider])
+  @@index([status])
+  @@index([errorClass])
+  @@index([createdAt])
+}
+
+model AdminEmailWebhookEvent {
+  id                 String                 @id @default(cuid())
+  inviteEmailEventId String?
+  inviteEmailEvent   AdminInviteEmailEvent? @relation(fields: [inviteEmailEventId], references: [id], onDelete: SetNull)
+  provider           String                 @default("resend")
+  svixId             String?                @unique
+  eventType          String
+  status             String
+  providerEventId    String?
+  providerMessageId  String?
+  recipientMasked    String?
+  emailDigest        String?
+  verificationStatus String                 @default("verified")
+  errorClass         String?
+  payloadSummary     Json?
+  linkedBy           String?
+  ipAddress          String?
+  userAgent          String?
+  receivedAt         DateTime               @default(now())
+  createdAt          DateTime               @default(now())
+
+  @@index([inviteEmailEventId])
+  @@index([provider])
+  @@index([eventType])
+  @@index([status])
+  @@index([providerMessageId])
+  @@index([verificationStatus])
+  @@index([receivedAt])
+  @@index([createdAt])
+}
+
+model AdminResendWebhookStatusCheck {
+  id                    String                        @id @default(cuid())
+  actorUserId           String?
+  actorUser             AdminUser?                    @relation("AdminResendWebhookStatusCheckActor", fields: [actorUserId], references: [id], onDelete: SetNull)
+  monitoringAlerts      AdminWebhookMonitoringAlert[]
+  provider              String                        @default("resend")
+  status                String
+  endpointUrl           String?
+  endpointMatched       Boolean                       @default(false)
+  matchedWebhookId      String?
+  matchedWebhookStatus  String?
+  matchedWebhookEvents  Json?
+  webhookCount          Int                           @default(0)
+  requiredEventsMissing Json?
+  errorClass            String?
+  errorMessage          String?
+  providerEnvironment   String?
+  ipAddress             String?
+  userAgent             String?
+  metadata              Json?
+  checkedAt             DateTime                      @default(now())
+  createdAt             DateTime                      @default(now())
+
+  @@index([actorUserId])
+  @@index([provider])
+  @@index([status])
+  @@index([endpointMatched])
+  @@index([matchedWebhookStatus])
+  @@index([errorClass])
+  @@index([checkedAt])
+  @@index([createdAt])
+}
+
+model AdminWebhookMonitoringAlert {
+  id                    String                         @id @default(cuid())
+  actorUserId           String?
+  actorUser             AdminUser?                     @relation("AdminWebhookMonitoringAlertActor", fields: [actorUserId], references: [id], onDelete: SetNull)
+  assignedToUserId      String?
+  assignedTo            AdminUser?                     @relation("AdminWebhookMonitoringAlertAssignedTo", fields: [assignedToUserId], references: [id], onDelete: SetNull)
+  resolvedByUserId      String?
+  resolvedBy            AdminUser?                     @relation("AdminWebhookMonitoringAlertResolvedBy", fields: [resolvedByUserId], references: [id], onDelete: SetNull)
+  statusCheckId         String?
+  statusCheck           AdminResendWebhookStatusCheck? @relation(fields: [statusCheckId], references: [id], onDelete: SetNull)
+  provider              String                         @default("resend")
+  alertType             String
+  priority              String                         @default("normal")
+  severity              String                         @default("warning")
+  status                String                         @default("open")
+  message               String
+  note                  String?
+  snoozedUntil          DateTime?
+  endpointUrl           String?
+  providerStatus        String?
+  secretConfigured      Boolean?
+  endpointMatched       Boolean?
+  requiredEventsMissing Json?
+  lastVerifiedWebhookAt DateTime?
+  detectedAt            DateTime                       @default(now())
+  acknowledgedAt        DateTime?
+  resolvedAt            DateTime?
+  ipAddress             String?
+  userAgent             String?
+  metadata              Json?
+  createdAt             DateTime                       @default(now())
+  updatedAt             DateTime                       @updatedAt
+  workflowEvents        AdminWebhookMonitoringAlertEvent[]
+  notifications         AdminWebhookMonitoringAlertNotification[]
+
+  @@index([actorUserId])
+  @@index([assignedToUserId])
+  @@index([resolvedByUserId])
+  @@index([statusCheckId])
+  @@index([provider])
+  @@index([alertType])
+  @@index([priority])
+  @@index([severity])
+  @@index([status])
+  @@index([snoozedUntil])
+  @@index([detectedAt])
+  @@index([acknowledgedAt])
+  @@index([resolvedAt])
+  @@index([createdAt])
+}
+
+model AdminWebhookMonitoringAlertEvent {
+  id              String                       @id @default(cuid())
+  alertId         String
+  alert           AdminWebhookMonitoringAlert  @relation(fields: [alertId], references: [id], onDelete: Cascade)
+  actorUserId     String?
+  actorUser       AdminUser?                   @relation("AdminWebhookMonitoringAlertEventActor", fields: [actorUserId], references: [id], onDelete: SetNull)
+  action          String
+  previousStatus  String?
+  status          String
+  previousPriority String?
+  priority        String?
+  assignedToUserId String?
+  reason          String
+  note            String?
+  snoozedUntil    DateTime?
+  ipAddress       String?
+  userAgent       String?
+  metadata        Json?
+  createdAt       DateTime                     @default(now())
+
+  @@index([alertId])
+  @@index([actorUserId])
+  @@index([action])
+  @@index([status])
+  @@index([priority])
+  @@index([assignedToUserId])
+  @@index([snoozedUntil])
+  @@index([createdAt])
+}
+
+model AdminWebhookMonitoringAlertNotification {
+  id                    String                      @id @default(cuid())
+  alertId               String
+  alert                 AdminWebhookMonitoringAlert @relation(fields: [alertId], references: [id], onDelete: Cascade)
+  recipientUserId       String?
+  recipient             AdminUser?                  @relation("AdminWebhookMonitoringAlertNotificationRecipient", fields: [recipientUserId], references: [id], onDelete: SetNull)
+  recipientRole         String?
+  status                String
+  deliveryProvider      String?
+  deliveryStatus        String?
+  deliveryMessageId     String?
+  errorClass            String?
+  errorMessage          String?
+  manualFallback        Boolean                     @default(false)
+  reason                String
+  ipAddress             String?
+  userAgent             String?
+  metadata              Json?
+  createdAt             DateTime                    @default(now())
+
+  @@index([alertId])
+  @@index([recipientUserId])
+  @@index([recipientRole])
+  @@index([status])
+  @@index([deliveryStatus])
+  @@index([errorClass])
+  @@index([manualFallback])
+  @@index([createdAt])
+}
+
+model AdminNotificationPreference {
+  id                    String    @id @default(cuid())
+  userId                String
+  user                  AdminUser @relation(fields: [userId], references: [id], onDelete: Cascade)
+  category              String
+  emailEnabled          Boolean   @default(true)
+  frequency             String    @default("immediate")
+  manualFallbackEnabled Boolean   @default(true)
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  @@unique([userId, category])
+  @@index([userId])
+  @@index([category])
+  @@index([frequency])
+}
+
+model AdminNotificationDigestEvent {
+  id                 String     @id @default(cuid())
+  userId             String
+  user               AdminUser  @relation("AdminNotificationDigestUser", fields: [userId], references: [id], onDelete: Cascade)
+  actorUserId        String?
+  actorUser          AdminUser? @relation("AdminNotificationDigestActor", fields: [actorUserId], references: [id], onDelete: SetNull)
+  frequency          String
+  status             String
+  deliveryProvider   String?
+  deliveryStatus     String?
+  deliveryMessageId  String?
+  deliveryErrorClass String?
+  deliveryError      String?
+  manualFallback     Boolean    @default(false)
+  categorySummary    Json?
+  itemCount          Int        @default(0)
+  reason             String?
+  ipAddress          String?
+  userAgent          String?
+  sentAt             DateTime?
+  createdAt          DateTime   @default(now())
+
+  @@index([userId])
+  @@index([actorUserId])
+  @@index([frequency])
+  @@index([status])
+  @@index([deliveryStatus])
+  @@index([deliveryProvider])
+  @@index([manualFallback])
+  @@index([sentAt])
+  @@index([createdAt])
+}
+
+model AdminNotificationDigestJobAttempt {
+  id                  String     @id @default(cuid())
+  actorUserId         String?
+  actorUser           AdminUser? @relation("AdminNotificationDigestJobAttemptActor", fields: [actorUserId], references: [id], onDelete: SetNull)
+  jobName             String     @default("admin-notification-digest")
+  frequency           String
+  triggerSource       String     @default("manual_admin")
+  status              String
+  reason              String?
+  targetUserCount     Int        @default(0)
+  attemptedCount      Int        @default(0)
+  sentCount           Int        @default(0)
+  manualFallbackCount Int        @default(0)
+  failedCount         Int        @default(0)
+  skippedCount        Int        @default(0)
+  itemCount           Int        @default(0)
+  deliveryProvider    String?
+  deliveryStatus      String?
+  errorClass          String?
+  errorMessage        String?
+  liveCron            Boolean    @default(false)
+  ipAddress           String?
+  userAgent           String?
+  metadata            Json?
+  startedAt           DateTime   @default(now())
+  finishedAt          DateTime?
+  createdAt           DateTime   @default(now())
+
+  @@index([actorUserId])
+  @@index([jobName])
+  @@index([frequency])
+  @@index([triggerSource])
+  @@index([status])
+  @@index([deliveryStatus])
+  @@index([liveCron])
+  @@index([startedAt])
+  @@index([createdAt])
+}
+
+model AdminScheduledJobAttempt {
+  id              String     @id @default(cuid())
+  actorUserId     String?
+  actorUser       AdminUser? @relation("AdminScheduledJobAttemptActor", fields: [actorUserId], references: [id], onDelete: SetNull)
+  jobName         String
+  jobKind         String
+  triggerSource   String     @default("cron")
+  status          String
+  reason          String?
+  matchedCount    Int        @default(0)
+  processedCount  Int        @default(0)
+  successCount    Int        @default(0)
+  failedCount     Int        @default(0)
+  skippedCount    Int        @default(0)
+  itemCount       Int        @default(0)
+  liveCron        Boolean    @default(false)
+  errorClass      String?
+  errorMessage    String?
+  ipAddress       String?
+  userAgent       String?
+  metadata        Json?
+  startedAt       DateTime   @default(now())
+  finishedAt      DateTime?
+  createdAt       DateTime   @default(now())
+  cronExecutionAlerts AdminCronExecutionAlert[]
+
+  @@index([actorUserId])
+  @@index([jobName])
+  @@index([jobKind])
+  @@index([triggerSource])
+  @@index([status])
+  @@index([liveCron])
+  @@index([startedAt])
+  @@index([createdAt])
+}
+
+model AdminCronExecutionAlert {
+  id                    String                       @id @default(cuid())
+  actorUserId           String?
+  actorUser             AdminUser?                   @relation("AdminCronExecutionAlertActor", fields: [actorUserId], references: [id], onDelete: SetNull)
+  assignedToUserId      String?
+  assignedTo            AdminUser?                   @relation("AdminCronExecutionAlertAssignedTo", fields: [assignedToUserId], references: [id], onDelete: SetNull)
+  resolvedByUserId      String?
+  resolvedBy            AdminUser?                   @relation("AdminCronExecutionAlertResolvedBy", fields: [resolvedByUserId], references: [id], onDelete: SetNull)
+  scheduledJobAttemptId String?
+  scheduledJobAttempt   AdminScheduledJobAttempt?    @relation(fields: [scheduledJobAttemptId], references: [id], onDelete: SetNull)
+  jobName               String
+  jobKind               String
+  alertType             String
+  priority              String                       @default("normal")
+  severity              String                       @default("warning")
+  status                String                       @default("open")
+  message               String
+  note                  String?
+  snoozedUntil          DateTime?
+  lastAttemptStatus     String?
+  lastAttemptAt         DateTime?
+  lastSuccessAt         DateTime?
+  failureCount          Int                          @default(0)
+  skippedCount          Int                          @default(0)
+  staleThresholdMinutes Int?
+  detectedAt            DateTime                     @default(now())
+  acknowledgedAt        DateTime?
+  resolvedAt            DateTime?
+  ipAddress             String?
+  userAgent             String?
+  metadata              Json?
+  createdAt             DateTime                     @default(now())
+  updatedAt             DateTime                     @updatedAt
+  workflowEvents        AdminCronExecutionAlertEvent[]
+  notifications         AdminCronExecutionAlertNotification[]
+
+  @@index([actorUserId])
+  @@index([assignedToUserId])
+  @@index([resolvedByUserId])
+  @@index([scheduledJobAttemptId])
+  @@index([jobName])
+  @@index([jobKind])
+  @@index([alertType])
+  @@index([priority])
+  @@index([severity])
+  @@index([status])
+  @@index([snoozedUntil])
+  @@index([lastAttemptAt])
+  @@index([lastSuccessAt])
+  @@index([detectedAt])
+  @@index([acknowledgedAt])
+  @@index([resolvedAt])
+  @@index([createdAt])
+}
+
+model AdminCronExecutionAlertEvent {
+  id                String                   @id @default(cuid())
+  alertId           String
+  alert             AdminCronExecutionAlert  @relation(fields: [alertId], references: [id], onDelete: Cascade)
+  actorUserId       String?
+  actorUser         AdminUser?               @relation("AdminCronExecutionAlertEventActor", fields: [actorUserId], references: [id], onDelete: SetNull)
+  action            String
+  previousStatus    String?
+  status            String
+  previousPriority  String?
+  priority          String?
+  assignedToUserId  String?
+  reason            String
+  note              String?
+  snoozedUntil      DateTime?
+  ipAddress         String?
+  userAgent         String?
+  metadata          Json?
+  createdAt         DateTime                 @default(now())
+
+  @@index([alertId])
+  @@index([actorUserId])
+  @@index([action])
+  @@index([status])
+  @@index([priority])
+  @@index([assignedToUserId])
+  @@index([snoozedUntil])
+  @@index([createdAt])
+}
+
+model AdminCronExecutionAlertNotification {
+  id                    String                   @id @default(cuid())
+  alertId               String
+  alert                 AdminCronExecutionAlert  @relation(fields: [alertId], references: [id], onDelete: Cascade)
+  recipientUserId       String?
+  recipient             AdminUser?               @relation("AdminCronExecutionAlertNotificationRecipient", fields: [recipientUserId], references: [id], onDelete: SetNull)
+  recipientRole         String?
+  status                String
+  deliveryProvider      String?
+  deliveryStatus        String?
+  deliveryMessageId     String?
+  errorClass            String?
+  errorMessage          String?
+  manualFallback        Boolean                  @default(false)
+  reason                String
+  ipAddress             String?
+  userAgent             String?
+  metadata              Json?
+  createdAt             DateTime                 @default(now())
+
+  @@index([alertId])
+  @@index([recipientUserId])
+  @@index([recipientRole])
+  @@index([status])
+  @@index([deliveryProvider])
+  @@index([deliveryStatus])
+  @@index([errorClass])
+  @@index([manualFallback])
+  @@index([createdAt])
+}
+
+model AdminMfaChallenge {
+  id         String    @id @default(cuid())
+  userId     String
+  user       AdminUser @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash  String    @unique
+  status     String    @default("pending")
+  ipAddress  String?
+  userAgent  String?
+  createdAt  DateTime  @default(now())
+  expiresAt  DateTime
+  verifiedAt DateTime?
+  failedAt   DateTime?
+
+  @@index([userId])
+  @@index([status])
+  @@index([expiresAt])
+  @@index([createdAt])
+}
+
+model AdminMfaRecoveryRequest {
+  id                      String                          @id @default(cuid())
+  requesterUserId         String?
+  requester               AdminUser?                      @relation("AdminMfaRecoveryRequester", fields: [requesterUserId], references: [id], onDelete: SetNull)
+  targetUserId            String
+  targetUser              AdminUser                       @relation("AdminMfaRecoveryTarget", fields: [targetUserId], references: [id], onDelete: Cascade)
+  approverUserId          String?
+  approver                AdminUser?                      @relation("AdminMfaRecoveryApprover", fields: [approverUserId], references: [id], onDelete: SetNull)
+  status                  String                          @default("requested")
+  reason                  String
+  approvalReason          String?
+  rejectionReason         String?
+  emergencyOverrideReason String?
+  dueAt                   DateTime?
+  priority                String                          @default("normal")
+  notifiedAt              DateTime?
+  reminderSentAt          DateTime?
+  overdueAt               DateTime?
+  notificationStatus      String?
+  notificationProvider    String?
+  notificationErrorClass  String?
+  notificationError       String?
+  ipAddress               String?
+  userAgent               String?
+  metadata                Json?
+  requestedAt             DateTime                        @default(now())
+  approvedAt              DateTime?
+  rejectedAt              DateTime?
+  completedAt             DateTime?
+  blockedAt               DateTime?
+  createdAt               DateTime                        @default(now())
+  updatedAt               DateTime                        @updatedAt
+  reminderEvents          AdminMfaRecoveryReminderEvent[]
+
+  @@index([requesterUserId])
+  @@index([targetUserId])
+  @@index([approverUserId])
+  @@index([status])
+  @@index([priority])
+  @@index([dueAt])
+  @@index([overdueAt])
+  @@index([notificationStatus])
+  @@index([requestedAt])
+  @@index([createdAt])
+}
+
+model AdminMfaRecoveryReminderEvent {
+  id                   String                  @id @default(cuid())
+  recoveryRequestId    String
+  recoveryRequest      AdminMfaRecoveryRequest @relation(fields: [recoveryRequestId], references: [id], onDelete: Cascade)
+  actorUserId          String?
+  actorUser            AdminUser?              @relation("AdminMfaRecoveryReminderActor", fields: [actorUserId], references: [id], onDelete: SetNull)
+  action               String
+  status               String
+  priority             String
+  reason               String
+  deliveryStatus       String?
+  deliveryProvider     String?
+  errorClass           String?
+  escalationTargetRole String?
+  ipAddress            String?
+  userAgent            String?
+  metadata             Json?
+  createdAt            DateTime                @default(now())
+
+  @@index([recoveryRequestId])
+  @@index([actorUserId])
+  @@index([action])
+  @@index([status])
+  @@index([priority])
+  @@index([escalationTargetRole])
+  @@index([createdAt])
+}
+
+model AdminRoleAssignment {
+  id              String     @id @default(cuid())
+  userId          String
+  user            AdminUser  @relation("AdminUserRoleAssignments", fields: [userId], references: [id], onDelete: Cascade)
+  role            String
+  grantedByUserId String?
+  grantedBy       AdminUser? @relation("AdminRoleGrantedBy", fields: [grantedByUserId], references: [id], onDelete: SetNull)
+  grantedReason   String?
+  createdAt       DateTime   @default(now())
+  revokedAt       DateTime?
+
+  @@index([userId])
+  @@index([role])
+  @@index([revokedAt])
+  @@index([grantedByUserId])
+}
+
+model AdminSession {
+  id         String    @id @default(cuid())
+  userId     String
+  user       AdminUser @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash  String    @unique
+  role       String
+  status     String    @default("active")
+  ipAddress  String?
+  userAgent  String?
+  createdAt  DateTime  @default(now())
+  lastSeenAt DateTime?
+  expiresAt  DateTime
+  revokedAt  DateTime?
+
+  @@index([userId])
+  @@index([status])
+  @@index([expiresAt])
+  @@index([revokedAt])
+}
+
+model AdminAuditLog {
+  id                   String                      @id @default(cuid())
+  actorUserId          String?
+  actorUser            AdminUser?                  @relation("AdminAuditActor", fields: [actorUserId], references: [id], onDelete: SetNull)
+  actorEmail           String
+  actorRole            String
+  action               String
+  targetType           String
+  targetId             String
+  field                String
+  reason               String
+  status               String                      @default("logged")
+  ipAddress            String?
+  userAgent            String?
+  metadata             Json?
+  reviewStatus         String                      @default("unreviewed")
+  reviewedByUserId     String?
+  reviewedBy           AdminUser?                  @relation("AdminAuditReviewedBy", fields: [reviewedByUserId], references: [id], onDelete: SetNull)
+  reviewedAt           DateTime?
+  reviewNote           String?
+  assignedToUserId     String?
+  assignedTo           AdminUser?                  @relation("AdminAuditAssignedTo", fields: [assignedToUserId], references: [id], onDelete: SetNull)
+  ownerRole            String?
+  priority             String                      @default("normal")
+  escalationStatus     String                      @default("none")
+  escalatedAt          DateTime?
+  assignmentDueAt      DateTime?
+  escalationReason     String?
+  escalationResolvedAt DateTime?
+  createdAt            DateTime                    @default(now())
+  piiRevealEvent       PiiRevealEvent?
+  exportEvent          AdminExportEvent?
+  assignmentEvents     AdminAuditAssignmentEvent[]
+
+  @@index([actorUserId])
+  @@index([actorRole])
+  @@index([action])
+  @@index([targetType, targetId])
+  @@index([status])
+  @@index([reviewStatus])
+  @@index([reviewedByUserId])
+  @@index([assignedToUserId])
+  @@index([ownerRole])
+  @@index([priority])
+  @@index([escalationStatus])
+  @@index([assignmentDueAt])
+  @@index([escalationResolvedAt])
+  @@index([createdAt])
+}
+
+model AdminAuditAssignmentEvent {
+  id                       String        @id @default(cuid())
+  auditLogId               String
+  auditLog                 AdminAuditLog @relation(fields: [auditLogId], references: [id], onDelete: Cascade)
+  actorUserId              String?
+  actorUser                AdminUser?    @relation("AdminAuditAssignmentActor", fields: [actorUserId], references: [id], onDelete: SetNull)
+  previousAssignedToUserId String?
+  assignedToUserId         String?
+  previousOwnerRole        String?
+  ownerRole                String?
+  previousPriority         String?
+  priority                 String?
+  previousEscalationStatus String?
+  escalationStatus         String?
+  previousAssignmentDueAt  DateTime?
+  assignmentDueAt          DateTime?
+  previousEscalationReason String?
+  escalationReason         String?
+  reason                   String
+  ipAddress                String?
+  userAgent                String?
+  createdAt                DateTime      @default(now())
+
+  @@index([auditLogId])
+  @@index([actorUserId])
+  @@index([assignedToUserId])
+  @@index([ownerRole])
+  @@index([priority])
+  @@index([escalationStatus])
+  @@index([assignmentDueAt])
+  @@index([createdAt])
+}
+
+model PiiRevealEvent {
+  id          String        @id @default(cuid())
+  auditLogId  String        @unique
+  auditLog    AdminAuditLog @relation(fields: [auditLogId], references: [id], onDelete: Cascade)
+  actorUserId String?
+  actorUser   AdminUser?    @relation(fields: [actorUserId], references: [id], onDelete: SetNull)
+  actorRole   String
+  targetType  String
+  targetId    String
+  field       String
+  reason      String
+  ipAddress   String?
+  userAgent   String?
+  metadata    Json?
+  createdAt   DateTime      @default(now())
+
+  @@index([actorUserId])
+  @@index([actorRole])
+  @@index([targetType, targetId])
+  @@index([field])
+  @@index([createdAt])
+}
+
+model AdminExportEvent {
+  id               String                      @id @default(cuid())
+  auditLogId       String                      @unique
+  auditLog         AdminAuditLog               @relation(fields: [auditLogId], references: [id], onDelete: Cascade)
+  actorUserId      String?
+  actorUser        AdminUser?                  @relation(fields: [actorUserId], references: [id], onDelete: SetNull)
+  actorRole        String
+  targetType       String
+  targetId         String
+  field            String
+  reason           String
+  status           String
+  exportKind       String                      @default("mock")
+  approvedByUserId String?
+  approvalReason   String?
+  approvedAt       DateTime?
+  rejectedAt       DateTime?
+  completedAt      DateTime?
+  artifactMetadata Json?
+  artifactReadyAt  DateTime?
+  artifactAccesses AdminExportArtifactAccess[]
+  ipAddress        String?
+  userAgent        String?
+  metadata         Json?
+  createdAt        DateTime                    @default(now())
+
+  @@index([actorUserId])
+  @@index([actorRole])
+  @@index([targetType, targetId])
+  @@index([status])
+  @@index([approvedByUserId])
+  @@index([createdAt])
+}
+
+model AdminExportArtifactAccess {
+  id                    String           @id @default(cuid())
+  exportEventId         String
+  exportEvent           AdminExportEvent @relation(fields: [exportEventId], references: [id], onDelete: Cascade)
+  tokenHash             String           @unique
+  status                String           @default("active")
+  requestedByUserId     String?
+  requestedBy           AdminUser?       @relation(fields: [requestedByUserId], references: [id], onDelete: SetNull)
+  requestedByRole       String
+  reason                String
+  expiresAt             DateTime
+  accessedAt            DateTime?
+  revokedAt             DateTime?
+  revokedByUserId       String?
+  revokedBy             AdminUser?       @relation("AdminExportArtifactRevokedBy", fields: [revokedByUserId], references: [id], onDelete: SetNull)
+  revokedReason         String?
+  rotatedFromAccessId   String?
+  rotatedAt             DateTime?
+  rotationReason        String?
+  ipAddress             String?
+  userAgent             String?
+  lastAccessedIpAddress String?
+  lastAccessedUserAgent String?
+  createdAt             DateTime         @default(now())
+
+  @@index([exportEventId])
+  @@index([requestedByUserId])
+  @@index([status])
+  @@index([expiresAt])
+  @@index([revokedAt])
+  @@index([revokedByUserId])
+  @@index([rotatedFromAccessId])
+  @@index([rotatedAt])
+  @@index([createdAt])
+}
+
+model AdminExportArtifactPolicy {
+  id                  String     @id @default(cuid())
+  environment         String
+  status              String     @default("active")
+  ttlSeconds          Int
+  minTtlSeconds       Int
+  maxTtlSeconds       Int
+  changedByUserId     String?
+  changedBy           AdminUser? @relation("AdminExportArtifactPolicyChangedBy", fields: [changedByUserId], references: [id], onDelete: SetNull)
+  reason              String
+  effectiveFrom       DateTime   @default(now())
+  supersededAt        DateTime?
+  ipAddress           String?
+  userAgent           String?
+  metadata            Json?
+  createdAt           DateTime   @default(now())
+
+  @@index([environment])
+  @@index([status])
+  @@index([changedByUserId])
+  @@index([effectiveFrom])
+  @@index([supersededAt])
+  @@index([createdAt])
+}
+
+model AdminPaymentWebhookLog {
+  id                  String   @id @default(cuid())
+  provider            String
+  eventType           String
+  eventStatus         String
+  paymentId           String?
+  providerEventId     String?
+  requestId           String?
+  providerEnvironment String?
+  verificationStatus  String?
+  retryCount          Int      @default(0)
+  latencyMs           Int?
+  errorClass          String?
+  payloadSummary      Json?
+  errorCode           String?
+  errorMessage        String?
+  source              String   @default("mock")
+  createdAt           DateTime @default(now())
+
+  @@index([provider, eventType])
+  @@index([eventStatus])
+  @@index([providerEnvironment])
+  @@index([verificationStatus])
+  @@index([errorClass])
+  @@index([paymentId])
+  @@index([createdAt])
+}
+
+model AdminPaymentWebhookVerificationEvent {
+  id                  String   @id @default(cuid())
+  actorUserId         String?
+  actorUser           AdminUser? @relation("AdminPaymentWebhookVerificationActor", fields: [actorUserId], references: [id], onDelete: SetNull)
+  provider            String
+  eventType           String
+  verificationStatus  String
+  safeStatus          String
+  paymentReference    String?
+  paymentId           String?
+  providerEventId     String?
+  providerPaymentId   String?
+  requestId           String?
+  rawBodyHash         String?
+  providerEnvironment String?
+  errorClass          String?
+  errorCode           String?
+  errorMessage        String?
+  payloadSummary      Json?
+  source              String   @default("system")
+  ipAddress           String?
+  userAgent           String?
+  createdAt           DateTime @default(now())
+  reconciliationItems AdminPaymentReconciliationItem[]
+
+  @@index([actorUserId])
+  @@index([provider, eventType])
+  @@index([verificationStatus])
+  @@index([safeStatus])
+  @@index([paymentId])
+  @@index([paymentReference])
+  @@index([providerEventId])
+  @@index([providerEnvironment])
+  @@index([errorClass])
+  @@index([source])
+  @@index([createdAt])
+}
+
+model AdminPaymentReconciliationItem {
+  id                  String   @id @default(cuid())
+  verificationEventId String?
+  verificationEvent   AdminPaymentWebhookVerificationEvent? @relation(fields: [verificationEventId], references: [id], onDelete: SetNull)
+  paymentId           String?
+  paymentReference    String?
+  provider            String
+  issueType           String
+  status              String   @default("open")
+  priority            String   @default("normal")
+  amountExpected      Decimal? @db.Decimal(12, 2)
+  amountReceived      Decimal? @db.Decimal(12, 2)
+  currency            String   @default("MYR")
+  providerEventId     String?
+  assignedToUserId    String?
+  assignedTo          AdminUser? @relation("AdminPaymentReconciliationAssignedTo", fields: [assignedToUserId], references: [id], onDelete: SetNull)
+  reviewedByUserId    String?
+  reviewedBy          AdminUser? @relation("AdminPaymentReconciliationReviewedBy", fields: [reviewedByUserId], references: [id], onDelete: SetNull)
+  reviewReason        String?
+  resolutionReason    String?
+  safeSummary         Json?
+  ipAddress           String?
+  userAgent           String?
+  reviewedAt          DateTime?
+  resolvedAt          DateTime?
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+  events              AdminPaymentReconciliationEvent[]
+
+  @@index([verificationEventId])
+  @@index([paymentId])
+  @@index([paymentReference])
+  @@index([provider])
+  @@index([issueType])
+  @@index([status])
+  @@index([priority])
+  @@index([providerEventId])
+  @@index([assignedToUserId])
+  @@index([reviewedByUserId])
+  @@index([reviewedAt])
+  @@index([resolvedAt])
+  @@index([createdAt])
+}
+
+model AdminPaymentReconciliationEvent {
+  id               String   @id @default(cuid())
+  itemId           String
+  item             AdminPaymentReconciliationItem @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  actorUserId      String?
+  actorUser        AdminUser? @relation("AdminPaymentReconciliationEventActor", fields: [actorUserId], references: [id], onDelete: SetNull)
+  action           String
+  previousStatus   String?
+  status           String
+  previousPriority String?
+  priority         String?
+  reason           String
+  note             String?
+  ipAddress        String?
+  userAgent        String?
+  metadata         Json?
+  createdAt        DateTime @default(now())
+
+  @@index([itemId])
+  @@index([actorUserId])
+  @@index([action])
+  @@index([status])
+  @@index([priority])
+  @@index([createdAt])
+}
+
+model AdminPaymentException {
+  id                  String   @id @default(cuid())
+  paymentId           String?
+  paymentReference    String?
+  provider            String
+  exceptionType       String
+  status              String   @default("open")
+  priority            String   @default("normal")
+  amount              Decimal? @db.Decimal(12, 2)
+  currency            String   @default("MYR")
+  refundMode          String   @default("manual_placeholder")
+  providerRefundId    String?
+  createdByUserId     String?
+  createdBy           AdminUser? @relation("AdminPaymentExceptionCreatedBy", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  assignedToUserId    String?
+  assignedTo          AdminUser? @relation("AdminPaymentExceptionAssignedTo", fields: [assignedToUserId], references: [id], onDelete: SetNull)
+  resolvedByUserId    String?
+  resolvedBy          AdminUser? @relation("AdminPaymentExceptionResolvedBy", fields: [resolvedByUserId], references: [id], onDelete: SetNull)
+  reason              String
+  resolutionReason    String?
+  noRealRefund        Boolean  @default(true)
+  source              String   @default("manual_admin")
+  ipAddress           String?
+  userAgent           String?
+  metadata            Json?
+  resolvedAt          DateTime?
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+  events              AdminPaymentExceptionEvent[]
+
+  @@index([paymentId])
+  @@index([paymentReference])
+  @@index([provider])
+  @@index([exceptionType])
+  @@index([status])
+  @@index([priority])
+  @@index([createdByUserId])
+  @@index([assignedToUserId])
+  @@index([resolvedByUserId])
+  @@index([source])
+  @@index([resolvedAt])
+  @@index([createdAt])
+}
+
+model AdminPaymentExceptionEvent {
+  id               String   @id @default(cuid())
+  exceptionId      String
+  exception        AdminPaymentException @relation(fields: [exceptionId], references: [id], onDelete: Cascade)
+  actorUserId      String?
+  actorUser        AdminUser? @relation("AdminPaymentExceptionEventActor", fields: [actorUserId], references: [id], onDelete: SetNull)
+  action           String
+  previousStatus   String?
+  status           String
+  previousPriority String?
+  priority         String?
+  reason           String
+  note             String?
+  ipAddress        String?
+  userAgent        String?
+  metadata         Json?
+  createdAt        DateTime @default(now())
+
+  @@index([exceptionId])
+  @@index([actorUserId])
+  @@index([action])
+  @@index([status])
+  @@index([priority])
+  @@index([createdAt])
+}
+
+model AdminRenewalOpsCase {
+  id                     String   @id @default(cuid())
+  caseRef                String   @unique
+  sourceSessionId        String?
+  customerName           String?
+  customerIc             String?
+  customerEmail          String?
+  customerPhone          String?
+  customerAddress        String?
+  vehiclePlate           String?
+  vehicleSummary         String?
+  requestedInsurer       String?
+  selectedInsurer        String?
+  coverageType           String?
+  addOns                 Json?
+  roadTaxOption          String?
+  premiumSnapshot        Json?
+  status                 String   @default("intake_received")
+  priority               String   @default("normal")
+  ownerUserId            String?
+  owner                  AdminUser? @relation("AdminRenewalOpsOwner", fields: [ownerUserId], references: [id], onDelete: SetNull)
+  issuanceMode           String   @default("manual_ops_upload")
+  sourceLabel            String   @default("manual_ops")
+  policyIssuedToCustomer Boolean  @default(false)
+  blockedReason          String?
+  createdByUserId        String?
+  createdBy              AdminUser? @relation("AdminRenewalOpsCreatedBy", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  updatedByUserId        String?
+  updatedBy              AdminUser? @relation("AdminRenewalOpsUpdatedBy", fields: [updatedByUserId], references: [id], onDelete: SetNull)
+  createdAt              DateTime @default(now())
+  updatedAt              DateTime @updatedAt
+  statusEvents           AdminRenewalOpsStatusEvent[]
+  quoteEvents            AdminRenewalQuoteLifecycleEvent[]
+  insurerSubmissions     AdminInsurerPartnerSubmission[]
+  manualIssuanceTasks    AdminManualIssuanceTask[]
+  policyDocuments        AdminPolicyDocumentVerification[]
+
+  @@index([caseRef])
+  @@index([sourceSessionId])
+  @@index([status])
+  @@index([priority])
+  @@index([ownerUserId])
+  @@index([requestedInsurer])
+  @@index([selectedInsurer])
+  @@index([issuanceMode])
+  @@index([sourceLabel])
+  @@index([createdByUserId])
+  @@index([updatedByUserId])
+  @@index([createdAt])
+  @@index([updatedAt])
+}
+
+model AdminRenewalOpsStatusEvent {
+  id             String   @id @default(cuid())
+  caseId         String
+  case           AdminRenewalOpsCase @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  actorUserId    String?
+  actorUser      AdminUser? @relation("AdminRenewalOpsStatusActor", fields: [actorUserId], references: [id], onDelete: SetNull)
+  action         String
+  previousStatus String?
+  status         String
+  reason         String
+  note           String?
+  ipAddress      String?
+  userAgent      String?
+  metadata       Json?
+  createdAt      DateTime @default(now())
+
+  @@index([caseId])
+  @@index([actorUserId])
+  @@index([action])
+  @@index([previousStatus])
+  @@index([status])
+  @@index([createdAt])
+}
+
+model AdminRenewalQuoteLifecycleEvent {
+  id              String   @id @default(cuid())
+  caseId          String
+  case            AdminRenewalOpsCase @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  actorUserId     String?
+  actorUser       AdminUser? @relation("AdminRenewalQuoteLifecycleActor", fields: [actorUserId], references: [id], onDelete: SetNull)
+  eventType       String
+  insurer         String?
+  status          String
+  reason          String
+  premiumSnapshot Json?
+  metadata        Json?
+  ipAddress       String?
+  userAgent       String?
+  createdAt       DateTime @default(now())
+
+  @@index([caseId])
+  @@index([actorUserId])
+  @@index([eventType])
+  @@index([insurer])
+  @@index([status])
+  @@index([createdAt])
+}
+
+model AdminInsurerPartnerSubmission {
+  id                String   @id @default(cuid())
+  caseId            String
+  case              AdminRenewalOpsCase @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  actorUserId       String?
+  actorUser         AdminUser? @relation("AdminInsurerPartnerSubmissionActor", fields: [actorUserId], references: [id], onDelete: SetNull)
+  insurer           String
+  channel           String   @default("manual_insurer_portal")
+  sourceLabel       String   @default("manual")
+  status            String   @default("pending_submission")
+  externalReference String?
+  reason            String
+  note              String?
+  safeSummary       Json?
+  ipAddress         String?
+  userAgent         String?
+  submittedAt       DateTime?
+  respondedAt       DateTime?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@index([caseId])
+  @@index([actorUserId])
+  @@index([insurer])
+  @@index([channel])
+  @@index([sourceLabel])
+  @@index([status])
+  @@index([externalReference])
+  @@index([submittedAt])
+  @@index([respondedAt])
+  @@index([createdAt])
+}
+
+model AdminManualIssuanceTask {
+  id               String   @id @default(cuid())
+  caseId           String
+  case             AdminRenewalOpsCase @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  actorUserId      String?
+  actorUser        AdminUser? @relation("AdminManualIssuanceTaskActor", fields: [actorUserId], references: [id], onDelete: SetNull)
+  assignedToUserId String?
+  assignedTo       AdminUser? @relation("AdminManualIssuanceTaskAssignedTo", fields: [assignedToUserId], references: [id], onDelete: SetNull)
+  taskType         String
+  status           String   @default("open")
+  issuanceMode     String   @default("manual_ops_upload")
+  dueAt            DateTime?
+  completedAt      DateTime?
+  reason           String
+  note             String?
+  ipAddress        String?
+  userAgent        String?
+  metadata         Json?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@index([caseId])
+  @@index([actorUserId])
+  @@index([assignedToUserId])
+  @@index([taskType])
+  @@index([status])
+  @@index([issuanceMode])
+  @@index([dueAt])
+  @@index([completedAt])
+  @@index([createdAt])
+}
+
+model AdminPolicyDocumentVerification {
+  id                String   @id @default(cuid())
+  caseId            String
+  case              AdminRenewalOpsCase @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  actorUserId       String?
+  actorUser         AdminUser? @relation("AdminPolicyDocumentUploadedBy", fields: [actorUserId], references: [id], onDelete: SetNull)
+  reviewerUserId    String?
+  reviewer          AdminUser? @relation("AdminPolicyDocumentReviewedBy", fields: [reviewerUserId], references: [id], onDelete: SetNull)
+  insurer           String
+  documentType      String
+  policyNumber      String?
+  effectiveFrom     DateTime?
+  effectiveTo       DateTime?
+  storageMode       String   @default("metadata_placeholder")
+  fileReference     String?
+  verificationStatus String @default("pending")
+  reason            String
+  reviewerNote      String?
+  safeSummary       Json?
+  noCustomerRelease Boolean  @default(true)
+  ipAddress         String?
+  userAgent         String?
+  uploadedAt        DateTime?
+  reviewedAt        DateTime?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@index([caseId])
+  @@index([actorUserId])
+  @@index([reviewerUserId])
+  @@index([insurer])
+  @@index([documentType])
+  @@index([policyNumber])
+  @@index([storageMode])
+  @@index([verificationStatus])
+  @@index([uploadedAt])
+  @@index([reviewedAt])
+  @@index([createdAt])
+}
+
+model AdminComplianceOperatingModelGate {
+  id              String   @id @default(cuid())
+  modelType       String   @unique
+  title           String
+  status          String   @default("requires_legal_review")
+  launchReady     Boolean  @default(false)
+  evidenceTitle   String?
+  evidenceUrl     String?
+  evidenceSummary String?
+  sourceUrls      Json?
+  blockers        Json?
+  notes           String?
+  reviewerName    String?
+  reviewerRole    String?
+  updatedByUserId String?
+  updatedByEmail  String?
+  reviewedAt      DateTime?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([modelType])
+  @@index([status])
+  @@index([launchReady])
+  @@index([reviewerRole])
+  @@index([updatedByUserId])
+  @@index([reviewedAt])
+  @@index([createdAt])
+}
+
+model AdminComplianceLegalDocument {
+  id            String   @id @default(cuid())
+  documentType  String
+  title         String
+  version       String   @default("v0.1-draft")
+  status        String   @default("draft")
+  ownerRole     String?
+  ownerName     String?
+  reviewerName  String?
+  sourceLinks   Json?
+  effectiveAt   DateTime?
+  reviewDueAt   DateTime?
+  approvedAt    DateTime?
+  blockedReason String?
+  notes         String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@unique([documentType, version])
+  @@index([documentType])
+  @@index([status])
+  @@index([ownerRole])
+  @@index([reviewDueAt])
+  @@index([approvedAt])
+  @@index([createdAt])
+}
+
+model AdminComplianceChecklistItem {
+  id             String   @id @default(cuid())
+  checklistType  String
+  itemKey        String
+  title          String
+  description    String?
+  status         String   @default("not_started")
+  ownerRole      String?
+  ownerName      String?
+  reviewerName   String?
+  launchBlocking Boolean  @default(true)
+  dueAt          DateTime?
+  evidence       Json?
+  reviewerNote   String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@unique([checklistType, itemKey])
+  @@index([checklistType])
+  @@index([itemKey])
+  @@index([status])
+  @@index([ownerRole])
+  @@index([launchBlocking])
+  @@index([dueAt])
+  @@index([createdAt])
+}
+
+model AdminInsurerApprovedScriptFact {
+  id              String   @id @default(cuid())
+  insurer         String
+  recordType      String
+  title           String
+  status          String   @default("draft")
+  sourceTitle     String?
+  sourceUrl       String?
+  allowedUseCases Json?
+  scriptSummary   String?
+  effectiveFrom   DateTime?
+  effectiveTo     DateTime?
+  reviewerName    String?
+  approvedAt      DateTime?
+  notes           String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([insurer])
+  @@index([recordType])
+  @@index([status])
+  @@index([effectiveFrom])
+  @@index([effectiveTo])
+  @@index([approvedAt])
+  @@index([createdAt])
+}
+
+model AdminComplianceLaunchDecision {
+  id            String   @id @default(cuid())
+  decisionType  String   @default("launch_gate")
+  status        String   @default("not_ready")
+  decidedById   String?
+  decidedByEmail String?
+  decidedByRole String?
+  reason        String
+  blockers      Json?
+  metadata      Json?
+  ipAddress     String?
+  userAgent     String?
+  createdAt     DateTime @default(now())
+
+  @@index([decisionType])
+  @@index([status])
+  @@index([decidedById])
+  @@index([decidedByRole])
+  @@index([createdAt])
+}
+
+model AdminComplianceGateEvent {
+  id             String   @id @default(cuid())
+  targetType     String
+  targetId       String
+  action         String
+  previousStatus String?
+  status         String
+  actorUserId    String?
+  actorEmail     String?
+  actorRole      String?
+  reason         String
+  note           String?
+  ipAddress      String?
+  userAgent      String?
+  metadata       Json?
+  createdAt      DateTime @default(now())
+
+  @@index([targetType])
+  @@index([targetId])
+  @@index([action])
+  @@index([status])
+  @@index([actorUserId])
+  @@index([actorRole])
+  @@index([createdAt])
+}
+
+model AdminCustomerLaunchQaItem {
+  id             String    @id @default(cuid())
+  category       String
+  itemKey        String
+  title          String
+  description    String?
+  status         String    @default("not_started")
+  ownerRole      String?
+  ownerName      String?
+  reviewerName   String?
+  reviewerRole   String?
+  reviewerNote   String?
+  launchBlocking Boolean   @default(true)
+  blocker        Boolean   @default(true)
+  severity       String    @default("normal")
+  viewport       String?
+  slaHours       Int?
+  dueAt          DateTime?
+  reviewedAt     DateTime?
+  evidence       Json?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  @@unique([category, itemKey])
+  @@index([category])
+  @@index([itemKey])
+  @@index([status])
+  @@index([ownerRole])
+  @@index([reviewerRole])
+  @@index([launchBlocking])
+  @@index([blocker])
+  @@index([severity])
+  @@index([viewport])
+  @@index([dueAt])
+  @@index([reviewedAt])
+  @@index([createdAt])
+}
+
+model AdminCustomerLaunchUatRun {
+  id               String    @id @default(cuid())
+  runName          String
+  environment      String
+  testerName       String?
+  testerRole       String?
+  team             String?
+  status           String    @default("planned")
+  blockerCount     Int       @default(0)
+  signoffStatus    String    @default("not_ready")
+  signoffReason    String?
+  signedOffById    String?
+  signedOffByEmail String?
+  signedOffByRole  String?
+  signedOffAt      DateTime?
+  notes            String?
+  startedAt        DateTime?
+  completedAt      DateTime?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  @@index([environment])
+  @@index([testerRole])
+  @@index([status])
+  @@index([signoffStatus])
+  @@index([blockerCount])
+  @@index([signedOffById])
+  @@index([signedOffByRole])
+  @@index([startedAt])
+  @@index([completedAt])
+  @@index([createdAt])
+}
+
+model AdminCustomerLaunchQaEvent {
+  id             String   @id @default(cuid())
+  targetType     String
+  targetId       String
+  action         String
+  previousStatus String?
+  status         String
+  actorUserId    String?
+  actorEmail     String?
+  actorRole      String?
+  reason         String
+  note           String?
+  ipAddress      String?
+  userAgent      String?
+  metadata       Json?
+  createdAt      DateTime @default(now())
+
+  @@index([targetType])
+  @@index([targetId])
+  @@index([action])
+  @@index([status])
+  @@index([actorUserId])
+  @@index([actorRole])
+  @@index([createdAt])
+}
+
+model AdminInsurerAdapterLog {
+  id                  String   @id @default(cuid())
+  insurerCode         String
+  adapterName         String
+  operation           String
+  status              String
+  latencyMs           Int?
+  requestId           String?
+  providerEnvironment String?
+  adapterVersion      String?
+  retryCount          Int      @default(0)
+  errorClass          String?
+  errorCode           String?
+  errorMessage        String?
+  metadata            Json?
+  source              String   @default("mock")
+  createdAt           DateTime @default(now())
+
+  @@index([insurerCode, operation])
+  @@index([status])
+  @@index([providerEnvironment])
+  @@index([errorClass])
+  @@index([createdAt])
+}
+
+model AdminOpenAiUsageLog {
+  id                  String   @id @default(cuid())
+  model               String
+  operation           String
+  status              String
+  promptTokens        Int?
+  completionTokens    Int?
+  totalTokens         Int?
+  costEstimateUsd     Decimal? @db.Decimal(12, 6)
+  requestId           String?
+  providerEnvironment String?
+  retryCount          Int      @default(0)
+  latencyMs           Int?
+  errorClass          String?
+  errorCode           String?
+  errorMessage        String?
+  metadata            Json?
+  source              String   @default("mock")
+  createdAt           DateTime @default(now())
+
+  @@index([model, operation])
+  @@index([status])
+  @@index([providerEnvironment])
+  @@index([errorClass])
+  @@index([createdAt])
+}
+
+model AdminJobQueueLog {
+  id           String    @id @default(cuid())
+  queueName    String
+  jobName      String
+  status       String
+  attempts     Int       @default(0)
+  retryCount   Int       @default(0)
+  workerName   String?
+  errorClass   String?
+  scheduledFor DateTime?
+  startedAt    DateTime?
+  finishedAt   DateTime?
+  errorMessage String?
+  metadata     Json?
+  source       String    @default("mock")
+  createdAt    DateTime  @default(now())
+
+  @@index([queueName, jobName])
+  @@index([status])
+  @@index([workerName])
+  @@index([errorClass])
+  @@index([createdAt])
+}
+
+model AdminCronReminderLog {
+  id            String    @id @default(cuid())
+  cronName      String
+  status        String
+  scheduledFor  DateTime?
+  startedAt     DateTime?
+  finishedAt    DateTime?
+  affectedCount Int?
+  retryCount    Int       @default(0)
+  workerName    String?
+  errorClass    String?
+  errorMessage  String?
+  metadata      Json?
+  source        String    @default("mock")
+  createdAt     DateTime  @default(now())
+
+  @@index([cronName])
+  @@index([status])
+  @@index([workerName])
+  @@index([errorClass])
+  @@index([createdAt])
+}

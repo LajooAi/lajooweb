@@ -4,6 +4,7 @@ import {
   getInsurerByKey,
   getInsurerKeysFromText,
 } from '../../lib/insurerCatalog.js';
+import { recordAdminOpenAiUsageLog } from '../admin/adminTechLogs.js';
 
 export const KNOWLEDGE_EMBEDDING_DIMENSIONS = 1536;
 export const DEFAULT_KNOWLEDGE_EMBEDDING_MODEL = 'text-embedding-3-small';
@@ -11,6 +12,10 @@ export const DEFAULT_KNOWLEDGE_EMBEDDING_MODEL = 'text-embedding-3-small';
 const DISABLED_VALUES = new Set(['0', 'false', 'off', 'no', 'disabled']);
 const ENABLED_VALUES = new Set(['1', 'true', 'on', 'yes', 'enabled', 'auto', '']);
 const OPENAI_EMBEDDINGS_URL = 'https://api.openai.com/v1/embeddings';
+
+function safeRecordEmbeddingUsage(event) {
+  recordAdminOpenAiUsageLog(event).catch(() => null);
+}
 
 function cleanText(value, maxLength = 7000) {
   const clean = String(value || '').replace(/\s+/g, ' ').trim();
@@ -152,6 +157,7 @@ export async function generateKnowledgeEmbeddings(inputs, options = {}) {
   }
 
   const model = getKnowledgeEmbeddingModel(options);
+  const startedAt = Date.now();
   const response = await fetch(OPENAI_EMBEDDINGS_URL, {
     method: 'POST',
     headers: {
@@ -167,6 +173,16 @@ export async function generateKnowledgeEmbeddings(inputs, options = {}) {
 
   const payload = await response.json().catch(() => ({}));
   if (!response.ok) {
+    safeRecordEmbeddingUsage({
+      model,
+      operation: 'knowledge_embedding',
+      status: 'failed',
+      errorCode: payload?.error?.code || `HTTP_${response.status}`,
+      errorMessage: payload?.error?.message || 'OpenAI embeddings request failed.',
+      latencyMs: Date.now() - startedAt,
+      metadata: { inputCount: cleanInputs.length, dimensions: KNOWLEDGE_EMBEDDING_DIMENSIONS },
+      source: 'system',
+    });
     const error = new Error(payload?.error?.message || `OpenAI embeddings request failed with ${response.status}.`);
     error.code = payload?.error?.code || 'OPENAI_EMBEDDING_FAILED';
     error.status = response.status;
@@ -187,6 +203,16 @@ export async function generateKnowledgeEmbeddings(inputs, options = {}) {
   for (const embedding of embeddings) {
     embeddingToPgVector(embedding);
   }
+
+  safeRecordEmbeddingUsage({
+    model,
+    operation: 'knowledge_embedding',
+    status: 'success',
+    totalTokens: payload?.usage?.total_tokens,
+    latencyMs: Date.now() - startedAt,
+    metadata: { inputCount: cleanInputs.length, dimensions: KNOWLEDGE_EMBEDDING_DIMENSIONS },
+    source: 'system',
+  });
 
   return {
     embeddings,

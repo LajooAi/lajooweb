@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import { recordAdminPaymentWebhookLog } from "../server/admin/adminTechLogs.js";
 
 const DB_STORE_MODES = new Set(["postgres", "prisma", "database", "db"]);
 
@@ -75,6 +76,24 @@ function normalizeStoredAuditEvent(event) {
 
 export async function recordPaymentAuditEvent(event) {
   const normalized = normalizeAuditEvent(event);
+
+  if (normalized.direction === PAYMENT_AUDIT_DIRECTION.PROVIDER_WEBHOOK) {
+    recordAdminPaymentWebhookLog({
+      provider: normalized.provider,
+      eventType: normalized.eventType,
+      eventStatus: normalized.eventStatus,
+      paymentId: normalized.paymentId,
+      providerEventId: normalized.providerEventId,
+      requestId: normalized.requestId,
+      verificationStatus: normalized.signatureStatus || normalized.eventStatus,
+      signatureStatus: normalized.signatureStatus,
+      retryCount: event.retryCount || 0,
+      payloadSummary: normalized.payload,
+      errorCode: normalized.errorCode,
+      errorMessage: normalized.errorMessage,
+      source: normalized.provider === "mock" ? "mock" : "system",
+    }).catch(() => null);
+  }
 
   if (!shouldUseDatabaseStore()) {
     memoryAuditEvents.push(normalized);
